@@ -1,2 +1,2 @@
-# pfe-25-26-smart-connect-ai
+# pfe-25-26-marketplace
 PFE des étudiants: Khaireddine Dab &amp; Abderrahman Abdelli
