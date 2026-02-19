@@ -6,6 +6,9 @@ import { Briefcase, Code, FolderKanban, Rocket, Search, MapPin } from "lucide-re
 import { DropdownMenu } from "./ui/dropdown-menu";
 
 
+
+import Link from 'next/link';
+
 export default function Navbar() {
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState('');
@@ -68,13 +71,13 @@ export default function Navbar() {
 
           {/* Right actions */}
           <div className="flex items-center gap-3 flex-shrink-0">
-<div className="hidden sm:block">
+<div className="hidden sm:block text-white/80">
   <DropdownMenu
     options={[
       {
         label: "Add a Business",
-        onClick: () => console.log("Add a Business"),
         Icon: <Rocket className="h-4 w-4" />,
+        href: "/business/add",
       },
       {
         label: "claim your business for free",
@@ -101,16 +104,21 @@ export default function Navbar() {
               write a review
             </button>
 
-            <button className="px-4 py-2 rounded-xl  bg-red-600  text-sm font-semibold text-white transition">
-              Log in
-            </button>
+            <Link href="/login">
+              <button className="px-4 py-2 rounded-xl  bg-red-600  text-sm font-semibold text-white transition">
+                Log in
+              </button>
+            </Link>
 
-            <button className="px-4 py-2 rounded-xl  bg-red-600  text-sm font-semibold text-white transition">
-              Sign up
-            </button>
+            <Link href="/register">
+              <button className="px-4 py-2 rounded-xl  bg-red-600  text-sm font-semibold text-white transition">
+                Sign up
+              </button>
+            </Link>
           </div>
         </div>
       </div>
     </header>
   );
 }
+

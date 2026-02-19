@@ -2,14 +2,14 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Upload, Globe } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { Globe } from 'lucide-react';
 
 export default function AddBusinessPage() {
   const router = useRouter();
   const [formData, setFormData] = useState({
     companyName: '',
     companyEmail: '',
+    rne: '',
     companyWebsite: '',
     companyAddress: '',
     location: '',
@@ -40,9 +40,7 @@ export default function AddBusinessPage() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    // Handle form submission
     console.log('Form submitted:', formData);
-    // Add your submission logic here
   };
 
   const handleCancel = () => {
@@ -63,7 +61,6 @@ export default function AddBusinessPage() {
                 Company Logo
               </label>
               <div className="flex items-center gap-4">
-                {/* Logo Preview */}
                 <div className="w-20 h-20 rounded-2xl bg-gray-100 flex items-center justify-center overflow-hidden">
                   {logoPreview ? (
                     <img
@@ -75,8 +72,6 @@ export default function AddBusinessPage() {
                     <div className="w-12 h-12 bg-gray-300 rounded-full" />
                   )}
                 </div>
-
-                {/* Browse Button */}
                 <label className="cursor-pointer">
                   <input
                     type="file"
@@ -124,6 +119,29 @@ export default function AddBusinessPage() {
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none transition-all"
                 />
               </div>
+            </div>
+
+            {/* RNE */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                RNE <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="text"
+                required
+                placeholder="e.g. 1234567A"
+                value={formData.rne}
+                onChange={(e) =>
+                  setFormData({ ...formData, rne: e.target.value.toUpperCase() })
+                }
+                maxLength={8}
+                pattern="[0-9]{7}[A-Za-z]"
+                title="RNE must be 7 digits followed by 1 letter (e.g. 1234567A)"
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none transition-all"
+              />
+              <p className="text-xs text-gray-400 mt-1">
+                Registre National des Entreprises — 7 digits + 1 letter
+              </p>
             </div>
 
             {/* Company Website */}

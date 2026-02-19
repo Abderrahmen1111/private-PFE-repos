@@ -6,16 +6,18 @@ import { MoveRight, PhoneCall, RocketIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 
+import Link from 'next/link';
+
 export default function Hero() {
   const heroRef = useRef<HTMLDivElement>(null);
   const titleRef = useRef<HTMLHeadingElement>(null);
   const subtitleRef = useRef<HTMLParagraphElement>(null);
   const ctaRef = useRef<HTMLDivElement>(null);
-  
+
   useEffect(() => {
     const ctx = gsap.context(() => {
       const tl = gsap.timeline();
-      
+
       tl.from(titleRef.current, {
         y: 50,
         opacity: 0,
@@ -43,7 +45,7 @@ export default function Hero() {
           '-=0.5',
         );
     }, heroRef);
-    
+
     return () => ctx.revert();
   }, []);
 
@@ -90,13 +92,18 @@ export default function Hero() {
               ref={ctaRef}
               className="flex flex-wrap items-center gap-4"
             >
-              <Button
-                variant="outline"
-                className="flex items-center gap-2 rounded-full border-gray-300 bg-white text-sm md:text-base px-5 py-2.5 text-gray-900 hover:bg-gray-50"
-              >
-                <RocketIcon className="w-4 h-4" />
-                start for free
-              </Button>
+              <Link href="/register" passHref legacyBehavior>
+                <Button
+                  variant="outline"
+                  className="flex items-center gap-2 rounded-full border-gray-300 bg-white text-sm md:text-base px-5 py-2.5 text-gray-900 hover:bg-gray-50"
+                  asChild
+                >
+                  <a className="flex items-center gap-2">
+                    <RocketIcon className="w-4 h-4" />
+                    start for free
+                  </a>
+                </Button>
+              </Link>
 
               <Button
                 className="flex items-center gap-2 rounded-full bg-black text-white text-sm md:text-base px-6 py-2.5 hover:bg-black/90"

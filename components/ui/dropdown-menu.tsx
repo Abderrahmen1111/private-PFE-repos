@@ -4,21 +4,33 @@ import { Button } from "@/components/ui/button";
 import { ChevronDown } from "lucide-react";
 import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useRouter } from "next/navigation";
 
 type DropdownMenuProps = {
   options: {
     label: string;
-    onClick: () => void;
+    onClick?: () => void;
     Icon?: React.ReactNode;
+    href?: string;
   }[];
   children: React.ReactNode;
 };
 
 const DropdownMenu = ({ options, children }: DropdownMenuProps) => {
   const [isOpen, setIsOpen] = useState(false);
+  const router = useRouter();
 
   const toggleDropdown = () => {
     setIsOpen(!isOpen);
+  };
+
+  const handleOptionClick = (option: typeof options[0]) => {
+    if (option.href) {
+      router.push(option.href);
+    } else if (option.onClick) {
+      option.onClick();
+    }
+    setIsOpen(false);
   };
 
   return (
@@ -85,7 +97,7 @@ const DropdownMenu = ({ options, children }: DropdownMenuProps) => {
                     },
                   }}
                   key={option.label}
-                  onClick={option.onClick}
+                  onClick={() => handleOptionClick(option)}
                   className="px-2 py-3 cursor-pointer text-white text-sm rounded-lg w-full text-left flex items-center gap-x-2"
                 >
                   {option.Icon}

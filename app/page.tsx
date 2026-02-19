@@ -6,6 +6,9 @@ import Hero from '@/components/Hero';
 import FeaturedCollections from '@/components/FeaturedCollections';
 import TrendingArtists from '@/components/TrendingArtists';
 import Footer from '@/components/Footer';
+import OffersCarouselDemo from '@/components/OffersCarouselDemoBusiness';
+import Sponsors from '@/components/SponsorsDemo';
+import Offers from '@/components/Offers';
 
 // Dynamically import BackgroundScene with no SSR
 const BackgroundScene = dynamic(
@@ -23,6 +26,12 @@ export default function Home() {
       <div className="relative" style={{ zIndex: 10 }}>
         <Navbar/>
         <Hero/>
+        <FeaturedCollections/>
+        <TrendingArtists/>
+        <OffersCarouselDemo/>
+        <Sponsors/>
+        <Offers/>
+        
 
 <Footer/>
       </div>
