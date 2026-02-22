@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
-import { Business } from '@/lib/mockBusinesses';
+import { Business } from '@/types/business';
 
 interface ResultsMapProps {
   businesses: Business[];
@@ -19,40 +19,50 @@ export default function ResultsMap({ businesses, highlightedId, onMarkerClick }:
 
     // Dynamically import Leaflet only on client side
     const initMap = async () => {
-    const L = (await import('leaflet')).default;
+      const L = (await import('leaflet')).default;
 
-    // Load Leaflet CSS dynamically to avoid TypeScript module error
-    if (typeof document !== 'undefined' && !document.getElementById('leaflet-css')) {
-      const link = document.createElement('link');
-      link.id = 'leaflet-css';
-      link.rel = 'stylesheet';
-      link.href = 'https://unpkg.com/leaflet@1.7.1/dist/leaflet.css';
-      document.head.appendChild(link);
-      await new Promise<void>((resolve) => {
-        link.onload = () => resolve();
-      });
-    }
+      // Load Leaflet CSS dynamically to avoid TypeScript module error
+      if (typeof document !== 'undefined' && !document.getElementById('leaflet-css')) {
+        const link = document.createElement('link');
+        link.id = 'leaflet-css';
+        link.rel = 'stylesheet';
+        link.href = 'https://unpkg.com/leaflet@1.7.1/dist/leaflet.css';
+        document.head.appendChild(link);
+        await new Promise<void>((resolve) => {
+          link.onload = () => resolve();
+        });
+      }
 
-    // Fix for default marker icons in Leaflet
-    delete (L.Icon.Default.prototype as any)._getIconUrl;
-    L.Icon.Default.mergeOptions({
+      // Fix for default marker icons in Leaflet
+      delete (L.Icon.Default.prototype as any)._getIconUrl;
+      L.Icon.Default.mergeOptions({
         iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
         iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
         shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
       });
 
       if (!mapInstanceRef.current && mapRef.current) {
-        // Calculate center point
-        const avgLat = businesses.reduce((sum, b) => sum + b.location.lat, 0) / businesses.length;
-        const avgLng = businesses.reduce((sum, b) => sum + b.location.lng, 0) / businesses.length;
+        // Calculate center point or default to Tunis
+        let avgLat = 36.8065;
+        let avgLng = 10.1815;
+
+        const validBusinesses = businesses.filter(b =>
+          typeof b.location?.lat === 'number' && !isNaN(b.location.lat) &&
+          typeof b.location?.lng === 'number' && !isNaN(b.location.lng)
+        );
+
+        if (validBusinesses.length > 0) {
+          avgLat = validBusinesses.reduce((sum, b) => sum + b.location.lat, 0) / validBusinesses.length;
+          avgLng = validBusinesses.reduce((sum, b) => sum + b.location.lng, 0) / validBusinesses.length;
+        }
 
         // Initialize map
-        const map = L.map(mapRef.current).setView([avgLat, avgLng], 13);
+        const map = L.map(mapRef.current, {
+          attributionControl: false
+        }).setView([avgLat, avgLng], validBusinesses.length > 0 ? 11 : 6);
 
         // Add OpenStreetMap tiles
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-          attribution: '© OpenStreetMap contributors',
-        }).addTo(map);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
 
         mapInstanceRef.current = map;
       }
@@ -96,6 +106,8 @@ export default function ResultsMap({ businesses, highlightedId, onMarkerClick }:
           </div>
         `);
 
+
+
         marker.on('click', () => {
           onMarkerClick?.(business.id);
         });
@@ -114,9 +126,62 @@ export default function ResultsMap({ businesses, highlightedId, onMarkerClick }:
     };
   }, [businesses]);
 
-  // Update marker styles when highlighted changes
+  const geocodedCacheRef = useRef<Map<string, { lat: number, lng: number }>>(new Map());
+
+  // Background geocoding process
   useEffect(() => {
     if (typeof window === 'undefined') return;
+
+    let isCancelled = false;
+    const processGeocoding = async () => {
+      // Find businesses that need geocoding
+      const queue = businesses.filter(b => {
+        const isDefault = (b.location.lat === 36.8065 && b.location.lng === 10.1815);
+        return isDefault && !geocodedCacheRef.current.has(b.id);
+      });
+
+      for (const business of queue) {
+        if (isCancelled) break;
+
+        try {
+          const query = encodeURIComponent(`${business.name}, ${business.location.address}`);
+          const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${query}&limit=1`, {
+            headers: { 'User-Agent': 'PhantomMarketplace/1.0' }
+          });
+          const results = await response.json();
+
+          if (results && results.length > 0 && !isCancelled) {
+            const lat = parseFloat(results[0].lat);
+            const lng = parseFloat(results[0].lon);
+
+            geocodedCacheRef.current.set(business.id, { lat, lng });
+
+            // Update marker on map immediately if it exists
+            const marker = markersRef.current.get(business.id);
+            if (marker) {
+              marker.setLatLng([lat, lng]);
+            }
+          }
+        } catch (err) {
+          console.error(`Error geocoding ${business.name}:`, err);
+        }
+
+        // Wait 1 second before next request to respect rate limits
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      }
+    };
+
+    processGeocoding();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [businesses]);
+
+  // Update marker styles when highlighted changes
+  useEffect(() => {
+    if (typeof window === 'undefined' || !mapInstanceRef.current) return;
+    const map = mapInstanceRef.current;
 
     const updateMarkers = async () => {
       const L = (await import('leaflet')).default;
@@ -140,13 +205,53 @@ export default function ResultsMap({ businesses, highlightedId, onMarkerClick }:
         });
       };
 
+      const handleHighlight = async (id: string) => {
+        const marker = markersRef.current.get(id);
+        if (!marker) return;
+
+        marker.setIcon(createIcon(true));
+        marker.setZIndexOffset(1000);
+
+        const business = businesses.find(b => b.id === id);
+        if (!business) return;
+
+        let targetLat = business.location.lat;
+        let targetLng = business.location.lng;
+
+        // Use cached coordinates if available
+        if (geocodedCacheRef.current.has(id)) {
+          const cached = geocodedCacheRef.current.get(id)!;
+          targetLat = cached.lat;
+          targetLng = cached.lng;
+        }
+
+        // Move marker to real location if it changed
+        marker.setLatLng([targetLat, targetLng]);
+
+        // Pan to location
+        map.flyTo([targetLat, targetLng], 14, {
+          animate: true,
+          duration: 0.5
+        });
+
+        marker.openPopup();
+      };
+
       markersRef.current.forEach((marker, id) => {
-        marker.setIcon(createIcon(highlightedId === id));
+        if (highlightedId === id) {
+          handleHighlight(id);
+        } else {
+          marker.setIcon(createIcon(false));
+          marker.setZIndexOffset(0);
+        }
       });
     };
 
     updateMarkers();
-  }, [highlightedId]);
+  }, [highlightedId, businesses]);
+
+
+
 
   return (
     <div className="h-full w-full">

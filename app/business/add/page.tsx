@@ -26,6 +26,7 @@ export default function AddBusinessPage() {
     description: '',
     phone: '',
     category: '',
+    directoryId: '',
     logo: null as File | null,
   });
 
@@ -83,6 +84,9 @@ export default function AddBusinessPage() {
       fd.append('description', formData.description);
       fd.append('phone', formData.phone);
       fd.append('category', formData.category);
+      if (formData.directoryId) {
+        fd.append('directoryId', formData.directoryId);
+      }
       if (formData.logo) {
         fd.append('logo', formData.logo);
       }
@@ -175,7 +179,7 @@ export default function AddBusinessPage() {
                           {suggestions.map((biz) => (
                             <div key={biz.id} className="p-3 border-b border-gray-50 last:border-0 hover:bg-gray-50 flex items-center justify-between gap-3">
                               <div className="flex-1 min-w-0">
-                                <p className="text-sm font-semibold text-gray-900 truncate">{biz.business_name}</p>
+                                <p className="text-sm font-semibold text-gray-900 truncate">{biz.title}</p>
                                 <p className="text-xs text-gray-500 truncate">{biz.city}</p>
                               </div>
 
@@ -187,7 +191,19 @@ export default function AddBusinessPage() {
                               ) : (
                                 <button
                                   type="button"
-                                  onClick={() => router.push(`/claim/${biz.id}`)}
+                                  onClick={() => {
+                                    setFormData({
+                                      ...formData,
+                                      companyName: biz.title || '',
+                                      companyEmail: '', // New schema doesn't have email in directory
+                                      companyAddress: biz.full_address || '',
+                                      phone: biz.phone || '',
+                                      location: biz.city?.toLowerCase() || '',
+                                      category: biz.vitrine_category || '',
+                                      directoryId: biz.id?.toString() || '',
+                                    });
+                                    setShowSuggestions(false);
+                                  }}
                                   className="px-3 py-1 bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold rounded flex items-center gap-1 shrink-0 transition-colors"
                                 >
                                   RÉCLAMER

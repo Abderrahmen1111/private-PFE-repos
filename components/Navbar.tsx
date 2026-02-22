@@ -13,6 +13,7 @@ export default function Navbar() {
   const [searchQuery, setSearchQuery] = useState('');
   const [locationQuery, setLocationQuery] = useState('');
   const [user, setUser] = useState<any>(null);
+  const [storeId, setStoreId] = useState<string | null>(null);
   const [profileOpen, setProfileOpen] = useState(false);
   const profileRef = useRef<HTMLDivElement>(null);
 
@@ -20,16 +21,39 @@ export default function Navbar() {
   useEffect(() => {
     const supabase = createClient();
 
+    const fetchStoreId = async (userId: string) => {
+      const { data } = await supabase
+        .from('stores')
+        .select('id')
+        .eq('owner_id', userId)
+        .maybeSingle();
+      if (data) setStoreId(data.id.toString());
+    };
+
     // Use getSession (reads from cookies/storage, no API call) for immediate check
     supabase.auth.getSession().then(({ data: { session } }) => {
-      console.log('[Navbar] getSession result:', session ? `user=${session.user.email}` : 'NO SESSION');
       setUser(session?.user ?? null);
+      if (session?.user) {
+        const role = session.user.user_metadata?.role;
+        if (role === 'business_owner' || role === 'PRO') {
+          fetchStoreId(session.user.id);
+        }
+      }
     });
 
     // Listen for real-time auth state changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      console.log('[Navbar] onAuthStateChange:', event, session ? `user=${session.user.email}` : 'NO SESSION');
       setUser(session?.user ?? null);
+      if (session?.user) {
+        const role = session.user.user_metadata?.role;
+        if (role === 'business_owner' || role === 'PRO') {
+          fetchStoreId(session.user.id);
+        } else {
+          setStoreId(null);
+        }
+      } else {
+        setStoreId(null);
+      }
     });
 
     return () => subscription.unsubscribe();
@@ -68,9 +92,9 @@ export default function Navbar() {
 
           {/* Logo */}
           <div className="flex items-center gap-2 flex-shrink-0">
-            <a href="/" className="flex items-center">
-              {/* <img src="/logo1.png" alt="Logo" className="w-50 h-20 object-contain" /> */}
-            </a>
+            <Link href="/" className="flex items-center hover:opacity-80 transition-opacity">
+              <img src="/logo1.png" alt="Platform Logo" className="h-12 w-auto object-contain" />
+            </Link>
           </div>
 
           {/* Search bar - unified form with location */}
@@ -116,13 +140,22 @@ export default function Navbar() {
 
             {user ? (
               <>
-                {/* Add Business button — only visible when logged in */}
-                <Link href="/business/add">
-                  <button className="flex items-center gap-2 px-4 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-sm font-semibold text-white transition">
-                    <Plus className="w-4 h-4" />
-                    Add Business
-                  </button>
-                </Link>
+                {/* Dynamic Action Button: Dashboard if business exists, otherwise Add Business */}
+                {storeId ? (
+                  <Link href={`/dashboard/${storeId}`}>
+                    <button className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:shadow-lg hover:shadow-cyan-500/20 text-sm font-bold text-white transition-all ring-1 ring-white/10">
+                      <FolderKanban className="w-4 h-4" />
+                      Mon Dashboard
+                    </button>
+                  </Link>
+                ) : (
+                  <Link href="/business/add">
+                    <button className="flex items-center gap-2 px-4 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-sm font-semibold text-white transition shadow-lg shadow-red-600/20">
+                      <Plus className="w-4 h-4" />
+                      Add Business
+                    </button>
+                  </Link>
+                )}
 
                 {/* Profile avatar dropdown */}
                 <div className="relative" ref={profileRef}>
@@ -140,6 +173,9 @@ export default function Navbar() {
                           {user.email}
                         </p>
                       </div>
+
+                      {/* Redundant link removed, now used as main Navbar action button */}
+
                       <button
                         onClick={handleSignOut}
                         className="w-full flex items-center gap-2 px-4 py-3 text-sm text-red-400 hover:bg-white/10 transition"

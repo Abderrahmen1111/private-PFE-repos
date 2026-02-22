@@ -1,6 +1,6 @@
 'use client';
 
-import { Business } from '@/lib/mockBusinesses';
+import { Business } from '@/types/business';
 import { Star } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
@@ -117,6 +117,8 @@ export default function BusinessCard({ business, isHighlighted, onClick }: Busin
           <p className="text-sm text-gray-500 mt-2">
             {business.location.address}
           </p>
+
+
         </div>
       </div>
     </div>

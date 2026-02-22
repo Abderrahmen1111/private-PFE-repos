@@ -3,6 +3,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
+import { mockBusinessDirectory } from '@/lib/mock-data'
 
 function generateSlug(name: string): string {
     return name
@@ -18,10 +19,12 @@ export async function searchBusinessDirectory(queryStr: string) {
     if (!queryStr || queryStr.length < 2) return [];
 
     const supabase = createClient();
+
+    // Broaden search to include title, categoryName and vitrine_category
     const { data, error } = await supabase
         .from('business_directory_tunisia' as any)
-        .select('id, business_name, city, is_claimed')
-        .ilike('business_name', `%${queryStr}%`)
+        .select('id, title, city, phone, full_address, vitrine_category, is_claimed, categoryName')
+        .or(`title.ilike.%${queryStr}%,categoryName.ilike.%${queryStr}%,vitrine_category.ilike.%${queryStr}%`)
         .limit(5);
 
     if (error) {
@@ -29,7 +32,7 @@ export async function searchBusinessDirectory(queryStr: string) {
         return [];
     }
 
-    return data;
+    return (data as any[]) || [];
 }
 
 export async function addBusiness(formData: FormData) {
@@ -51,6 +54,7 @@ export async function addBusiness(formData: FormData) {
     const description = formData.get('description') as string
     const phone = formData.get('phone') as string
     const category = formData.get('category') as string
+    const directoryId = formData.get('directoryId') as string // For linking to business_directory_tunisia
 
     // Validation
     if (!name || !email || !rne || !city || !phone || !category) {
@@ -82,8 +86,23 @@ export async function addBusiness(formData: FormData) {
         logoUrl = publicUrl
     }
 
+    // 1. Ensure user exists in public.users and upgrade role to 'PRO'
+    // This MUST happen before store insertion due to foreign key constraints
+    const { error: userUpdateError } = await supabase
+        .from('users')
+        .upsert({
+            id: user.id,
+            role: 'PRO',
+            updated_at: new Date().toISOString()
+        })
+
+    if (userUpdateError) {
+        console.error('Error updating public user role:', userUpdateError)
+        return { error: `Erreur lors de la mise à jour de l'utilisateur: ${userUpdateError.message}` }
+    }
+
     // Insert into stores table
-    const { error: insertError } = await supabase
+    const { data: storeData, error: insertError } = await supabase
         .from('stores')
         .insert({
             owner_id: user.id,
@@ -99,23 +118,17 @@ export async function addBusiness(formData: FormData) {
             longitude: 0,
             city,
             logo_url: logoUrl,
+            rne: rne,
             business_registration: rne,
+            business_directory_id: directoryId ? parseInt(directoryId) : null,
+            id_business: directoryId ? parseInt(directoryId) : null,
             status: 'PENDING',
         })
+        .select('id')
+        .single()
 
     if (insertError) {
         return { error: `Erreur lors de l'ajout: ${insertError.message}` }
-    }
-
-    // Upgrade user role to business owner
-    // 1. Update public.users role to 'PRO'
-    const { error: userUpdateError } = await supabase
-        .from('users')
-        .update({ role: 'PRO' })
-        .eq('id', user.id)
-
-    if (userUpdateError) {
-        console.error('Error updating public user role:', userUpdateError)
     }
 
     // 2. Update auth metadata role to 'business_owner'
@@ -129,5 +142,11 @@ export async function addBusiness(formData: FormData) {
 
     revalidatePath('/', 'layout')
     revalidatePath('/')
-    redirect('/')
+
+    // Redirect to the new dynamic dashboard!
+    if (storeData?.id) {
+        redirect(`/dashboard/${storeData.id}`)
+    } else {
+        redirect('/')
+    }
 }

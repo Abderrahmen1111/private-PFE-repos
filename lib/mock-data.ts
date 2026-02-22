@@ -1,0 +1,276 @@
+import {
+  BusinessOwnerAccount,
+  BusinessProfile,
+  Product,
+  Review,
+  CustomerAction,
+  Promotion,
+  AnalyticsSnapshot,
+} from '@/types';
+
+export const mockBusinessProfile: BusinessProfile = {
+  id: 'biz-001',
+  name: 'Elegance Boutique',
+  description: 'Curated fashion and lifestyle boutique offering premium collections for the modern professional.',
+  category: 'boutique',
+  address: '123 Oak Street, Downtown District, Metropolitan City 90210',
+  phone: '+1 (555) 234-5678',
+  workingHours: {
+    monday: { open: '10:00', close: '19:00', closed: false },
+    tuesday: { open: '10:00', close: '19:00', closed: false },
+    wednesday: { open: '10:00', close: '19:00', closed: false },
+    thursday: { open: '10:00', close: '20:00', closed: false },
+    friday: { open: '10:00', close: '20:00', closed: false },
+    saturday: { open: '11:00', close: '18:00', closed: false },
+    sunday: { open: '12:00', close: '17:00', closed: false },
+  },
+  image: '/images/boutique-hero.jpg',
+  gallery: [
+    '/images/boutique-1.jpg',
+    '/images/boutique-2.jpg',
+    '/images/boutique-3.jpg',
+  ],
+  rating: 4.8,
+  reviewCount: 127,
+};
+
+export const mockProducts: Product[] = [
+  {
+    id: 'prod-001',
+    businessId: 'biz-001',
+    name: 'Premium Silk Blazer',
+    description: 'Italian silk blazer with tailored fit and modern design.',
+    price: 189.99,
+    category: 'clothing',
+    image: '/images/product-blazer.jpg',
+    available: true,
+    stock: 12,
+    createdAt: new Date('2024-01-15'),
+  },
+  {
+    id: 'prod-002',
+    businessId: 'biz-001',
+    name: 'Leather Crossbody Bag',
+    description: 'Genuine leather crossbody bag with adjustable strap.',
+    price: 149.99,
+    category: 'accessories',
+    image: '/images/product-bag.jpg',
+    available: true,
+    stock: 8,
+    createdAt: new Date('2024-01-12'),
+  },
+  {
+    id: 'prod-003',
+    businessId: 'biz-001',
+    name: 'Designer Sunglasses',
+    description: 'UV-protected designer sunglasses with premium frame.',
+    price: 199.99,
+    category: 'accessories',
+    image: '/images/product-sunglasses.jpg',
+    available: true,
+    stock: 15,
+    createdAt: new Date('2024-01-10'),
+  },
+  {
+    id: 'prod-004',
+    businessId: 'biz-001',
+    name: 'Cashmere Sweater',
+    description: 'Soft cashmere sweater in neutral tones.',
+    price: 259.99,
+    category: 'clothing',
+    image: '/images/product-sweater.jpg',
+    available: false,
+    stock: 0,
+    createdAt: new Date('2024-01-08'),
+  },
+];
+
+export const mockReviews: Review[] = [
+  {
+    id: 'rev-001',
+    businessId: 'biz-001',
+    author: 'Sarah M.',
+    rating: 5,
+    text: 'Amazing customer service and beautiful selection. I found exactly what I was looking for!',
+    createdAt: new Date('2024-02-18'),
+    ownerResponse: {
+      text: 'Thank you for visiting Elegance Boutique! We appreciate your kind words. We look forward to seeing you again soon.',
+      respondedAt: new Date('2024-02-19'),
+    },
+  },
+  {
+    id: 'rev-002',
+    businessId: 'biz-001',
+    author: 'Michael J.',
+    rating: 4,
+    text: 'Great quality products. Store could be a bit less crowded on weekends.',
+    createdAt: new Date('2024-02-16'),
+    ownerResponse: {
+      text: 'Thank you for the feedback. We appreciate your suggestion!',
+      respondedAt: new Date('2024-02-17'),
+    },
+  },
+  {
+    id: 'rev-003',
+    businessId: 'biz-001',
+    author: 'Emma L.',
+    rating: 5,
+    text: 'The staff is incredibly knowledgeable and patient. Highly recommended!',
+    createdAt: new Date('2024-02-14'),
+  },
+  {
+    id: 'rev-004',
+    businessId: 'biz-001',
+    author: 'David K.',
+    rating: 4,
+    text: 'Good products and fair pricing. Online ordering would be a nice addition.',
+    createdAt: new Date('2024-02-10'),
+  },
+  {
+    id: 'rev-005',
+    businessId: 'biz-001',
+    author: 'Jessica P.',
+    rating: 5,
+    text: 'Love everything about this boutique. Such a gem in the neighborhood!',
+    createdAt: new Date('2024-02-08'),
+  },
+];
+
+export const mockActions: CustomerAction[] = [
+  {
+    id: 'act-001',
+    businessId: 'biz-001',
+    type: 'phone_click',
+    timestamp: new Date(Date.now() - 2 * 60 * 1000),
+    details: 'Customer inquired about product availability',
+  },
+  {
+    id: 'act-002',
+    businessId: 'biz-001',
+    type: 'direction_click',
+    timestamp: new Date(Date.now() - 15 * 60 * 1000),
+    details: 'Customer requested directions',
+  },
+  {
+    id: 'act-003',
+    businessId: 'biz-001',
+    type: 'purchase',
+    timestamp: new Date(Date.now() - 45 * 60 * 1000),
+    details: 'Customer purchased: Premium Silk Blazer',
+  },
+  {
+    id: 'act-004',
+    businessId: 'biz-001',
+    type: 'phone_click',
+    timestamp: new Date(Date.now() - 90 * 60 * 1000),
+    details: 'Customer called to place an order',
+  },
+  {
+    id: 'act-005',
+    businessId: 'biz-001',
+    type: 'direction_click',
+    timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000),
+    details: 'Customer requested directions',
+  },
+  {
+    id: 'act-006',
+    businessId: 'biz-001',
+    type: 'reservation',
+    timestamp: new Date(Date.now() - 3 * 60 * 60 * 1000),
+    details: 'Customer booked a personal styling consultation',
+  },
+  {
+    id: 'act-007',
+    businessId: 'biz-001',
+    type: 'contact',
+    timestamp: new Date(Date.now() - 5 * 60 * 60 * 1000),
+    details: 'Customer filled inquiry form',
+  },
+];
+
+export const mockPromotions: Promotion[] = [
+  {
+    id: 'promo-001',
+    businessId: 'biz-001',
+    title: 'Winter Sale',
+    description: 'Get 20% off all winter collection items',
+    discountPercent: 20,
+    validFrom: new Date('2024-01-01'),
+    validUntil: new Date('2024-03-31'),
+    active: true,
+  },
+  {
+    id: 'promo-002',
+    businessId: 'biz-001',
+    title: 'New Customer Welcome',
+    description: 'First-time customers receive 15% discount',
+    discountPercent: 15,
+    validFrom: new Date('2024-01-01'),
+    validUntil: new Date('2024-12-31'),
+    active: true,
+  },
+  {
+    id: 'promo-003',
+    businessId: 'biz-001',
+    title: 'Free Styling Consultation',
+    description: 'Purchase over $200 and get a free styling session',
+    discountText: 'Free consultation',
+    validFrom: new Date('2024-02-01'),
+    validUntil: new Date('2024-02-29'),
+    active: true,
+  },
+];
+
+export const mockAnalytics: AnalyticsSnapshot[] = [
+  {
+    profileViews: 245,
+    phoneClicks: 34,
+    directionClicks: 28,
+    reservations: 12,
+    purchases: 18,
+    period: 'today',
+  },
+  {
+    profileViews: 1680,
+    phoneClicks: 215,
+    directionClicks: 178,
+    reservations: 67,
+    purchases: 92,
+    period: 'week',
+  },
+  {
+    profileViews: 6840,
+    phoneClicks: 892,
+    directionClicks: 734,
+    reservations: 287,
+    purchases: 412,
+    period: 'month',
+  },
+];
+
+export const mockAccount: BusinessOwnerAccount = {
+  id: 'owner-001',
+  email: 'owner@eleganceboutique.com',
+  businessProfile: mockBusinessProfile,
+  plan: {
+    name: 'pro',
+    features: {
+      products: true,
+      promotions: true,
+      analytics: true,
+      reviews: true,
+      imageGallery: true,
+      maxProducts: 50,
+    },
+  },
+  createdAt: new Date('2023-06-15'),
+  updatedAt: new Date('2024-02-19'),
+};
+
+export const mockBusinessDirectory = [
+  { id: 'dir-001', business_name: 'Elegance Boutique', city: 'Tunis', is_claimed: true },
+  { id: 'dir-002', business_name: 'Café de Paris', city: 'Sousse', is_claimed: false },
+  { id: 'dir-003', business_name: 'Tech Solutions', city: 'Sfax', is_claimed: false },
+  { id: 'dir-004', business_name: 'Boulangerie Moderne', city: 'Ariana', is_claimed: true },
+  { id: 'dir-005', business_name: 'Zen Spa', city: 'Bizerte', is_claimed: false },
+];
