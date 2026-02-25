@@ -45,7 +45,7 @@ const ItemCard = ({ item }: { item: CarouselItem }) => (
           className="h-40 w-full object-cover transition-transform duration-300 group-hover:scale-105"
         />
         {item.discountPercentage && (
-          <div className="absolute bottom-2 right-2 rounded-md bg-primary px-2 py-1 text-xs font-semibold text-primary-foreground">
+          <div className="absolute bottom-2 right-2 rounded-md bg-primary text-red-500 px-2 py-1 text-xs font-semibold text-primary-foreground">
             {item.discountPercentage}% OFF
           </div>
         )}
@@ -124,7 +124,7 @@ export const OffersCarousel = React.forwardRef<HTMLDivElement, OffersCarouselPro
       >
         <div className="grid grid-cols-1 items-center gap-6 lg:grid-cols-12">
           {/* Left: Offer Section */}
-          <div className="flex flex-col items-center text-center lg:col-span-3 lg:items-start lg:text-left">
+          <div className="flex flex-col items-center text-center text-white lg:col-span-3 lg:items-start lg:text-left">
             <div className="flex items-center gap-3">
               {offerIcon || <Gift className="h-6 w-6 text-primary" />}
                <p className="text-sm text-muted-foreground">Since you're flying with us!</p>
@@ -137,7 +137,7 @@ export const OffersCarousel = React.forwardRef<HTMLDivElement, OffersCarouselPro
           </div>
 
           {/* Right: Carousel Section */}
-          <div className="relative lg:col-span-9">
+          <div className="relative text-white lg:col-span-9">
             <div ref={carouselRef} className="overflow-x-auto scrollbar-hide">
               <motion.div
                 className="flex gap-4 px-1 py-2"

@@ -3,6 +3,7 @@ import { Star, MapPin, Phone, Globe, Clock, Share2, Bookmark, Camera, ExternalLi
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import BusinessImageGallery from '@/components/BusinessImageGallery';
+import { BusinessStories } from '@/components/BusinessStories';
 import { notFound } from 'next/navigation';
 
 export default async function BusinessDetailPage({ params }: { params: { id: string } }) {
@@ -113,6 +114,9 @@ export default async function BusinessDetailPage({ params }: { params: { id: str
         </div>
       </div>
 
+      {/* ── CUSTOMER STORIES ── */}
+      <BusinessStories businessName={business.name} />
+
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -217,4 +221,3 @@ export default async function BusinessDetailPage({ params }: { params: { id: str
     </div>
   );
 }
-

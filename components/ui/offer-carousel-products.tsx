@@ -39,7 +39,7 @@ const OfferCard = React.forwardRef<HTMLAnchorElement, OfferCardProps>(({ offer }
       className="absolute inset-0 w-full h-2/4 object-cover transition-transform duration-500 group-hover:scale-110"
     />
     {/* Card Content */}
-    <div className="absolute bottom-0 left-0 right-0 h-2/4 bg-card p-5 flex flex-col justify-between">
+    <div className="absolute bottom-0 left-0 right-0 h-2/4 text-white bg-card p-5 flex flex-col justify-between">
       <div className="space-y-2">
         {/* Tag */}
         <div className="flex items-center text-xs text-muted-foreground">

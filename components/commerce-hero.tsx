@@ -45,7 +45,7 @@ const navigation = [
 
 export function CommerceHero() {
   return (
-    <div className="w-full relative container px-2 mx-auto max-w-7xl min-h-screen">
+    <div className="w-full relative container text-white px-2 mx-auto max-w-7xl min-h-screen">
       <div className="mt-6 bg-accent/50 rounded-2xl relative">
         <header className="flex items-center">
           <div className="w-full md:w-2/3 lg:w-1/2 bg-background/95 backdrop-blur-sm p-4 rounded-br-2xl flex items-center gap-2">

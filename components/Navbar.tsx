@@ -88,12 +88,17 @@ export default function Navbar() {
     <header className="fixed top-0 left-0 right-0 z-50">
       {/* Glass container */}
       <div >
-        <div className="max-w-7xl mx-auto px-6 py-3 flex items-center gap-6">
+        <div className="max-w-7xl mx-auto px-6 flex items-center gap-6 h-16">
 
-          {/* Logo */}
-          <div className="flex items-center gap-2 flex-shrink-0">
-            <Link href="/" className="flex items-center hover:opacity-80 transition-opacity">
-              <img src="/logo1.png" alt="Platform Logo" className="h-12 w-auto object-contain" />
+          {/* Logo — oversized intentionally, clipped by the h-16 row */}
+          <div className="flex items-center flex-shrink-0 h-full overflow-visible">
+            <Link href="/" className="flex items-center hover:opacity-90 transition-opacity">
+              <img
+                src="/ro2ya_logo1.png"
+                alt="Platform Logo"
+                className="h-36 w-36 object-contain"
+                style={{ filter: 'drop-shadow(0 0 10px rgba(255,255,255,0.35)) drop-shadow(0 0 22px rgba(239,68,68,0.3))' }}
+              />
             </Link>
           </div>
 
@@ -105,7 +110,7 @@ export default function Navbar() {
                 <Search className="w-4 h-4 text-white/60" />
                 <input
                   type="text"
-                  placeholder="restaurants, cafes, bars..."
+                  placeholder="restaurants, cafes, hotels..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="w-full bg-transparent outline-none text-sm text-white placeholder-white/50"
@@ -209,4 +214,3 @@ export default function Navbar() {
     </header>
   );
 }
-

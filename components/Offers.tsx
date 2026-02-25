@@ -1,4 +1,4 @@
-import { OfferCarousel, type Offer } from "@/components/ui/offer-carouse-productsl";
+import { OfferCarousel, type Offer } from "@/components/ui/offer-carousel-products";
 
 // Sample data for the carousel
 const sampleOffers: Offer[] = [
@@ -69,9 +69,9 @@ export default function OfferCarouselDemo() {
   return (
     <div className="w-full min-h-screen bg-background flex flex-col items-center justify-center p-4 md:p-10">
       <div className="w-full max-w-6xl">
-        <h2 className="text-3xl font-bold mb-6 text-foreground">Deals of the Day</h2>
+        <h2 className="text-3xl font-bold mb-6 text-white text-foreground">Deals of the Day</h2>
         <OfferCarousel offers={sampleOffers} />
       </div>
     </div>
-  );
+  ); 
 }
