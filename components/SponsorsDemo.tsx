@@ -48,7 +48,7 @@ export default function FocusRailDemo() {
     <main className="min-h-screen overflow-x-hidden w-full bg-neutral-950 flex flex-col items-center justify-center py-20">
       {/* Title */}
       <div className="mb-12 text-center">
-        <h1 className="text-4xl font-bold text-white mb-2">Featured Stories</h1>
+        <h1 className="text-4xl font-bold text-white mb-2">Nouveaux commerces cette semaine</h1>
         <p className="text-neutral-400">Navigate the rail to explore selected works.</p>
       </div>
 

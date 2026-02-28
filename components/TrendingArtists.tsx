@@ -41,7 +41,7 @@ export default function TrendingArtists() {
     <div className="w-full text-white">
       <HeroSection
         title={title}
-        subtitle="Explore the hottest artists making waves on the Phantom Marketplace. Find, collect, and support the next generation of talent."
+        subtitle="Explore the hottest products making waves on the Phantom Marketplace. Find, collect, and support the next generation."
         images={trendingArtistImages}
       />
     </div>

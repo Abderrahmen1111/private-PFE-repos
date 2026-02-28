@@ -26,6 +26,7 @@ export async function searchStores(queryStr: string = '', locationStr: string = 
         return []
     }
 
+    // Map Supabase business_directory_tunisia (latitude, longitude) to Business.location.lat/lng for map markers
     return (data || []).map((item: any) => ({
         id: item.id.toString(),
         name: item.title || '',

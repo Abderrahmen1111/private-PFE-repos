@@ -119,10 +119,11 @@ export const OffersCarousel = React.forwardRef<HTMLDivElement, OffersCarouselPro
 
     return (
       <div
-        ref={ref}
-        className={cn("w-full max-w-6xl rounded-2xl border bg-card p-4 shadow-sm md:p-6", className)}
+      ref={ref}
+      className={cn("w-full max-w-6xl rounded-2xl border bg-card p-4 shadow-sm md:p-6", className)}
       >
         <div className="grid grid-cols-1 items-center gap-6 lg:grid-cols-12">
+        
           {/* Left: Offer Section */}
           <div className="flex flex-col items-center text-center text-white lg:col-span-3 lg:items-start lg:text-left">
             <div className="flex items-center gap-3">

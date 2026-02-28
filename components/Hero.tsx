@@ -115,15 +115,15 @@ export default function Hero() {
                 ref={subtitleRef}
                 className="text-base md:text-lg leading-relaxed text-white/70 max-w-xl"
               >
+                Votre ville, comme vous ne l’avez jamais vue.
+                <br />
+                Tout ce que vous cherchez, près de vous.
+                <br />
                 Explorez, découvrez, connectez-vous.
                 <br />
                 tout en profitant des meilleures offres.
                 <br />
                 Ro2ya est là pour vous. 
-                <br />
-                Tout ce que vous cherchez, près de vous.
-                <br />
-                Votre ville, comme vous ne l’avez jamais vue.
                 <br />
                 
               </p>

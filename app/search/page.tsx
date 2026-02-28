@@ -15,7 +15,7 @@ function SearchPageContent() {
   const query = searchParams.get('query') || '';
   const location = searchParams.get('location') || '';
 
-  const [highlightedBusinessId, setHighlightedBusinessId] = useState<string | undefined>();
+  const [activeBusinessId, setActiveBusinessId] = useState<string | undefined>();
   const [businesses, setBusinesses] = useState<Business[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const businessRefs = useRef<Map<string, HTMLDivElement>>(new Map());
@@ -36,22 +36,18 @@ function SearchPageContent() {
     fetchBusinesses();
   }, [query, location]);
 
-  // Scroll to business card when marker is clicked
+  // When user clicks a marker: highlight it, scroll list to card, open map popup (via activeBusinessId)
   const handleMarkerClick = (businessId: string) => {
-    setHighlightedBusinessId(businessId);
+    setActiveBusinessId(businessId);
     const element = businessRefs.current.get(businessId);
-    if (element) {
-      element.scrollIntoView({ behavior: 'smooth', block: 'center' });
-
-      // Auto-remove highlight after 3 seconds
-      setTimeout(() => setHighlightedBusinessId(undefined), 3000);
-    }
+    if (element) element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    setTimeout(() => setActiveBusinessId(undefined), 5000);
   };
 
-  // Highlight card when clicking
+  // When user clicks a card: highlight it and show marker popup on map
   const handleCardClick = (businessId: string) => {
-    setHighlightedBusinessId(businessId);
-    setTimeout(() => setHighlightedBusinessId(undefined), 3000);
+    setActiveBusinessId(businessId);
+    setTimeout(() => setActiveBusinessId(undefined), 5000);
   };
 
   return (
@@ -97,12 +93,12 @@ function SearchPageContent() {
                   ref={(el) => {
                     if (el) businessRefs.current.set(business.id, el);
                   }}
-                  onMouseEnter={() => setHighlightedBusinessId(business.id)}
-                  onMouseLeave={() => setHighlightedBusinessId(undefined)}
+                  onMouseEnter={() => setActiveBusinessId(business.id)}
+                  onMouseLeave={() => setActiveBusinessId(undefined)}
                 >
                   <BusinessCard
                     business={business}
-                    isHighlighted={highlightedBusinessId === business.id}
+                    isHighlighted={activeBusinessId === business.id}
                     onClick={() => handleCardClick(business.id)}
                   />
                 </div>
@@ -115,8 +111,9 @@ function SearchPageContent() {
           <div className="hidden lg:block w-[500px] xl:w-[600px] sticky top-32 h-[calc(100vh-200px)]">
             <ResultsMap
               businesses={businesses}
-              highlightedId={highlightedBusinessId}
+              activeBusinessId={activeBusinessId}
               onMarkerClick={handleMarkerClick}
+              searchLocation={location || undefined}
             />
           </div>
         </div>

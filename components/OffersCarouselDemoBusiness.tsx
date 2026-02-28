@@ -56,6 +56,8 @@ const mockHotels: CarouselItem[] = [
   },
 ];
 
+
+
 const OffersCarouselDemo = () => {
   return (
     <div className="flex min-h-[500px] w-full items-center justify-center bg-background p-4">

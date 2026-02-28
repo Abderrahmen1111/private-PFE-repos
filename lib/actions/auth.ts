@@ -72,6 +72,50 @@ export async function signup(formData: FormData) {
         message: "Account created successfully! Please check your email to confirm your account."
     }
 }
+export async function sendLoginMagicLink(formData: FormData) {
+    const email = formData.get('email') as string
+    const supabase = createClient()
+
+    const { error } = await supabase.auth.signInWithOtp({
+        email,
+        options: {
+            // User must already exist — if not, Supabase will still send
+            // a confirmation email but won't create a new account.
+            shouldCreateUser: false,
+        },
+    })
+
+    if (error) {
+        return { error: error.message }
+    }
+
+    return { success: true }
+}
+
+export async function sendSignupMagicLink(formData: FormData) {
+    const email = formData.get('email') as string
+    const fullName = formData.get('fullName') as string
+    const supabase = createClient()
+
+    const { error } = await supabase.auth.signInWithOtp({
+        email,
+        options: {
+            // Creates account on first click if user doesn't exist yet.
+            shouldCreateUser: true,
+            data: {
+                full_name: fullName,
+                role: 'client',
+            },
+        },
+    })
+
+    if (error) {
+        return { error: error.message }
+    }
+
+    return { success: true }
+}
+
 export async function signout() {
     const supabase = createClient()
     await supabase.auth.signOut()

@@ -150,13 +150,11 @@ export function CommerceHero() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.2, ease: "easeOut" }}
             >
-              <span className="bg-gradient-to-r from-primary via-primary/90 to-primary/70 bg-clip-text text-transparent">
-                Curate your products
+              <span className="bg-gradient-to-r from-primary via-primary/90 to-primary/70 bg-clip-text text-white">
+               Meilleures offres locales
               </span>
               <br />
-              <span className="text-foreground">
-                into simple collections.
-              </span>
+
             </motion.h1>
             <motion.p
               className="text-base md:text-lg text-muted-foreground max-w-2xl mx-auto leading-relaxed"
@@ -164,8 +162,8 @@ export function CommerceHero() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.4, ease: "easeOut" }}
             >
-              Use this page to group your products into themed collections,
-              making it easy for customers to explore.
+              Use this page to visualize products into themed collections,
+              making it easy to explore.
             </motion.p>
           </div>
         </motion.section>
