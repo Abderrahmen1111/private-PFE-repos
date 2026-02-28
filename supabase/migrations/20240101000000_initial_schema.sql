@@ -1,481 +1,243 @@
--- ============================================================================
--- Migration: 20240101000000_initial_schema.sql
--- Description: Schéma initial - Tables principales
--- ============================================================================
+-- WARNING: This schema is for context only and is not meant to be run.
+-- Table order and constraints may not be valid for execution.
 
--- ============================================================================
--- 1. TYPES ENUM
--- ============================================================================
+CREATE TYPE public.user_role AS ENUM ('CLIENT', 'PRO', 'ADMIN');
+CREATE TYPE public.store_category AS ENUM ('RESTAURANT', 'PHARMACY', 'BOUTIQUE', 'SERVICE', 'OTHER');
+CREATE TYPE public.store_status AS ENUM ('PENDING', 'ACTIVE', 'SUSPENDED');
+CREATE TYPE public.item_type AS ENUM ('PRODUCT', 'SERVICE');
+CREATE TYPE public.item_status AS ENUM ('AVAILABLE', 'OUT_OF_STOCK', 'ARCHIVED');
+CREATE TYPE public.order_status AS ENUM ('PENDING', 'VALIDATED', 'SHIPPED', 'COMPLETED', 'CANCELLED');
+CREATE TYPE public.booking_status AS ENUM ('PENDING', 'CONFIRMED', 'COMPLETED', 'CANCELLED');
+CREATE TYPE public.sentiment_label AS ENUM ('POSITIVE', 'NEUTRAL', 'NEGATIVE');
 
-CREATE TYPE user_role AS ENUM ('CLIENT', 'PRO', 'ADMIN');
-CREATE TYPE store_category AS ENUM (
-  'RESTAURANT',
-  'RETAIL',
-  'BEAUTY',
-  'REPAIR',
-  'HEALTH',
-  'EDUCATION',
-  'OTHER'
+CREATE TABLE public.bookings (
+  id bigint NOT NULL DEFAULT nextval('bookings_id_seq'::regclass),
+  booking_number text NOT NULL UNIQUE,
+  item_id bigint NOT NULL,
+  customer_id uuid NOT NULL,
+  store_id bigint NOT NULL,
+  booking_date date NOT NULL CHECK (booking_date >= CURRENT_DATE),
+  start_time time without time zone NOT NULL,
+  end_time time without time zone NOT NULL,
+  duration_minutes integer NOT NULL,
+  customer_name text NOT NULL,
+  customer_phone text NOT NULL,
+  customer_email text,
+  notes text,
+  price numeric NOT NULL,
+  status USER-DEFINED NOT NULL DEFAULT 'PENDING'::booking_status,
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  confirmed_at timestamp with time zone,
+  completed_at timestamp with time zone,
+  CONSTRAINT bookings_pkey PRIMARY KEY (id),
+  CONSTRAINT bookings_item_id_fkey FOREIGN KEY (item_id) REFERENCES public.items(id),
+  CONSTRAINT bookings_customer_id_fkey FOREIGN KEY (customer_id) REFERENCES public.users(id),
+  CONSTRAINT bookings_store_id_fkey FOREIGN KEY (store_id) REFERENCES public.stores(id)
 );
-CREATE TYPE store_status AS ENUM ('PENDING', 'ACTIVE', 'SUSPENDED', 'REJECTED');
-CREATE TYPE item_type AS ENUM ('PRODUCT', 'SERVICE');
-CREATE TYPE item_status AS ENUM ('AVAILABLE', 'OUT_OF_STOCK', 'ON_DEMAND', 'UNAVAILABLE');
-CREATE TYPE order_status AS ENUM ('PENDING', 'CONFIRMED', 'PREPARING', 'READY', 'COMPLETED', 'CANCELLED');
-CREATE TYPE booking_status AS ENUM ('PENDING', 'CONFIRMED', 'COMPLETED', 'CANCELLED', 'NO_SHOW');
-CREATE TYPE sentiment_label AS ENUM ('POSITIVE', 'NEUTRAL', 'NEGATIVE');
-
--- ============================================================================
--- 2. TABLE USERS
--- ============================================================================
-
-CREATE TABLE IF NOT EXISTS public.users (
-  -- Clé primaire liée à auth.users
-  id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
-  
-  -- Informations de base
-  role user_role NOT NULL DEFAULT 'CLIENT',
-  full_name TEXT,
-  phone TEXT,
-  avatar_url TEXT,
-  
-  -- Localisation
-  city TEXT,
-  latitude DECIMAL(10, 8),
-  longitude DECIMAL(11, 8),
-  
-  -- Métadonnées
-  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+CREATE TABLE public.business_directory_tunisia (
+  id bigint NOT NULL DEFAULT nextval('business_directory_tunisia_id_seq'::regclass),
+  title text NOT NULL,
+  totalScore numeric,
+  reviewsCount integer,
+  street text,
+  city text NOT NULL,
+  state text,
+  countryCode text DEFAULT 'TN'::text,
+  website text,
+  phone text,
+  categories ARRAY,
+  url text,
+  categoryName text,
+  place_id text UNIQUE,
+  vitrine_category text,
+  full_address text,
+  latitude numeric,
+  longitude numeric,
+  is_claimed boolean DEFAULT false,
+  claimed_at timestamp with time zone,
+  claimed_by uuid,
+  store_id bigint,
+  scraped_at timestamp with time zone DEFAULT now(),
+  last_updated timestamp with time zone DEFAULT now(),
+  data_source text DEFAULT 'Google Maps'::text,
+  verified boolean DEFAULT false,
+  business_status text DEFAULT 'OPERATIONAL'::text,
+  description text,
+  opening_hours jsonb,
+  photos ARRAY,
+  tags ARRAY,
+  CONSTRAINT business_directory_tunisia_pkey PRIMARY KEY (id),
+  CONSTRAINT business_directory_tunisia_claimed_by_fkey FOREIGN KEY (claimed_by) REFERENCES public.users(id)
 );
-
--- Index
-CREATE INDEX idx_users_role ON public.users(role);
-CREATE INDEX idx_users_city ON public.users(city);
-
--- Trigger updated_at
-CREATE OR REPLACE FUNCTION update_updated_at_column()
-RETURNS TRIGGER AS $$
-BEGIN
-  NEW.updated_at = NOW();
-  RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
-CREATE TRIGGER update_users_updated_at
-  BEFORE UPDATE ON public.users
-  FOR EACH ROW
-  EXECUTE FUNCTION update_updated_at_column();
-
--- ============================================================================
--- 3. TABLE STORES
--- ============================================================================
-
-CREATE TABLE IF NOT EXISTS public.stores (
-  id BIGSERIAL PRIMARY KEY,
-  
-  -- Propriétaire
-  owner_id UUID NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
-  
-  -- Informations de base
-  name TEXT NOT NULL,
-  slug TEXT NOT NULL UNIQUE,
-  description TEXT,
-  category store_category NOT NULL,
-  
-  -- Contact
-  phone TEXT NOT NULL,
-  email TEXT,
-  website TEXT,
-  
-  -- Adresse et localisation
-  address TEXT NOT NULL,
-  latitude DECIMAL(10, 8) NOT NULL,
-  longitude DECIMAL(11, 8) NOT NULL,
-  city TEXT NOT NULL,
-  
-  -- Médias
-  logo_url TEXT,
-  banner_url TEXT,
-  
-  -- KYC et validation
-  business_registration TEXT,
-  tax_id TEXT,
-  kyc_document_url TEXT,
-  kyc_verified_at TIMESTAMPTZ,
-  
-  -- Statut
-  status store_status NOT NULL DEFAULT 'PENDING',
-  rejection_reason TEXT,
-  
-  -- Horaires (JSON)
-  opening_hours JSONB,
-  
-  -- Statistiques
-  view_count INTEGER NOT NULL DEFAULT 0,
-  rating_average DECIMAL(3, 2) DEFAULT 0,
-  total_reviews INTEGER NOT NULL DEFAULT 0,
-  sentiment_positive_percent DECIMAL(5, 2) DEFAULT 0,
-  
-  -- Métadonnées
-  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  
-  -- Contraintes
-  CONSTRAINT positive_rating CHECK (rating_average >= 0 AND rating_average <= 5),
-  CONSTRAINT positive_reviews CHECK (total_reviews >= 0)
+CREATE TABLE public.items (
+  id bigint NOT NULL DEFAULT nextval('items_id_seq'::regclass),
+  store_id bigint NOT NULL,
+  item_type USER-DEFINED NOT NULL DEFAULT 'PRODUCT'::item_type,
+  name text NOT NULL,
+  slug text NOT NULL,
+  description text,
+  price numeric NOT NULL,
+  price_unit character varying NOT NULL DEFAULT 'unit'::character varying CHECK (price_unit::text = ANY (ARRAY['unit'::character varying, 'hour'::character varying, 'day'::character varying, 'session'::character varying]::text[])),
+  stock_quantity integer,
+  duration_minutes integer,
+  is_bookable boolean DEFAULT false,
+  available_days jsonb,
+  status USER-DEFINED NOT NULL DEFAULT 'AVAILABLE'::item_status,
+  main_image text NOT NULL,
+  image_2 text,
+  image_3 text,
+  view_count integer DEFAULT 0,
+  order_count integer DEFAULT 0,
+  booking_count integer DEFAULT 0,
+  rating_average numeric DEFAULT 0.0,
+  total_reviews integer DEFAULT 0,
+  embedding USER-DEFINED,
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT items_pkey PRIMARY KEY (id),
+  CONSTRAINT items_store_id_fkey FOREIGN KEY (store_id) REFERENCES public.stores(id)
 );
-
--- Index
-CREATE INDEX idx_stores_owner ON public.stores(owner_id);
-CREATE INDEX idx_stores_slug ON public.stores(slug);
-CREATE INDEX idx_stores_city ON public.stores(city);
-CREATE INDEX idx_stores_category ON public.stores(category);
-CREATE INDEX idx_stores_status ON public.stores(status);
-CREATE INDEX idx_stores_location ON public.stores(latitude, longitude);
-
--- Trigger updated_at
-CREATE TRIGGER update_stores_updated_at
-  BEFORE UPDATE ON public.stores
-  FOR EACH ROW
-  EXECUTE FUNCTION update_updated_at_column();
-
--- ============================================================================
--- 4. TABLE ITEMS (Produits ET Services)
--- ============================================================================
-
-CREATE TABLE IF NOT EXISTS public.items (
-  id BIGSERIAL PRIMARY KEY,
-  
-  -- Commerce
-  store_id BIGINT NOT NULL REFERENCES public.stores(id) ON DELETE CASCADE,
-  
-  -- Type
-  item_type item_type NOT NULL,
-  
-  -- Informations de base
-  name TEXT NOT NULL,
-  slug TEXT NOT NULL,
-  description TEXT,
-  
-  -- Prix
-  price DECIMAL(10, 3) NOT NULL,
-  price_unit TEXT NOT NULL DEFAULT 'unit', -- 'unit', 'hour', 'day', 'session'
-  
-  -- Spécifique PRODUIT
-  stock_quantity INTEGER,
-  
-  -- Spécifique SERVICE
-  duration_minutes INTEGER,
-  is_bookable BOOLEAN DEFAULT FALSE,
-  
-  -- Disponibilité
-  available_days JSONB, -- Pour services: [0,1,2,3,4,5] = Lun-Sam
-  
-  -- Médias
-  main_image TEXT,
-  image_2 TEXT,
-  image_3 TEXT,
-  
-  -- Statut
-  status item_status NOT NULL DEFAULT 'AVAILABLE',
-  
-  -- Statistiques
-  view_count INTEGER NOT NULL DEFAULT 0,
-  order_count INTEGER NOT NULL DEFAULT 0,
-  booking_count INTEGER NOT NULL DEFAULT 0,
-  rating_average DECIMAL(3, 2) DEFAULT 0,
-  total_reviews INTEGER NOT NULL DEFAULT 0,
-  
-  -- Métadonnées
-  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  
-  -- Contraintes
-  CONSTRAINT positive_price CHECK (price >= 0),
-  CONSTRAINT stock_for_products CHECK (
-    (item_type = 'PRODUCT' AND stock_quantity IS NOT NULL) OR
-    (item_type = 'SERVICE' AND stock_quantity IS NULL)
-  ),
-  CONSTRAINT duration_for_services CHECK (
-    (item_type = 'SERVICE' AND duration_minutes IS NOT NULL AND duration_minutes > 0) OR
-    (item_type = 'PRODUCT' AND duration_minutes IS NULL)
-  )
+CREATE TABLE public.orders (
+  id bigint NOT NULL DEFAULT nextval('orders_id_seq'::regclass),
+  order_number text NOT NULL UNIQUE,
+  customer_id uuid,
+  store_id bigint NOT NULL,
+  item_id bigint,
+  quantity integer NOT NULL DEFAULT 1,
+  unit_price numeric NOT NULL,
+  total_price numeric NOT NULL,
+  customer_name text NOT NULL,
+  customer_phone text NOT NULL,
+  customer_email text,
+  delivery_address text NOT NULL,
+  customer_notes text,
+  vendor_notes text,
+  status USER-DEFINED NOT NULL DEFAULT 'PENDING'::order_status,
+  tracking_code text,
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  validated_at timestamp with time zone,
+  completed_at timestamp with time zone,
+  CONSTRAINT orders_pkey PRIMARY KEY (id),
+  CONSTRAINT orders_customer_id_fkey FOREIGN KEY (customer_id) REFERENCES public.users(id),
+  CONSTRAINT orders_store_id_fkey FOREIGN KEY (store_id) REFERENCES public.stores(id),
+  CONSTRAINT orders_item_id_fkey FOREIGN KEY (item_id) REFERENCES public.items(id)
 );
-
--- Index
-CREATE INDEX idx_items_store ON public.items(store_id);
-CREATE INDEX idx_items_type ON public.items(item_type);
-CREATE INDEX idx_items_status ON public.items(status);
-CREATE INDEX idx_items_slug ON public.items(slug);
-
--- Trigger updated_at
-CREATE TRIGGER update_items_updated_at
-  BEFORE UPDATE ON public.items
-  FOR EACH ROW
-  EXECUTE FUNCTION update_updated_at_column();
-
--- ============================================================================
--- 5. TABLE SERVICE_SCHEDULES
--- ============================================================================
-
-CREATE TABLE IF NOT EXISTS public.service_schedules (
-  id BIGSERIAL PRIMARY KEY,
-  
-  -- Service
-  item_id BIGINT NOT NULL REFERENCES public.items(id) ON DELETE CASCADE,
-  
-  -- Jour de la semaine (0=Dimanche, 6=Samedi)
-  day_of_week INTEGER NOT NULL CHECK (day_of_week >= 0 AND day_of_week <= 6),
-  
-  -- Horaires
-  start_time TIME NOT NULL,
-  end_time TIME NOT NULL,
-  
-  -- Capacité
-  max_bookings INTEGER NOT NULL DEFAULT 1,
-  
-  -- Métadonnées
-  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  
-  -- Contraintes
-  CONSTRAINT valid_time_range CHECK (end_time > start_time),
-  CONSTRAINT positive_capacity CHECK (max_bookings > 0)
+CREATE TABLE public.reviews (
+  id bigint NOT NULL DEFAULT nextval('reviews_id_seq'::regclass),
+  author_id uuid NOT NULL,
+  item_id bigint,
+  store_id bigint NOT NULL,
+  order_id bigint,
+  booking_id bigint,
+  rating integer NOT NULL CHECK (rating >= 1 AND rating <= 5),
+  title text,
+  comment text NOT NULL,
+  image_1 text,
+  image_2 text,
+  is_verified boolean DEFAULT false,
+  qr_token text UNIQUE,
+  qr_scanned_at timestamp with time zone,
+  sentiment_score numeric,
+  sentiment_label USER-DEFINED,
+  vendor_response text,
+  vendor_response_ai_suggestion text,
+  responded_at timestamp with time zone,
+  is_approved boolean DEFAULT true,
+  is_spam boolean DEFAULT false,
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT reviews_pkey PRIMARY KEY (id),
+  CONSTRAINT reviews_author_id_fkey FOREIGN KEY (author_id) REFERENCES public.users(id),
+  CONSTRAINT reviews_item_id_fkey FOREIGN KEY (item_id) REFERENCES public.items(id),
+  CONSTRAINT reviews_store_id_fkey FOREIGN KEY (store_id) REFERENCES public.stores(id),
+  CONSTRAINT reviews_order_id_fkey FOREIGN KEY (order_id) REFERENCES public.orders(id),
+  CONSTRAINT reviews_booking_id_fkey FOREIGN KEY (booking_id) REFERENCES public.bookings(id)
 );
-
--- Index
-CREATE INDEX idx_schedules_item ON public.service_schedules(item_id);
-CREATE INDEX idx_schedules_day ON public.service_schedules(day_of_week);
-
--- ============================================================================
--- 6. TABLE ORDERS (Commandes produits)
--- ============================================================================
-
-CREATE TABLE IF NOT EXISTS public.orders (
-  id BIGSERIAL PRIMARY KEY,
-  
-  -- Numéro de commande unique
-  order_number TEXT NOT NULL UNIQUE,
-  
-  -- Relations
-  customer_id UUID NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
-  store_id BIGINT NOT NULL REFERENCES public.stores(id) ON DELETE CASCADE,
-  item_id BIGINT NOT NULL REFERENCES public.items(id) ON DELETE SET NULL,
-  
-  -- Détails commande
-  quantity INTEGER NOT NULL DEFAULT 1,
-  unit_price DECIMAL(10, 3) NOT NULL,
-  total_price DECIMAL(10, 3) NOT NULL,
-  
-  -- Informations client
-  customer_name TEXT NOT NULL,
-  customer_phone TEXT NOT NULL,
-  customer_email TEXT,
-  delivery_address TEXT NOT NULL,
-  customer_notes TEXT,
-  
-  -- Statut
-  status order_status NOT NULL DEFAULT 'PENDING',
-  
-  -- Suivi
-  tracking_code TEXT,
-  vendor_notes TEXT,
-  
-  -- Dates
-  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  confirmed_at TIMESTAMPTZ,
-  completed_at TIMESTAMPTZ,
-  
-  -- Contraintes
-  CONSTRAINT positive_quantity CHECK (quantity > 0),
-  CONSTRAINT positive_prices CHECK (unit_price >= 0 AND total_price >= 0)
+CREATE TABLE public.service_schedules (
+  id bigint NOT NULL DEFAULT nextval('service_schedules_id_seq'::regclass),
+  item_id bigint NOT NULL,
+  day_of_week integer NOT NULL CHECK (day_of_week >= 0 AND day_of_week <= 6),
+  start_time time without time zone NOT NULL,
+  end_time time without time zone NOT NULL,
+  max_bookings integer DEFAULT 1 CHECK (max_bookings > 0),
+  is_active boolean DEFAULT true,
+  created_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT service_schedules_pkey PRIMARY KEY (id),
+  CONSTRAINT service_schedules_item_id_fkey FOREIGN KEY (item_id) REFERENCES public.items(id)
 );
-
--- Index
-CREATE INDEX idx_orders_customer ON public.orders(customer_id);
-CREATE INDEX idx_orders_store ON public.orders(store_id);
-CREATE INDEX idx_orders_item ON public.orders(item_id);
-CREATE INDEX idx_orders_number ON public.orders(order_number);
-CREATE INDEX idx_orders_status ON public.orders(status);
-CREATE INDEX idx_orders_created ON public.orders(created_at DESC);
-
--- ============================================================================
--- 7. TABLE BOOKINGS (Réservations services)
--- ============================================================================
-
-CREATE TABLE IF NOT EXISTS public.bookings (
-  id BIGSERIAL PRIMARY KEY,
-  
-  -- Numéro de réservation unique
-  booking_number TEXT NOT NULL UNIQUE,
-  
-  -- Relations
-  item_id BIGINT NOT NULL REFERENCES public.items(id) ON DELETE CASCADE,
-  customer_id UUID NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
-  store_id BIGINT NOT NULL REFERENCES public.stores(id) ON DELETE CASCADE,
-  
-  -- Date et heure
-  booking_date DATE NOT NULL,
-  start_time TIME NOT NULL,
-  end_time TIME NOT NULL,
-  duration_minutes INTEGER NOT NULL,
-  
-  -- Informations client
-  customer_name TEXT NOT NULL,
-  customer_phone TEXT NOT NULL,
-  customer_email TEXT,
-  notes TEXT,
-  
-  -- Prix
-  price DECIMAL(10, 3) NOT NULL,
-  
-  -- Statut
-  status booking_status NOT NULL DEFAULT 'PENDING',
-  
-  -- Dates
-  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  confirmed_at TIMESTAMPTZ,
-  completed_at TIMESTAMPTZ,
-  
-  -- Contraintes
-  CONSTRAINT future_booking CHECK (booking_date >= CURRENT_DATE),
-  CONSTRAINT valid_time_range CHECK (end_time > start_time),
-  CONSTRAINT positive_duration CHECK (duration_minutes > 0),
-  CONSTRAINT positive_price CHECK (price >= 0)
+CREATE TABLE public.spatial_ref_sys (
+  srid integer NOT NULL CHECK (srid > 0 AND srid <= 998999),
+  auth_name character varying,
+  auth_srid integer,
+  srtext character varying,
+  proj4text character varying,
+  CONSTRAINT spatial_ref_sys_pkey PRIMARY KEY (srid)
 );
-
--- Index
-CREATE INDEX idx_bookings_item ON public.bookings(item_id);
-CREATE INDEX idx_bookings_customer ON public.bookings(customer_id);
-CREATE INDEX idx_bookings_store ON public.bookings(store_id);
-CREATE INDEX idx_bookings_date ON public.bookings(booking_date);
-CREATE INDEX idx_bookings_number ON public.bookings(booking_number);
-CREATE INDEX idx_bookings_status ON public.bookings(status);
-
--- ============================================================================
--- 8. TABLE REVIEWS
--- ============================================================================
-
-CREATE TABLE IF NOT EXISTS public.reviews (
-  id BIGSERIAL PRIMARY KEY,
-  
-  -- Auteur
-  author_id UUID NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
-  
-  -- Cible
-  item_id BIGINT REFERENCES public.items(id) ON DELETE CASCADE,
-  store_id BIGINT NOT NULL REFERENCES public.stores(id) ON DELETE CASCADE,
-  
-  -- Lien avec commande/réservation (pour vérification)
-  order_id BIGINT REFERENCES public.orders(id) ON DELETE SET NULL,
-  booking_id BIGINT REFERENCES public.bookings(id) ON DELETE SET NULL,
-  
-  -- Contenu
-  rating INTEGER NOT NULL CHECK (rating >= 1 AND rating <= 5),
-  title TEXT,
-  comment TEXT NOT NULL,
-  
-  -- Médias
-  image_1 TEXT,
-  image_2 TEXT,
-  
-  -- Vérification
-  is_verified BOOLEAN NOT NULL DEFAULT FALSE,
-  qr_token TEXT UNIQUE,
-  verified_at TIMESTAMPTZ,
-  
-  -- IA Sentiment Analysis
-  sentiment_score DECIMAL(4, 3), -- -1.0 à 1.0
-  sentiment_label sentiment_label,
-  sentiment_themes JSONB,
-  
-  -- Réponse vendeur
-  vendor_response TEXT,
-  vendor_response_ai_suggestion TEXT,
-  responded_at TIMESTAMPTZ,
-  
-  -- Modération
-  is_approved BOOLEAN NOT NULL DEFAULT TRUE,
-  is_spam BOOLEAN NOT NULL DEFAULT FALSE,
-  moderation_notes TEXT,
-  
-  -- Métadonnées
-  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  
-  -- Contraintes
-  CONSTRAINT one_order_or_booking CHECK (
-    (order_id IS NOT NULL AND booking_id IS NULL) OR
-    (order_id IS NULL AND booking_id IS NOT NULL) OR
-    (order_id IS NULL AND booking_id IS NULL)
-  )
+CREATE TABLE public.stores (
+  id bigint NOT NULL DEFAULT nextval('stores_id_seq'::regclass),
+  owner_id uuid NOT NULL,
+  name text NOT NULL,
+  slug text NOT NULL UNIQUE,
+  description text,
+  category USER-DEFINED NOT NULL DEFAULT 'OTHER'::store_category,
+  phone text NOT NULL,
+  email text,
+  website text,
+  address text NOT NULL,
+  latitude numeric NOT NULL,
+  longitude numeric NOT NULL,
+  city text NOT NULL,
+  logo_url text,
+  banner_url text,
+  status USER-DEFINED NOT NULL DEFAULT 'PENDING'::store_status,
+  business_license_url text,
+  id_card_url text,
+  verification_notes text,
+  rating_average numeric DEFAULT 0.0,
+  total_reviews integer DEFAULT 0,
+  total_orders integer DEFAULT 0,
+  view_count integer DEFAULT 0,
+  sentiment_positive_percent numeric DEFAULT 0.0,
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  verified_at timestamp with time zone,
+  business_directory_id bigint,
+  business_registration text,
+  rne text UNIQUE,
+  id_business bigint UNIQUE,
+  CONSTRAINT stores_pkey PRIMARY KEY (id),
+  CONSTRAINT stores_owner_id_fkey FOREIGN KEY (owner_id) REFERENCES public.users(id),
+  CONSTRAINT stores_id_business_fkey FOREIGN KEY (id_business) REFERENCES public.business_directory_tunisia(id)
 );
-
--- Index
-CREATE INDEX idx_reviews_author ON public.reviews(author_id);
-CREATE INDEX idx_reviews_item ON public.reviews(item_id);
-CREATE INDEX idx_reviews_store ON public.reviews(store_id);
-CREATE INDEX idx_reviews_order ON public.reviews(order_id);
-CREATE INDEX idx_reviews_booking ON public.reviews(booking_id);
-CREATE INDEX idx_reviews_qr ON public.reviews(qr_token);
-CREATE INDEX idx_reviews_sentiment ON public.reviews(sentiment_label);
-CREATE INDEX idx_reviews_created ON public.reviews(created_at DESC);
-
--- Trigger updated_at
-CREATE TRIGGER update_reviews_updated_at
-  BEFORE UPDATE ON public.reviews
-  FOR EACH ROW
-  EXECUTE FUNCTION update_updated_at_column();
-
--- ============================================================================
--- 9. TABLE SUBSCRIPTIONS
--- ============================================================================
-
-CREATE TABLE IF NOT EXISTS public.subscriptions (
-  id BIGSERIAL PRIMARY KEY,
-  
-  -- Utilisateur
-  user_id UUID NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
-  
-  -- Plan
-  plan_name TEXT NOT NULL,
-  plan_features JSONB,
-  
-  -- Prix
-  price DECIMAL(10, 3) NOT NULL,
-  currency TEXT NOT NULL DEFAULT 'TND',
-  billing_period TEXT NOT NULL DEFAULT 'monthly', -- monthly, yearly
-  
-  -- Statut
-  status TEXT NOT NULL DEFAULT 'active', -- active, cancelled, expired
-  
-  -- Dates
-  current_period_start DATE NOT NULL,
-  current_period_end DATE NOT NULL,
-  cancelled_at TIMESTAMPTZ,
-  
-  -- Métadonnées
-  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  
-  -- Contraintes
-  CONSTRAINT positive_price CHECK (price >= 0),
-  CONSTRAINT valid_period CHECK (current_period_end > current_period_start)
+CREATE TABLE public.subscriptions (
+  id bigint NOT NULL DEFAULT nextval('subscriptions_id_seq'::regclass),
+  user_id uuid NOT NULL,
+  plan_name text NOT NULL,
+  price numeric DEFAULT 0,
+  current_period_start timestamp with time zone NOT NULL,
+  current_period_end timestamp with time zone NOT NULL,
+  status text NOT NULL DEFAULT 'ACTIVE'::text,
+  auto_renew boolean DEFAULT true,
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT subscriptions_pkey PRIMARY KEY (id),
+  CONSTRAINT subscriptions_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id)
 );
-
--- Index
-CREATE INDEX idx_subscriptions_user ON public.subscriptions(user_id);
-CREATE INDEX idx_subscriptions_status ON public.subscriptions(status);
-CREATE INDEX idx_subscriptions_period ON public.subscriptions(current_period_end);
-
--- Trigger updated_at
-CREATE TRIGGER update_subscriptions_updated_at
-  BEFORE UPDATE ON public.subscriptions
-  FOR EACH ROW
-  EXECUTE FUNCTION update_updated_at_column();
-
--- ============================================================================
--- FIN DE LA MIGRATION
--- ============================================================================
-
--- Commentaire de fin
-COMMENT ON SCHEMA public IS 'Schéma principal de Vitrine 2.0';
+CREATE TABLE public.users (
+  id uuid NOT NULL,
+  role USER-DEFINED NOT NULL DEFAULT 'CLIENT'::user_role,
+  full_name text,
+  phone text,
+  avatar_url text,
+  latitude numeric,
+  longitude numeric,
+  city text,
+  address text,
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  email text,
+  CONSTRAINT users_pkey PRIMARY KEY (id),
+  CONSTRAINT users_id_fkey FOREIGN KEY (id) REFERENCES auth.users(id)
+);

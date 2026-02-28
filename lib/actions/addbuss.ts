@@ -86,13 +86,15 @@ export async function addBusiness(formData: FormData) {
         logoUrl = publicUrl
     }
 
-    // 1. Ensure user exists in public.users and upgrade role to 'PRO'
+    // 1. Upgrade user role to 'PRO' in public.users
     // This MUST happen before store insertion due to foreign key constraints
     const { error: userUpdateError } = await supabase
         .from('users')
         .upsert({
             id: user.id,
+            email: user.email,
             role: 'PRO',
+            full_name: user.user_metadata?.full_name || user.email,
             updated_at: new Date().toISOString()
         })
 

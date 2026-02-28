@@ -45,6 +45,7 @@ export async function login(formData: FormData) {
 export async function signup(formData: FormData) {
     const supabase = createClient()
     const data = {
+        full_name: formData.get('fullName') as string,
         email: formData.get('email') as string,
         password: formData.get('password') as string,
         confirmpassword: formData.get('confirmPassword') as string,
@@ -54,18 +55,20 @@ export async function signup(formData: FormData) {
             error: "Passwords do not match"
         }
     }
-    const { error } = await supabase.auth.signUp({
+    const { data: authData, error } = await supabase.auth.signUp({
         email: data.email,
         password: data.password,
         options: {
-            data: { role: 'client' }
+            data: { role: 'client', full_name: data.full_name }
         }
     })
+
     if (error) {
         return {
             error: error.message
         }
     }
+
     revalidatePath('/', 'layout')
     return {
         success: true,
