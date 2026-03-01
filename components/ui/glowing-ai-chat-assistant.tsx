@@ -3,6 +3,10 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Paperclip, Link, Mic, MicOff, Send, Info, X, RotateCcw } from 'lucide-react';
 
+declare const SpeechRecognition: any;
+type SpeechRecognitionEvent = any;
+type SpeechRecognitionErrorEvent = any;
+
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface Message {
   role: 'user' | 'assistant';
@@ -60,7 +64,7 @@ const FloatingAiAssistant = () => {
   // ── Voice state ──
   const [isRecording, setIsRecording]     = useState(false);
   const [voiceError, setVoiceError]       = useState<string | null>(null);
-  const recognitionRef                    = useRef<SpeechRecognition | null>(null);
+  const recognitionRef                    = useRef<any | null>(null);
   const baseTextRef                       = useRef<string>(''); // text in textarea before voice started
 
   const maxChars      = 2000;
