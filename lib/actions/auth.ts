@@ -23,20 +23,7 @@ export async function login(formData: FormData) {
     if (role === 'admin') {
         redirect('/admin/dashboard')
     } else if (role === 'business_owner' || role === 'PRO') {
-        // Try to find the store associated with this user
-        const { data: stores, error: storeError } = await supabase
-            .from('stores')
-            .select('id')
-            .eq('owner_id', authData.user?.id)
-            .maybeSingle()
-
-        if (stores?.id) {
-            console.log(`[Auth] Redirecting business owner ${authData.user?.id} to dashboard ${stores.id}`)
-            redirect(`/dashboard/${stores.id}`)
-        } else {
-            console.warn(`[Auth] Business owner ${authData.user?.id} has no store yet. Redirecting to business addition.`)
-            redirect('/business/add')
-        }
+        redirect('/')
     } else {
         redirect('/')
     }
@@ -79,9 +66,8 @@ export async function sendLoginMagicLink(formData: FormData) {
     const { error } = await supabase.auth.signInWithOtp({
         email,
         options: {
-            // User must already exist — if not, Supabase will still send
-            // a confirmation email but won't create a new account.
             shouldCreateUser: false,
+            emailRedirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/auth/callback`,
         },
     })
 
@@ -100,8 +86,8 @@ export async function sendSignupMagicLink(formData: FormData) {
     const { error } = await supabase.auth.signInWithOtp({
         email,
         options: {
-            // Creates account on first click if user doesn't exist yet.
             shouldCreateUser: true,
+            emailRedirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/auth/callback`,
             data: {
                 full_name: fullName,
                 role: 'client',
