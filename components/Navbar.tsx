@@ -285,6 +285,9 @@ export default function Navbar() {
       } else {
         setStoreId(null);
       }
+      if (event === 'SIGNED_IN') {
+        router.refresh();
+      }
     });
     return () => subscription.unsubscribe();
   }, []);
