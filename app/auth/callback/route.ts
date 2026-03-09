@@ -12,14 +12,25 @@ export async function GET(request: NextRequest) {
 
         if (!error && data.user) {
             const role = data.user.user_metadata?.role || 'client'
+            const userId = data.user.id
 
+            let redirectUrl = `${origin}/`
             if (role === 'admin') {
-                return NextResponse.redirect(`${origin}/admin/dashboard`)
-            } else if (role === 'business_owner' || role === 'PRO') {
-                return NextResponse.redirect(`${origin}/`)
-            } else {
-                return NextResponse.redirect(`${origin}/`)
+                redirectUrl = `${origin}/admin/dashboard`
             }
+
+            const response = NextResponse.redirect(redirectUrl)
+
+            // Set userId cookie
+            response.cookies.set('userId', userId, {
+                path: '/',
+                httpOnly: true,
+                secure: process.env.NODE_ENV === 'production',
+                sameSite: 'lax',
+                maxAge: 60 * 60 * 24 * 7 // 1 week
+            })
+
+            return response
         }
     }
 

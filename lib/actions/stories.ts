@@ -1,0 +1,113 @@
+'use server'
+
+import { createClient } from '@/lib/supabase/server'
+
+// Fetch all active client stories for a given business store
+export async function getBusinessStories(storeId: number) {
+    const supabase = createClient()
+
+    const { data, error } = await (supabase as any)
+        .from('stories')
+        .select(`
+      id,
+      media_url,
+      media_type,
+      caption,
+      views_count,
+      created_at,
+      author:author_id (
+        full_name,
+        avatar_url
+      )
+    `)
+        .eq('store_id', storeId)
+        .eq('is_approved', true)
+        .gt('expires_at', new Date().toISOString())
+        .order('created_at', { ascending: false })
+
+    if (error) {
+        console.error('Error fetching stories:', error)
+        return []
+    }
+    return data || []
+}
+
+// Publish a new story (client posting about a business)
+export async function publishStory(input: {
+    storeId: number
+    mediaUrl: string
+    mediaType: 'image' | 'video'
+    caption?: string
+}) {
+    const supabase = createClient()
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    if (authError || !user) return { success: false, error: 'Non authentifié.' }
+
+    const expiresAt = new Date()
+    expiresAt.setHours(expiresAt.getHours() + 24)
+
+    const { data, error } = await (supabase as any)
+        .from('stories')
+        .insert({
+            store_id: input.storeId,
+            author_id: user.id,
+            media_url: input.mediaUrl,
+            media_type: input.mediaType,
+            caption: input.caption || null,
+            expires_at: expiresAt.toISOString(),
+            is_approved: true,
+        })
+        .select('id')
+        .single()
+
+    if (error) {
+        console.error('Error publishing story:', error)
+        return { success: false, error: error.message }
+    }
+    return { success: true, storyId: data.id }
+}
+
+// Record a view (once per user per story)
+export async function recordStoryView(storyId: number) {
+    const supabase = createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return
+
+    await (supabase as any)
+        .from('story_views')
+        .upsert({ story_id: storyId, viewer_id: user.id }, { onConflict: 'story_id,viewer_id' })
+}
+
+// Upload a story media file to storage and return the public URL
+export async function uploadStoryMedia(formData: FormData): Promise<string | null> {
+    const file = formData.get('file') as File | null;
+    if (!file) return null;
+
+    const supabase = createClient()
+    const ext = file.name.split('.').pop()
+    const filename = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
+
+    const { error } = await supabase.storage
+        .from('stories')
+        .upload(filename, file, { contentType: file.type, upsert: false })
+
+    if (error) {
+        console.error('Upload error:', error)
+        return null
+    }
+
+    const { data } = supabase.storage.from('stories').getPublicUrl(filename)
+    return data?.publicUrl || null
+}
+
+// Delete a story (only owner)
+export async function deleteStory(storyId: number) {
+    const supabase = createClient()
+    const { error } = await (supabase as any)
+        .from('stories')
+        .delete()
+        .eq('id', storyId)
+
+    if (error) return { success: false }
+    return { success: true }
+}

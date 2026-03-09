@@ -17,8 +17,8 @@ import {
   BarChart,
   Bar,
 } from 'recharts';
-import { mockAnalytics, mockActions } from '@/lib/mock-data';
-import { AnalyticsSnapshot } from '@/types';
+import { useParams } from 'next/navigation';
+import { getDashboardOverview } from '@/lib/actions/overviews';
 
 interface StatCardProps {
   label: string;
@@ -86,42 +86,57 @@ const weeklyData = [
   { day: 'Sun', views: 280, clicks: 28, actions: 17 },
 ];
 
-// Rating distribution data
-const ratingData = [
-  { rating: '5 stars', count: 72 },
-  { rating: '4 stars', count: 38 },
-  { rating: '3 stars', count: 12 },
-  { rating: '2 stars', count: 4 },
-  { rating: '1 star', count: 1 },
+const defaultWeeklyData = [
+  { day: 'Mon', views: 0, clicks: 0, actions: 0 },
+  { day: 'Tue', views: 0, clicks: 0, actions: 0 },
+  { day: 'Wed', views: 0, clicks: 0, actions: 0 },
+  { day: 'Thu', views: 0, clicks: 0, actions: 0 },
+  { day: 'Fri', views: 0, clicks: 0, actions: 0 },
+  { day: 'Sat', views: 0, clicks: 0, actions: 0 },
+  { day: 'Sun', views: 0, clicks: 0, actions: 0 },
 ];
 
 export default function DashboardPage() {
+  const params = useParams();
   const [period, setPeriod] = useState<'today' | 'week' | 'month'>('week');
+  const [data, setData] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const currentStats = useMemo(() => {
-    return mockAnalytics.find((a) => a.period === period);
-  }, [period]);
+  useEffect(() => {
+    async function fetchData() {
+      setIsLoading(true);
+      if (params.id) {
+        const stats = await getDashboardOverview(Number(params.id));
+        setData(stats);
+      }
+      setIsLoading(false);
+    }
+    fetchData();
+  }, [params.id, period]); // Currently period doesn't filter DB queries, but keeps UI state intact
 
-  if (!currentStats) return null;
+  if (isLoading) return <div className="p-8 text-white">Chargement des statistiques...</div>;
+  if (!data) return null;
 
-  const totalActions = currentStats.phoneClicks + currentStats.directionClicks + currentStats.reservations + currentStats.purchases;
+  const totalActions = data.phoneClicks + data.directionClicks + data.reservations + data.purchases;
 
   return (
     <div className="space-y-6 p-4 md:p-8 flex-1" style={{ background: 'linear-gradient(135deg, #0f1729 0%, #1a1f3a 100%)' }}>
-      {/* Verification Warning Banner */}
-      <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-4 flex items-start gap-4 shadow-lg shadow-amber-500/5 backdrop-blur-sm animate-in fade-in slide-in-from-top duration-500">
-        <div className="p-2 bg-amber-500/20 rounded-lg text-amber-500">
-          <TrendingUp className="w-5 h-5 rotate-90" />
+      {/* Verification Warning Banner - Only show if PENDING */}
+      {data.status === 'PENDING' && (
+        <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-4 flex items-start gap-4 shadow-lg shadow-amber-500/5 backdrop-blur-sm animate-in fade-in slide-in-from-top duration-500">
+          <div className="p-2 bg-amber-500/20 rounded-lg text-amber-500">
+            <TrendingUp className="w-5 h-5 rotate-90" />
+          </div>
+          <div>
+            <h3 className="text-amber-500 font-semibold flex items-center gap-2">
+              Vérification RNE en attente
+            </h3>
+            <p className="text-amber-500/80 text-sm mt-1">
+              Votre établissement est en attente de validation du Registre National des Entreprises (RNE). Certaines fonctionnalités pourront être limitées jusqu'à la confirmation de vos informations.
+            </p>
+          </div>
         </div>
-        <div>
-          <h3 className="text-amber-500 font-semibold flex items-center gap-2">
-            Vérification RNE en attente
-          </h3>
-          <p className="text-amber-500/80 text-sm mt-1">
-            Votre établissement est en attente de validation du Registre National des Entreprises (RNE). Certaines fonctionnalités pourront être limitées jusqu'à la confirmation de vos informations.
-          </p>
-        </div>
-      </div>
+      )}
 
       {/* Page Header */}
       <motion.div
@@ -152,37 +167,32 @@ export default function DashboardPage() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         <StatCard
           label="Profile Views"
-          value={currentStats.profileViews}
+          value={data.profileViews}
           icon={<Eye className="w-8 h-8" />}
-          trend={12}
           color="blue"
         />
         <StatCard
           label="Phone Clicks"
-          value={currentStats.phoneClicks}
+          value={data.phoneClicks}
           icon={<Phone className="w-8 h-8" />}
-          trend={8}
           color="green"
         />
         <StatCard
           label="Direction Requests"
-          value={currentStats.directionClicks}
+          value={data.directionClicks}
           icon={<MapPin className="w-8 h-8" />}
-          trend={-3}
           color="purple"
         />
         <StatCard
           label="Reservations"
-          value={currentStats.reservations}
+          value={data.reservations}
           icon={<ShoppingCart className="w-8 h-8" />}
-          trend={15}
           color="orange"
         />
         <StatCard
           label="Purchases"
-          value={currentStats.purchases}
+          value={data.purchases}
           icon={<DollarSign className="w-8 h-8" />}
-          trend={22}
           color="green"
         />
         <StatCard
@@ -212,7 +222,7 @@ export default function DashboardPage() {
             </CardHeader>
             <CardContent>
               <ResponsiveContainer width="100%" height={350}>
-                <LineChart data={weeklyData}>
+                <LineChart data={data.weeklyStats || []}>
                   <defs>
                     <linearGradient id="viewsGradient" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="5%" stopColor="#d946ef" stopOpacity={0.3} />
@@ -246,30 +256,21 @@ export default function DashboardPage() {
                   <Legend iconType="circle" />
                   <Line
                     type="monotone"
-                    dataKey="views"
-                    stroke="#d946ef"
-                    strokeWidth={4}
-                    dot={{ r: 4, fill: '#d946ef', strokeWidth: 2, stroke: '#fff' }}
-                    activeDot={{ r: 6, strokeWidth: 0 }}
-                    name="Views"
-                  />
-                  <Line
-                    type="monotone"
-                    dataKey="clicks"
-                    stroke="#a855f7"
-                    strokeWidth={4}
-                    dot={{ r: 4, fill: '#a855f7', strokeWidth: 2, stroke: '#fff' }}
-                    activeDot={{ r: 6, strokeWidth: 0 }}
-                    name="Clicks"
-                  />
-                  <Line
-                    type="monotone"
                     dataKey="actions"
                     stroke="#ec4899"
                     strokeWidth={4}
                     dot={{ r: 4, fill: '#ec4899', strokeWidth: 2, stroke: '#fff' }}
                     activeDot={{ r: 6, strokeWidth: 0 }}
-                    name="Actions"
+                    name="Activités (Commandes/Résas)"
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="views"
+                    stroke="#d946ef"
+                    strokeWidth={4}
+                    dot={{ r: 4, fill: '#d946ef', strokeWidth: 2, stroke: '#fff' }}
+                    activeDot={{ r: 6, strokeWidth: 0 }}
+                    name="Vues Profil"
                   />
                 </LineChart>
               </ResponsiveContainer>
@@ -292,7 +293,7 @@ export default function DashboardPage() {
             </CardHeader>
             <CardContent>
               <ResponsiveContainer width="100%" height={350}>
-                <BarChart data={ratingData} layout="vertical">
+                <BarChart data={data.ratingData} layout="vertical">
                   <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" horizontal={false} />
                   <XAxis type="number" stroke="rgba(255,255,255,0.3)" axisLine={false} tickLine={false} tick={{ fontSize: 12 }} />
                   <YAxis dataKey="rating" type="category" stroke="rgba(255,255,255,0.3)" width={80} axisLine={false} tickLine={false} tick={{ fontSize: 12, fontWeight: 500 }} />
@@ -333,34 +334,38 @@ export default function DashboardPage() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {mockActions.slice(0, 5).map((action, idx) => (
-                <motion.div
-                  key={action.id}
-                  initial={{ opacity: 0, x: -10 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: 0.5 + idx * 0.1 }}
-                  className="group flex items-start justify-between p-4 rounded-xl hover:bg-white/5 transition-all duration-300 border border-transparent hover:border-white/10"
-                >
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-1">
-                      <p className="font-bold text-white capitalize tracking-wide">
-                        {action.type.replace('_', ' ')}
+              {data.recentActions.length === 0 ? (
+                <p className="text-white/50 text-sm">Aucune activité récente.</p>
+              ) : (
+                data.recentActions.map((action: any, idx: number) => (
+                  <motion.div
+                    key={action.id}
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 0.5 + idx * 0.1 }}
+                    className="group flex items-start justify-between p-4 rounded-xl hover:bg-white/5 transition-all duration-300 border border-transparent hover:border-white/10"
+                  >
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <p className="font-bold text-white capitalize tracking-wide">
+                          {action.type}
+                        </p>
+                        <span className="w-1 h-1 rounded-full bg-white/20" />
+                        <p className="text-[10px] text-white/40 uppercase font-black">Nouveau</p>
+                      </div>
+                      <p className="text-sm text-white/60 leading-relaxed">{action.details}</p>
+                    </div>
+                    <div className="flex flex-col items-end gap-1">
+                      <p className="text-xs font-medium text-white/30 whitespace-nowrap">
+                        {Math.max(0, Math.round((Date.now() - new Date(action.timestamp).getTime()) / 1000 / 60))} min ago
                       </p>
-                      <span className="w-1 h-1 rounded-full bg-white/20" />
-                      <p className="text-[10px] text-white/40 uppercase font-black">Verified</p>
+                      <div className="w-8 h-1 bg-white/5 rounded-full overflow-hidden">
+                        <div className="w-1/2 h-full bg-pink-500/50" />
+                      </div>
                     </div>
-                    <p className="text-sm text-white/60 leading-relaxed">{action.details}</p>
-                  </div>
-                  <div className="flex flex-col items-end gap-1">
-                    <p className="text-xs font-medium text-white/30 whitespace-nowrap">
-                      {Math.round((Date.now() - action.timestamp.getTime()) / 1000 / 60)} min ago
-                    </p>
-                    <div className="w-8 h-1 bg-white/5 rounded-full overflow-hidden">
-                      <div className="w-1/2 h-full bg-pink-500/50" />
-                    </div>
-                  </div>
-                </motion.div>
-              ))}
+                  </motion.div>
+                ))
+              )}
             </div>
           </CardContent>
         </Card>

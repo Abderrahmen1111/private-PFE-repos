@@ -13,13 +13,13 @@ function ImageSearchModal({ onClose, onSearch }: {
   onClose: () => void;
   onSearch: (query: string, imageUrl?: string) => void;
 }) {
-  const [isDragging, setIsDragging]       = useState(false);
-  const [preview, setPreview]             = useState<string | null>(null);
-  const [fileName, setFileName]           = useState<string>('');
-  const [isAnalyzing, setIsAnalyzing]     = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
+  const [preview, setPreview] = useState<string | null>(null);
+  const [fileName, setFileName] = useState<string>('');
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysisResult, setAnalysisResult] = useState<string>('');
-  const [error, setError]                 = useState<string | null>(null);
-  const fileInputRef                      = useRef<HTMLInputElement>(null);
+  const [error, setError] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Close on Escape
   useEffect(() => {
@@ -209,21 +209,21 @@ function ImageSearchModal({ onClose, onSearch }: {
 // ─── Navbar ───────────────────────────────────────────────────────────────────
 export default function Navbar() {
   const router = useRouter();
-  const [searchQuery, setSearchQuery]       = useState('');
-  const [locationQuery, setLocationQuery]   = useState('');
-  const [user, setUser]                     = useState<any>(null);
-  const [storeId, setStoreId]               = useState<string | null>(null);
-  const [profileOpen, setProfileOpen]       = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [locationQuery, setLocationQuery] = useState('');
+  const [user, setUser] = useState<any>(null);
+  const [storeId, setStoreId] = useState<string | null>(null);
+  const [profileOpen, setProfileOpen] = useState(false);
   const [imageSearchOpen, setImageSearchOpen] = useState(false);
-  const profileRef                          = useRef<HTMLDivElement>(null);
+  const profileRef = useRef<HTMLDivElement>(null);
 
   // Dynamic placeholder state
   const [placeholderIndex, setPlaceholderIndex] = useState(0);
-  const [isTyping, setIsTyping]   = useState(true);
+  const [isTyping, setIsTyping] = useState(true);
   const [displayText, setDisplayText] = useState('');
 
-  const typingSpeed    = 100;
-  const pauseDuration  = 5000;
+  const typingSpeed = 100;
+  const pauseDuration = 5000;
 
   const searchSuggestions = [
     'Je veux un PC pour mon fils étudiant',
@@ -266,22 +266,31 @@ export default function Navbar() {
   useEffect(() => {
     const supabase = createClient();
     const fetchStoreId = async (userId: string) => {
-      const { data } = await supabase.from('stores').select('id').eq('owner_id', userId).maybeSingle();
-      if (data) setStoreId(data.id.toString());
+      // Fetch ANY store owned by this user
+      const { data } = await supabase
+        .from('stores')
+        .select('id')
+        .eq('owner_id', userId)
+        .order('created_at', { ascending: true })
+        .limit(1)
+        .maybeSingle();
+
+      if (data) {
+        setStoreId((data as any).id.toString());
+      }
     };
+
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null);
       if (session?.user) {
-        const role = session.user.user_metadata?.role;
-        if (role === 'business_owner' || role === 'PRO') fetchStoreId(session.user.id);
+        fetchStoreId(session.user.id);
       }
     });
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       setUser(session?.user ?? null);
       if (session?.user) {
-        const role = session.user.user_metadata?.role;
-        if (role === 'business_owner' || role === 'PRO') fetchStoreId(session.user.id);
-        else setStoreId(null);
+        fetchStoreId(session.user.id);
       } else {
         setStoreId(null);
       }
