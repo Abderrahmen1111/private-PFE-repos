@@ -2,11 +2,11 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { Briefcase, Code, FolderKanban, Rocket, Search, MapPin, User, LogOut, Plus, Camera, X, Upload, Loader2 } from "lucide-react";
-import { DropdownMenu } from "./ui/dropdown-menu";
+import { FolderKanban, Search, MapPin, Plus, Camera, X, Upload, Loader2, Mic, MicOff, Navigation } from "lucide-react";
 import { createClient } from '@/lib/supabase/client';
 import { signOut } from '@/lib/supabase/auth';
 import Link from 'next/link';
+import { UserDropdown } from '@/components/ui/user-dropdown';
 
 // ─── Image Search Modal ───────────────────────────────────────────────────────
 function ImageSearchModal({ onClose, onSearch }: {
@@ -213,9 +213,10 @@ export default function Navbar() {
   const [locationQuery, setLocationQuery]   = useState('');
   const [user, setUser]                     = useState<any>(null);
   const [storeId, setStoreId]               = useState<string | null>(null);
-  const [profileOpen, setProfileOpen]       = useState(false);
   const [imageSearchOpen, setImageSearchOpen] = useState(false);
-  const profileRef                          = useRef<HTMLDivElement>(null);
+  const [isListening, setIsListening]         = useState(false);
+  const [isLocating, setIsLocating]           = useState(false);
+  const recognitionRef                        = useRef<any>(null);
 
   // Dynamic placeholder state
   const [placeholderIndex, setPlaceholderIndex] = useState(0);
@@ -292,15 +293,71 @@ export default function Navbar() {
     return () => subscription.unsubscribe();
   }, []);
 
-  // Close profile on outside click
-  useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (profileRef.current && !profileRef.current.contains(e.target as Node))
-        setProfileOpen(false);
+
+  // ─── Voice Search ───────────────────────────────────────────────────────────
+  const handleVoiceSearch = () => {
+    const SpeechRecognition =
+      (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      alert('Voice search is not supported in your browser.');
+      return;
+    }
+    if (isListening) {
+      recognitionRef.current?.stop();
+      setIsListening(false);
+      return;
+    }
+    const recognition = new SpeechRecognition();
+    recognition.lang = 'fr-FR';
+    recognition.interimResults = false;
+    recognition.maxAlternatives = 1;
+    recognitionRef.current = recognition;
+    recognition.onstart = () => setIsListening(true);
+    recognition.onresult = (e: any) => {
+      const transcript = e.results[0][0].transcript;
+      setSearchQuery(transcript);
+      setIsListening(false);
     };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
+    recognition.onerror = () => setIsListening(false);
+    recognition.onend = () => setIsListening(false);
+    recognition.start();
+  };
+
+  // ─── Near Me (Geolocation) ──────────────────────────────────────────────────
+  const handleNearMe = () => {
+    if (!navigator.geolocation) {
+      alert('Geolocation is not supported in your browser.');
+      return;
+    }
+    setIsLocating(true);
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        const { latitude, longitude } = pos.coords;
+        try {
+          const res = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`,
+            { headers: { 'User-Agent': 'Ro2yaMarketplace/1.0' } }
+          );
+          const data = await res.json();
+          const city =
+            data.address?.city ||
+            data.address?.town ||
+            data.address?.village ||
+            data.address?.county ||
+            'Near me';
+          setLocationQuery(city);
+        } catch {
+          setLocationQuery(`${latitude.toFixed(3)}, ${longitude.toFixed(3)}`);
+        } finally {
+          setIsLocating(false);
+        }
+      },
+      () => {
+        alert('Could not get your location. Please allow location access.');
+        setIsLocating(false);
+      }
+    );
+  };
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -320,7 +377,6 @@ export default function Navbar() {
 
   const handleSignOut = async () => {
     await signOut();
-    setProfileOpen(false);
     router.push('/');
   };
 
@@ -364,6 +420,14 @@ export default function Navbar() {
                     onChange={(e) => setSearchQuery(e.target.value)}
                     className="w-full bg-transparent outline-none text-sm text-white placeholder-white/50"
                   />
+                  <button
+                    type="button"
+                    onClick={handleVoiceSearch}
+                    title={isListening ? 'Stop listening' : 'Voice search'}
+                    className={`flex-shrink-0 p-1 rounded-full transition-colors ${isListening ? 'text-red-400 animate-pulse' : 'text-white/40 hover:text-white'}`}
+                  >
+                    {isListening ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
+                  </button>
                 </div>
 
                 {/* Location */}
@@ -376,6 +440,16 @@ export default function Navbar() {
                     onChange={(e) => setLocationQuery(e.target.value)}
                     className="w-32 bg-transparent outline-none text-sm text-white placeholder-white/50"
                   />
+                  <button
+                    type="button"
+                    onClick={handleNearMe}
+                    title="Use my location"
+                    className="flex-shrink-0 p-1 rounded-full text-white/40 hover:text-white transition-colors"
+                  >
+                    {isLocating
+                      ? <Loader2 className="w-4 h-4 animate-spin" />
+                      : <Navigation className="w-4 h-4" />}
+                  </button>
                 </div>
 
                 {/* 📷 Image search button — inside the bar */}
@@ -408,7 +482,7 @@ export default function Navbar() {
                     <Link href={`/dashboard/${storeId}`}>
                       <button className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:shadow-lg hover:shadow-cyan-500/20 text-sm font-bold text-white transition-all ring-1 ring-white/10">
                         <FolderKanban className="w-4 h-4" />
-                        Mon Dashboard
+                        My Dashboard
                       </button>
                     </Link>
                   ) : (
@@ -420,28 +494,19 @@ export default function Navbar() {
                     </Link>
                   )}
 
-                  <div className="relative" ref={profileRef}>
-                    <button
-                      onClick={() => setProfileOpen(!profileOpen)}
-                      className="flex items-center justify-center w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 border border-white/20 backdrop-blur-sm transition"
-                    >
-                      <User className="w-5 h-5 text-white" />
-                    </button>
-                    {profileOpen && (
-                      <div className="absolute right-0 mt-2 w-48 bg-black/80 backdrop-blur-xl border border-white/15 rounded-xl shadow-2xl overflow-hidden z-50">
-                        <div className="px-4 py-3 border-b border-white/10">
-                          <p className="text-sm text-white font-medium truncate">{user.email}</p>
-                        </div>
-                        <button
-                          onClick={handleSignOut}
-                          className="w-full flex items-center gap-2 px-4 py-3 text-sm text-red-400 hover:bg-white/10 transition"
-                        >
-                          <LogOut className="w-4 h-4" />
-                          Sign Out
-                        </button>
-                      </div>
-                    )}
-                  </div>
+                  <UserDropdown
+                    user={{
+                      name: user.user_metadata?.full_name || user.email || 'User',
+                      username: user.email || '',
+                      avatar: user.user_metadata?.avatar_url || '',
+                      initials: (user.user_metadata?.full_name || user.email || 'U')
+                        .split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2),
+                      status: 'online',
+                    }}
+                    onAction={(action: string) => {
+                      if (action === 'logout') handleSignOut();
+                    }}
+                  />
                 </>
               ) : (
                 <>
