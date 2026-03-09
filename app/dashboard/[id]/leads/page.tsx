@@ -1,256 +1,168 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
-import { CustomerAction, ActionType } from '@/types';
-import { mockActions } from '@/lib/mock-data';
+import React, { useState, useEffect, useMemo } from 'react';
+import { useParams } from 'next/navigation';
+import { getLeadActions } from '@/lib/actions/overviews';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
-  Phone,
-  MapPin,
   ShoppingCart,
   Calendar,
-  MessageSquare,
   TrendingUp,
   Filter,
+  Loader2,
+  Phone,
 } from 'lucide-react';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 
-interface ActionStats {
-  type: ActionType;
-  count: number;
-  icon: React.ReactNode;
-  label: string;
-  color: string;
-}
-
-const actionIcons: Record<ActionType, React.ReactNode> = {
-  phone_click: <Phone className="w-5 h-5" />,
-  direction_click: <MapPin className="w-5 h-5" />,
-  reservation: <Calendar className="w-5 h-5" />,
-  purchase: <ShoppingCart className="w-5 h-5" />,
-  contact: <MessageSquare className="w-5 h-5" />,
-};
-
-const actionLabels: Record<ActionType, string> = {
-  phone_click: 'Phone Inquiry',
-  direction_click: 'Direction Request',
-  reservation: 'Reservation',
-  purchase: 'Purchase',
-  contact: 'Contact Form',
-};
-
-const actionColors: Record<ActionType, string> = {
-  phone_click: 'bg-blue-50 text-blue-600 dark:bg-blue-950 dark:text-blue-400',
-  direction_click: 'bg-purple-50 text-purple-600 dark:bg-purple-950 dark:text-purple-400',
-  reservation: 'bg-orange-50 text-orange-600 dark:bg-orange-950 dark:text-orange-400',
-  purchase: 'bg-green-50 text-green-600 dark:bg-green-950 dark:text-green-400',
-  contact: 'bg-pink-50 text-pink-600 dark:bg-pink-950 dark:text-pink-400',
-};
+type LeadType = 'all' | 'order' | 'booking';
 
 export default function LeadsPage() {
-  const [actions, setActions] = useState<CustomerAction[]>(mockActions);
-  const [filterType, setFilterType] = useState<ActionType | 'all'>('all');
+  const params = useParams();
+  const storeId = Number(params.id);
+
+  const [leads, setLeads] = useState<{ orders: any[]; bookings: any[] }>({ orders: [], bookings: [] });
+  const [isLoading, setIsLoading] = useState(true);
+  const [filterType, setFilterType] = useState<LeadType>('all');
   const [sortBy, setSortBy] = useState<'recent' | 'oldest'>('recent');
 
-  // Calculate statistics
-  const stats = useMemo<ActionStats[]>(() => {
-    const typeMap: Record<ActionType, number> = {
-      phone_click: 0,
-      direction_click: 0,
-      reservation: 0,
-      purchase: 0,
-      contact: 0,
-    };
-
-    actions.forEach((action) => {
-      typeMap[action.type]++;
-    });
-
-    return [
-      {
-        type: 'phone_click',
-        count: typeMap.phone_click,
-        icon: actionIcons.phone_click,
-        label: 'Phone Inquiries',
-        color: 'bg-blue-50 text-blue-600 dark:bg-blue-950 dark:text-blue-400',
-      },
-      {
-        type: 'direction_click',
-        count: typeMap.direction_click,
-        icon: actionIcons.direction_click,
-        label: 'Direction Requests',
-        color: 'bg-purple-50 text-purple-600 dark:bg-purple-950 dark:text-purple-400',
-      },
-      {
-        type: 'reservation',
-        count: typeMap.reservation,
-        icon: actionIcons.reservation,
-        label: 'Reservations',
-        color: 'bg-orange-50 text-orange-600 dark:bg-orange-950 dark:text-orange-400',
-      },
-      {
-        type: 'purchase',
-        count: typeMap.purchase,
-        icon: actionIcons.purchase,
-        label: 'Purchases',
-        color: 'bg-green-50 text-green-600 dark:bg-green-950 dark:text-green-400',
-      },
-      {
-        type: 'contact',
-        count: typeMap.contact,
-        icon: actionIcons.contact,
-        label: 'Contact Forms',
-        color: 'bg-pink-50 text-pink-600 dark:bg-pink-950 dark:text-pink-400',
-      },
-    ];
-  }, [actions]);
-
-  // Filter and sort actions
-  const filteredActions = useMemo(() => {
-    let filtered = actions;
-
-    if (filterType !== 'all') {
-      filtered = filtered.filter((a) => a.type === filterType);
+  useEffect(() => {
+    if (storeId) {
+      getLeadActions(storeId).then(data => {
+        setLeads(data as any);
+        setIsLoading(false);
+      });
     }
+  }, [storeId]);
 
+  const allLeads = useMemo(() => {
+    const combined = [
+      ...leads.orders.map(o => ({ ...o, leadType: 'order' as const, amount: o.total_price })),
+      ...leads.bookings.map(b => ({ ...b, leadType: 'booking' as const, amount: b.price })),
+    ];
+
+    let filtered = filterType === 'all' ? combined : combined.filter(l => l.leadType === filterType);
     return filtered.sort((a, b) => {
-      if (sortBy === 'recent') {
-        return b.timestamp.getTime() - a.timestamp.getTime();
-      } else {
-        return a.timestamp.getTime() - b.timestamp.getTime();
-      }
+      const dateA = new Date(a.created_at).getTime();
+      const dateB = new Date(b.created_at).getTime();
+      return sortBy === 'recent' ? dateB - dateA : dateA - dateB;
     });
-  }, [actions, filterType, sortBy]);
+  }, [leads, filterType, sortBy]);
 
-  const totalActions = actions.length;
+  if (isLoading) return <div className="p-8 text-foreground flex items-center gap-2"><Loader2 className="w-4 h-4 animate-spin" /> Chargement des leads...</div>;
+
+  const ordersCount = leads.orders.length;
+  const bookingsCount = leads.bookings.length;
 
   return (
     <div className="p-4 md:p-8 space-y-8 max-w-6xl mx-auto">
-      {/* Page Header */}
       <div>
-        <h1 className="text-3xl font-bold text-foreground mb-2">Customer Actions & Leads</h1>
-        <p className="text-muted-foreground">
-          Track customer interactions and engagement with your business
-        </p>
+        <h1 className="text-3xl font-bold text-foreground mb-2">Actions clients & Leads</h1>
+        <p className="text-muted-foreground">Suivez vos commandes et réservations en temps réel</p>
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-        {stats.map((stat) => (
-          <Card
-            key={stat.type}
-            className="border-0 shadow-sm hover:shadow-md transition-shadow cursor-pointer"
-            onClick={() => setFilterType(stat.type === filterType ? 'all' : stat.type)}
-          >
-            <CardContent className="p-4">
-              <div className="flex items-start justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground font-medium mb-1">{stat.label}</p>
-                  <p className="text-3xl font-bold text-foreground">{stat.count}</p>
-                </div>
-                <div className={`p-2 rounded-lg ${stat.color}`}>{stat.icon}</div>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <Card className="border-0 shadow-sm cursor-pointer hover:shadow-md transition-shadow" onClick={() => setFilterType('all')}>
+          <CardContent className="p-4">
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground font-medium mb-1">Total interactions</p>
+                <p className="text-3xl font-bold text-foreground">{ordersCount + bookingsCount}</p>
               </div>
-            </CardContent>
-          </Card>
-        ))}
+              <div className="p-2 rounded-lg bg-blue-50 text-blue-600 dark:bg-blue-950 dark:text-blue-400"><TrendingUp className="w-5 h-5" /></div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card className="border-0 shadow-sm cursor-pointer hover:shadow-md transition-shadow" onClick={() => setFilterType('order')}>
+          <CardContent className="p-4">
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground font-medium mb-1">Commandes</p>
+                <p className="text-3xl font-bold text-foreground">{ordersCount}</p>
+              </div>
+              <div className="p-2 rounded-lg bg-green-50 text-green-600 dark:bg-green-950 dark:text-green-400"><ShoppingCart className="w-5 h-5" /></div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card className="border-0 shadow-sm cursor-pointer hover:shadow-md transition-shadow" onClick={() => setFilterType('booking')}>
+          <CardContent className="p-4">
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground font-medium mb-1">Réservations</p>
+                <p className="text-3xl font-bold text-foreground">{bookingsCount}</p>
+              </div>
+              <div className="p-2 rounded-lg bg-orange-50 text-orange-600 dark:bg-orange-950 dark:text-orange-400"><Calendar className="w-5 h-5" /></div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
-      {/* Total Actions Summary */}
-      <Card className="border-0 shadow-sm bg-gradient-to-r from-primary/10 to-primary/5">
-        <CardContent className="p-6 flex items-center justify-between">
-          <div>
-            <p className="text-sm text-muted-foreground font-medium mb-1">Total Interactions</p>
-            <p className="text-4xl font-bold text-foreground">{totalActions}</p>
-          </div>
-          <TrendingUp className="w-12 h-12 text-primary opacity-20" />
-        </CardContent>
-      </Card>
-
-      {/* Filters and Sort */}
+      {/* Filters */}
       <div className="flex flex-col md:flex-row gap-4 items-start md:items-center justify-between">
         <div className="flex gap-2 items-center w-full md:w-auto">
           <Filter className="w-5 h-5 text-muted-foreground" />
-          <Select value={filterType} onValueChange={(val) => setFilterType(val as any)}>
+          <Select value={filterType} onValueChange={(val) => setFilterType(val as LeadType)}>
             <SelectTrigger className="w-full md:w-48">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All Actions</SelectItem>
-              <SelectItem value="phone_click">Phone Inquiries</SelectItem>
-              <SelectItem value="direction_click">Direction Requests</SelectItem>
-              <SelectItem value="reservation">Reservations</SelectItem>
-              <SelectItem value="purchase">Purchases</SelectItem>
-              <SelectItem value="contact">Contact Forms</SelectItem>
+              <SelectItem value="all">Tout</SelectItem>
+              <SelectItem value="order">Commandes</SelectItem>
+              <SelectItem value="booking">Réservations</SelectItem>
             </SelectContent>
           </Select>
         </div>
-
         <div className="flex gap-2 w-full md:w-auto">
-          <Button
-            variant={sortBy === 'recent' ? 'default' : 'outline'}
-            onClick={() => setSortBy('recent')}
-          >
-            Most Recent
-          </Button>
-          <Button
-            variant={sortBy === 'oldest' ? 'default' : 'outline'}
-            onClick={() => setSortBy('oldest')}
-          >
-            Oldest First
-          </Button>
+          <Button variant={sortBy === 'recent' ? 'default' : 'outline'} onClick={() => setSortBy('recent')}>Plus récent</Button>
+          <Button variant={sortBy === 'oldest' ? 'default' : 'outline'} onClick={() => setSortBy('oldest')}>Plus ancien</Button>
         </div>
       </div>
 
-      {/* Actions List */}
+      {/* Leads List */}
       <div className="space-y-3">
-        {filteredActions.length === 0 ? (
+        {allLeads.length === 0 ? (
           <Card className="border-0 shadow-sm">
             <CardContent className="py-12">
               <div className="text-center">
-                <MessageSquare className="w-12 h-12 text-muted-foreground mx-auto mb-4 opacity-50" />
-                <p className="text-muted-foreground">No customer actions yet</p>
+                <ShoppingCart className="w-12 h-12 text-muted-foreground mx-auto mb-4 opacity-50" />
+                <p className="text-muted-foreground">Aucune interaction client pour le moment.</p>
               </div>
             </CardContent>
           </Card>
         ) : (
-          filteredActions.map((action) => (
-            <Card key={action.id} className="border-0 shadow-sm hover:shadow-md transition-shadow">
+          allLeads.map((lead) => (
+            <Card key={`${lead.leadType}-${lead.id}`} className="border-0 shadow-sm hover:shadow-md transition-shadow">
               <CardContent className="p-6">
                 <div className="flex items-start gap-4">
-                  {/* Icon */}
-                  <div className={`p-3 rounded-lg shrink-0 ${actionColors[action.type]}`}>
-                    {actionIcons[action.type]}
+                  <div className={`p-3 rounded-lg shrink-0 ${lead.leadType === 'order' ? 'bg-green-50 text-green-600 dark:bg-green-950 dark:text-green-400' : 'bg-orange-50 text-orange-600 dark:bg-orange-950 dark:text-orange-400'}`}>
+                    {lead.leadType === 'order' ? <ShoppingCart className="w-5 h-5" /> : <Calendar className="w-5 h-5" />}
                   </div>
-
-                  {/* Content */}
                   <div className="flex-1 min-w-0">
                     <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
                       <div>
-                        <h3 className="font-bold text-foreground">{actionLabels[action.type]}</h3>
-                        <p className="text-sm text-muted-foreground mt-1">{action.details}</p>
+                        <h3 className="font-bold text-foreground">{lead.leadType === 'order' ? 'Commande' : 'Réservation'}</h3>
+                        <p className="text-sm text-foreground font-medium mt-0.5">{lead.customer_name}</p>
+                        {lead.customer_phone && (
+                          <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
+                            <Phone className="w-3 h-3" /> {lead.customer_phone}
+                          </p>
+                        )}
+                        <p className="text-sm text-muted-foreground mt-1">
+                          Montant : <span className="font-semibold">{lead.amount} DT</span>
+                        </p>
+                        <span className={`text-xs font-bold px-2 py-0.5 rounded mt-1 inline-block ${
+                          lead.status === 'COMPLETED' ? 'bg-green-100 text-green-700' :
+                          lead.status === 'CANCELLED' ? 'bg-red-100 text-red-700' :
+                          'bg-yellow-100 text-yellow-700'
+                        }`}>{lead.status}</span>
                       </div>
-
-                      {/* Timestamp */}
                       <div className="text-right">
                         <p className="text-sm font-medium text-foreground">
-                          {action.timestamp.toLocaleDateString('en-US', {
-                            month: 'short',
-                            day: 'numeric',
-                          })}
+                          {new Intl.DateTimeFormat('fr-FR', { month: 'short', day: 'numeric' }).format(new Date(lead.created_at))}
                         </p>
                         <p className="text-xs text-muted-foreground">
-                          {action.timestamp.toLocaleTimeString('en-US', {
-                            hour: '2-digit',
-                            minute: '2-digit',
-                          })}
+                          {new Intl.DateTimeFormat('fr-FR', { hour: '2-digit', minute: '2-digit' }).format(new Date(lead.created_at))}
                         </p>
                       </div>
                     </div>
@@ -261,12 +173,8 @@ export default function LeadsPage() {
           ))
         )}
       </div>
-
-      {/* Pagination Info */}
-      {filteredActions.length > 0 && (
-        <div className="text-center text-sm text-muted-foreground">
-          Showing {filteredActions.length} of {totalActions} interactions
-        </div>
+      {allLeads.length > 0 && (
+        <div className="text-center text-sm text-muted-foreground">Affichage de {allLeads.length} interactions</div>
       )}
     </div>
   );

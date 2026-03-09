@@ -11,14 +11,27 @@ interface BusinessImageGalleryProps {
 export default function BusinessImageGallery({ images, businessName }: BusinessImageGalleryProps) {
     return (
         <div className="relative h-[260px] md:h-[320px] flex overflow-hidden">
-            {images.map((img, idx) => (
-                <img
-                    key={idx}
-                    src={img}
-                    alt={`${businessName} - ${idx + 1}`}
-                    className="flex-1 object-cover"
-                />
-            ))}
+            {images.map((url, idx) => {
+                const isVideo = url.match(/\.(mp4|webm|ogg|mov)$|^data:video\//i);
+                return isVideo ? (
+                    <video
+                        key={idx}
+                        src={url}
+                        className="flex-1 object-cover"
+                        autoPlay
+                        muted
+                        loop
+                        playsInline
+                    />
+                ) : (
+                    <img
+                        key={idx}
+                        src={url}
+                        alt={`${businessName} - ${idx + 1}`}
+                        className="flex-1 object-cover"
+                    />
+                );
+            })}
 
             {/* Dark Gradient Overlay */}
             <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/30 to-transparent" />

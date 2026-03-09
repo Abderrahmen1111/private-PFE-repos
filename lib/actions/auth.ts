@@ -2,6 +2,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
+import { cookies } from 'next/headers'
 
 export async function login(formData: FormData) {
     const data = {
@@ -15,7 +16,16 @@ export async function login(formData: FormData) {
         return {
             error: error.message
         }
+    }
 
+    if (authData.user) {
+        cookies().set('userId', authData.user.id, {
+            path: '/',
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'lax',
+            maxAge: 60 * 60 * 24 * 7 // 1 week
+        })
     }
     const role = authData.user?.user_metadata?.role || 'client'
     revalidatePath('/', 'layout')
@@ -32,6 +42,7 @@ export async function login(formData: FormData) {
 export async function signup(formData: FormData) {
     const supabase = createClient()
     const data = {
+        full_name: formData.get('fullName') as string,
         email: formData.get('email') as string,
         password: formData.get('password') as string,
         confirmpassword: formData.get('confirmPassword') as string,
@@ -41,18 +52,20 @@ export async function signup(formData: FormData) {
             error: "Passwords do not match"
         }
     }
-    const { error } = await supabase.auth.signUp({
+    const { data: authData, error } = await supabase.auth.signUp({
         email: data.email,
         password: data.password,
         options: {
-            data: { role: 'client' }
+            data: { role: 'client', full_name: data.full_name }
         }
     })
+
     if (error) {
         return {
             error: error.message
         }
     }
+
     revalidatePath('/', 'layout')
     return {
         success: true,
@@ -67,7 +80,7 @@ export async function sendLoginMagicLink(formData: FormData) {
         email,
         options: {
             shouldCreateUser: false,
-            emailRedirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/auth/callback`,
+            emailRedirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/auth/callback`,
         },
     })
 
@@ -87,7 +100,7 @@ export async function sendSignupMagicLink(formData: FormData) {
         email,
         options: {
             shouldCreateUser: true,
-            emailRedirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/auth/callback`,
+            emailRedirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/auth/callback`,
             data: {
                 full_name: fullName,
                 role: 'client',
@@ -105,6 +118,7 @@ export async function sendSignupMagicLink(formData: FormData) {
 export async function signout() {
     const supabase = createClient()
     await supabase.auth.signOut()
+    cookies().delete('userId')
     revalidatePath('/', 'layout')
     redirect('/')
 

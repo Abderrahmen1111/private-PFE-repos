@@ -22,6 +22,8 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { Toaster } from 'sonner';
+import { getSidebarStats } from '@/lib/actions/overviews';
+import { useEffect } from 'react';
 
 export default function DashboardLayout({
   children,
@@ -33,6 +35,46 @@ export default function DashboardLayout({
   const id = params.id as string;
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
+
+  const [stats, setStats] = useState({ reviews: 0, leads: 0 });
+  const [lastSeenCounts, setLastSeenCounts] = useState<Record<string, number>>({});
+
+  // Initialize lastSeenCounts from localStorage on mount
+  useEffect(() => {
+    const saved = localStorage.getItem(`dashboard_seen_${id}`);
+    if (saved) {
+      try {
+        setLastSeenCounts(JSON.parse(saved));
+      } catch (e) {
+        console.error('Error parsing lastSeenCounts:', e);
+      }
+    }
+  }, [id]);
+
+  useEffect(() => {
+    async function fetchStats() {
+      if (id) {
+        const res = await getSidebarStats(Number(id));
+        setStats(res);
+      }
+    }
+    fetchStats();
+  }, [id]);
+
+  // Update lastSeenCounts when visiting a page
+  useEffect(() => {
+    const currentNavItem = navItems.find(item => item.href === pathname);
+    if (currentNavItem && 'badge' in currentNavItem) {
+      const category = pathname.split('/').pop() || '';
+      const currentCount = category === 'reviews' ? stats.reviews : stats.leads;
+
+      if (currentCount !== lastSeenCounts[pathname]) {
+        const updated = { ...lastSeenCounts, [pathname]: currentCount };
+        setLastSeenCounts(updated);
+        localStorage.setItem(`dashboard_seen_${id}`, JSON.stringify(updated));
+      }
+    }
+  }, [pathname, stats, id]);
 
   const navItems = [
     {
@@ -54,19 +96,18 @@ export default function DashboardLayout({
       href: `/dashboard/${id}/products`,
       label: 'Products & Services',
       icon: <Package className="w-5 h-5" />,
-      badge: 4,
     },
     {
       href: `/dashboard/${id}/reviews`,
       label: 'Reviews & Reputation',
       icon: <Star className="w-5 h-5" />,
-      badge: 5,
+      badge: Math.max(0, stats.reviews - (lastSeenCounts[`/dashboard/${id}/reviews`] || 0)),
     },
     {
       href: `/dashboard/${id}/leads`,
       label: 'Customer Actions',
       icon: <Bell className="w-5 h-5" />,
-      badge: 7,
+      badge: Math.max(0, stats.leads - (lastSeenCounts[`/dashboard/${id}/leads`] || 0)),
     },
     {
       href: `/dashboard/${id}/promotions`,
@@ -118,7 +159,7 @@ export default function DashboardLayout({
                 )}
               >
                 {item.icon}
-                {item.badge && !isActive(item.href) && (
+                {Boolean(item.badge && item.badge > 0) && !isActive(item.href) && (
                   <span className="absolute -top-1 -right-1 bg-gradient-to-r from-rose-500 to-pink-600 text-white rounded-full w-6 h-6 flex items-center justify-center text-[10px] font-black shadow-lg">
                     {item.badge}
                   </span>

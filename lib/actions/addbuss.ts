@@ -86,15 +86,17 @@ export async function addBusiness(formData: FormData) {
         logoUrl = publicUrl
     }
 
-    // 1. Ensure user exists in public.users and upgrade role to 'PRO'
+    // 1. Upgrade user role to 'PRO' in public.users
     // This MUST happen before store insertion due to foreign key constraints
     const { error: userUpdateError } = await supabase
         .from('users')
         .upsert({
             id: user.id,
+            email: user.email,
             role: 'PRO',
+            full_name: user.user_metadata?.full_name || user.email,
             updated_at: new Date().toISOString()
-        })
+        } as any)
 
     if (userUpdateError) {
         console.error('Error updating public user role:', userUpdateError)
@@ -102,7 +104,7 @@ export async function addBusiness(formData: FormData) {
     }
 
     // Insert into stores table
-    const { data: storeData, error: insertError } = await supabase
+    const { data: storeData, error: insertError } = await (supabase as any)
         .from('stores')
         .insert({
             owner_id: user.id,
@@ -125,7 +127,7 @@ export async function addBusiness(formData: FormData) {
             status: 'PENDING',
         })
         .select('id')
-        .single()
+        .single() as any
 
     if (insertError) {
         return { error: `Erreur lors de l'ajout: ${insertError.message}` }

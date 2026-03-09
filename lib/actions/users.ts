@@ -18,7 +18,7 @@ export async function updateProfile(userId:string , updates:{
     date_of_birth?:string,
     gender?:string}){
         const supabase = createClient()
-        const { data , error} = await supabase 
+        const { data , error} = await (supabase as any)
         .from('users')
         .update(updates)
         .eq('id',userId)
@@ -40,7 +40,7 @@ export async function updateAvatar(userId: string , file: File){
     const {data:{publicUrl} } = supabase.storage
     .from('avatars')
     .getPublicUrl(filename)
-    const { data , error} = await supabase
+    const { data , error} = await (supabase as any)
     .from('users')
     .update({avatar_url : publicUrl})
     .eq('id',userId)
@@ -53,7 +53,7 @@ export async function updateAvatar(userId: string , file: File){
 export async function deleteAccount(userId: string) {
     const supabase = createClient()
     // Temporarily cast the RPC name to the expected union until DB types include this function
-    const { error } = await supabase.rpc(("delete_user_account" as unknown) as any, { user_id: userId })
+    const { error } = await supabase.rpc(("delete_user_account" as unknown) as any, { user_id: userId } as any)
     if (error) {
         return { error: error.message }
     }
