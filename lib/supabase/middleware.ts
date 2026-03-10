@@ -34,7 +34,36 @@ export async function updateSession(request: NextRequest) {
     }
   )
 
-  await supabase.auth.getUser()
+  const { data: { user } } = await supabase.auth.getUser()
+  const { data: { session } } = await supabase.auth.getSession()
+
+  if (user) {
+    response.cookies.set('userId', user.id, {
+      path: '/',
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 60 * 60 * 24 * 7 // 1 week
+    })
+
+    if (session) {
+      response.cookies.set('session', session.access_token, {
+        path: '/',
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        maxAge: 60 * 60 * 24 * 7 // 1 week
+      })
+    }
+  } else {
+    // Only delete if it exists to avoid unnecessary header changes
+    if (request.cookies.has('userId')) {
+      response.cookies.delete('userId')
+    }
+    if (request.cookies.has('session')) {
+      response.cookies.delete('session')
+    }
+  }
 
   return response
 }

@@ -27,6 +27,16 @@ export async function login(formData: FormData) {
             maxAge: 60 * 60 * 24 * 7 // 1 week
         })
     }
+
+    if (authData.session) {
+        cookies().set('session', authData.session.access_token, {
+            path: '/',
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'lax',
+            maxAge: 60 * 60 * 24 * 7 // 1 week
+        })
+    }
     const role = authData.user?.user_metadata?.role || 'client'
     revalidatePath('/', 'layout')
 
@@ -119,6 +129,7 @@ export async function signout() {
     const supabase = createClient()
     await supabase.auth.signOut()
     cookies().delete('userId')
+    cookies().delete('session')
     revalidatePath('/', 'layout')
     redirect('/')
 
