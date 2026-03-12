@@ -9,7 +9,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { LogOut, User, Settings, Bell } from "lucide-react";
+import { LogOut, User, Settings, Bell, CreditCard } from "lucide-react";
 
 interface UserDropdownProps {
   user: {
@@ -62,21 +62,21 @@ export const UserDropdown = ({ user, onAction = () => {} }: UserDropdownProps) =
             onClick={() => onAction('profile')}
           >
             <User className="w-4 h-4" />
-            <span className="text-sm font-medium">Your profile</span>
+            <span className="text-sm font-medium">Profile</span>
           </DropdownMenuItem>
           <DropdownMenuItem
             className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-white/70 hover:text-white hover:bg-white/10 cursor-pointer transition"
-            onClick={() => onAction('settings')}
+            onClick={() => onAction('business-settings')}
           >
             <Settings className="w-4 h-4" />
-            <span className="text-sm font-medium">Settings</span>
+            <span className="text-sm font-medium">Business Settings</span>
           </DropdownMenuItem>
           <DropdownMenuItem
             className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-white/70 hover:text-white hover:bg-white/10 cursor-pointer transition"
-            onClick={() => onAction('notifications')}
+            onClick={() => onAction('billing')}
           >
-            <Bell className="w-4 h-4" />
-            <span className="text-sm font-medium">Notifications</span>
+            <CreditCard className="w-4 h-4" />
+            <span className="text-sm font-medium">Billing</span>
           </DropdownMenuItem>
         </DropdownMenuGroup>
 
