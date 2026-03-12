@@ -67,7 +67,7 @@ function SearchPageContent() {
   };
 
   const toggleCompare = (id: number) =>
-    setCompared(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id].slice(-3));
+    setCompared((prev: number[]) => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id].slice(-3));
 
   return (
     <div className="min-h-screen bg-white pt-24 pb-24">
@@ -138,7 +138,7 @@ function SearchPageContent() {
                         <button onClick={() => setActiveTab('boutiques')} className="text-sm font-bold text-red-600 hover:text-red-700">Voir tout</button>
                       </div>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {businesses.slice(0, 2).map(b => (
+                        {businesses.slice(0, 2).map((b: Business) => (
                           <BusinessCard key={b.id} business={b} onClick={() => handleCardClick(b.id)} />
                         ))}
                       </div>
@@ -153,7 +153,7 @@ function SearchPageContent() {
                         <button onClick={() => setActiveTab('annonces')} className="text-sm font-bold text-red-600 hover:text-red-700">Voir tout</button>
                       </div>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                        {items.slice(0, 4).map(item => (
+                        {items.slice(0, 4).map((item: SearchResultItem) => (
                           <div key={item.id}>
                             {item.item_type === 'SERVICE' ? (
                               <ServiceCard
@@ -195,7 +195,7 @@ function SearchPageContent() {
                       <h2 className="text-xl font-semibold text-stone-800">Aucune boutique trouvée</h2>
                     </div>
                   ) : (
-                    businesses.map((business) => (
+                    businesses.map((business: Business) => (
                       <div
                         key={business.id}
                         ref={(el) => { if (el) businessRefs.current.set(business.id, el); }}
@@ -223,7 +223,7 @@ function SearchPageContent() {
                     </div>
                   ) : (
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                      {items.map((item) => (
+                      {items.map((item: SearchResultItem) => (
                         <div key={item.id}>
                           {item.item_type === 'SERVICE' ? (
                             <ServiceCard

@@ -75,7 +75,7 @@ const ItemCard = ({ item }: { item: CarouselItem }) => (
 
 // Main OffersCarousel component
 export const OffersCarousel = React.forwardRef<HTMLDivElement, OffersCarouselProps>(
-  ({ offerIcon, offerTitle, offerSubtitle, ctaText, onCtaClick, items, className }, ref) => {
+  ({ offerIcon, offerTitle, offerSubtitle, ctaText, onCtaClick, items, className }: OffersCarouselProps, ref: React.ForwardedRef<HTMLDivElement>) => {
     const carouselRef = React.useRef<HTMLDivElement>(null);
     const controls = useAnimation();
     const [isAtStart, setIsAtStart] = React.useState(true);
@@ -94,41 +94,41 @@ export const OffersCarousel = React.forwardRef<HTMLDivElement, OffersCarouselPro
         carouselRef.current.scrollTo({ left: newScrollLeft, behavior: "smooth" });
       }
     };
-    
+
     // Check scroll position to enable/disable navigation buttons
     const checkScrollPosition = React.useCallback(() => {
-        if (carouselRef.current) {
-            const { scrollLeft, scrollWidth, clientWidth } = carouselRef.current;
-            setIsAtStart(scrollLeft < 10);
-            setIsAtEnd(scrollWidth - scrollLeft - clientWidth < 10);
-        }
+      if (carouselRef.current) {
+        const { scrollLeft, scrollWidth, clientWidth } = carouselRef.current;
+        setIsAtStart(scrollLeft < 10);
+        setIsAtEnd(scrollWidth - scrollLeft - clientWidth < 10);
+      }
     }, []);
 
     React.useEffect(() => {
-        const currentCarousel = carouselRef.current;
+      const currentCarousel = carouselRef.current;
+      if (currentCarousel) {
+        currentCarousel.addEventListener("scroll", checkScrollPosition);
+        checkScrollPosition(); // Initial check
+      }
+      return () => {
         if (currentCarousel) {
-            currentCarousel.addEventListener("scroll", checkScrollPosition);
-            checkScrollPosition(); // Initial check
+          currentCarousel.removeEventListener("scroll", checkScrollPosition);
         }
-        return () => {
-            if (currentCarousel) {
-                currentCarousel.removeEventListener("scroll", checkScrollPosition);
-            }
-        };
+      };
     }, [checkScrollPosition, items]);
 
     return (
       <div
-      ref={ref}
-      className={cn("w-full max-w-6xl rounded-2xl border bg-card p-4 shadow-sm md:p-6", className)}
+        ref={ref}
+        className={cn("w-full max-w-6xl rounded-2xl border bg-card p-4 shadow-sm md:p-6", className)}
       >
         <div className="grid grid-cols-1 items-center gap-6 lg:grid-cols-12">
-        
+
           {/* Left: Offer Section */}
           <div className="flex flex-col items-center text-center text-white lg:col-span-3 lg:items-start lg:text-left">
             <div className="flex items-center gap-3">
               {offerIcon || <Gift className="h-6 w-6 text-primary" />}
-               <p className="text-sm text-muted-foreground">Since you're flying with us!</p>
+              <p className="text-sm text-muted-foreground">Since you're flying with us!</p>
             </div>
             <h2 className="mt-4 text-2xl font-bold text-primary">{offerTitle}</h2>
             <p className="mt-1 text-sm text-muted-foreground">{offerSubtitle}</p>
@@ -144,7 +144,7 @@ export const OffersCarousel = React.forwardRef<HTMLDivElement, OffersCarouselPro
                 className="flex gap-4 px-1 py-2"
                 animate={controls}
               >
-                {items.map((item) => (
+                {items.map((item: CarouselItem) => (
                   <ItemCard key={item.id} item={item} />
                 ))}
               </motion.div>

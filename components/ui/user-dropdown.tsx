@@ -9,7 +9,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { LogOut, User, Settings, Bell, CreditCard } from "lucide-react";
+import { LogOut, User, Settings, Bell, CreditCard, ShoppingCart } from "lucide-react";
 
 interface UserDropdownProps {
   user: {
@@ -18,11 +18,14 @@ interface UserDropdownProps {
     avatar?: string;
     initials: string;
     status?: string;
+    role?: string;
   };
   onAction?: (action: string) => void;
 }
 
 export const UserDropdown = ({ user, onAction = () => {} }: UserDropdownProps) => {
+  const isClient = user.role === 'client';
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -66,17 +69,17 @@ export const UserDropdown = ({ user, onAction = () => {} }: UserDropdownProps) =
           </DropdownMenuItem>
           <DropdownMenuItem
             className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-white/70 hover:text-white hover:bg-white/10 cursor-pointer transition"
-            onClick={() => onAction('business-settings')}
+            onClick={() => onAction(isClient ? 'notifications' : 'business-settings')}
           >
-            <Settings className="w-4 h-4" />
-            <span className="text-sm font-medium">Business Settings</span>
+            {isClient ? <Bell className="w-4 h-4" /> : <Settings className="w-4 h-4" />}
+            <span className="text-sm font-medium">{isClient ? 'Notifications' : 'Business Settings'}</span>
           </DropdownMenuItem>
           <DropdownMenuItem
             className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-white/70 hover:text-white hover:bg-white/10 cursor-pointer transition"
-            onClick={() => onAction('billing')}
+            onClick={() => onAction(isClient ? 'cart' : 'billing')}
           >
-            <CreditCard className="w-4 h-4" />
-            <span className="text-sm font-medium">Billing</span>
+            {isClient ? <ShoppingCart className="w-4 h-4" /> : <CreditCard className="w-4 h-4" />}
+            <span className="text-sm font-medium">{isClient ? 'Panier' : 'Billing'}</span>
           </DropdownMenuItem>
         </DropdownMenuGroup>
 

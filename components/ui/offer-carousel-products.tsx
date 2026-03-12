@@ -23,7 +23,7 @@ interface OfferCardProps {
 }
 
 // The individual card component with hover animation
-const OfferCard = React.forwardRef<HTMLAnchorElement, OfferCardProps>(({ offer }, ref) => (
+const OfferCard = React.forwardRef<HTMLAnchorElement, OfferCardProps>(({ offer }: OfferCardProps, ref: React.ForwardedRef<HTMLAnchorElement>) => (
   <motion.a
     ref={ref}
     href={offer.href}
@@ -50,7 +50,7 @@ const OfferCard = React.forwardRef<HTMLAnchorElement, OfferCardProps>(({ offer }
         <h3 className="text-xl font-bold text-card-foreground leading-tight">{offer.title}</h3>
         <p className="text-sm text-muted-foreground">{offer.description}</p>
       </div>
-      
+
       {/* Footer */}
       <div className="flex items-center justify-between pt-4 border-t border-border">
         <div className="flex items-center gap-3">
@@ -78,7 +78,7 @@ export interface OfferCarouselProps extends React.HTMLAttributes<HTMLDivElement>
 
 // The main carousel component with scroll functionality
 const OfferCarousel = React.forwardRef<HTMLDivElement, OfferCarouselProps>(
-  ({ offers, className, ...props }, ref) => {
+  ({ offers, className, ...props }: OfferCarouselProps, ref: React.ForwardedRef<HTMLDivElement>) => {
     const scrollContainerRef = React.useRef<HTMLDivElement>(null);
 
     const scroll = (direction: "left" | "right") => {
@@ -102,17 +102,17 @@ const OfferCarousel = React.forwardRef<HTMLDivElement, OfferCarouselProps>(
         >
           <ChevronLeft className="w-6 h-6" />
         </button>
-        
+
         {/* Scrollable Container */}
         <div
           ref={scrollContainerRef}
           className="flex space-x-6 overflow-x-auto pb-4 scrollbar-hide snap-x snap-mandatory"
         >
-          {offers.map((offer) => (
+          {offers.map((offer: Offer) => (
             <OfferCard key={offer.id} offer={offer} />
           ))}
         </div>
-        
+
         {/* Right Scroll Button */}
         <button
           onClick={() => scroll("right")}
