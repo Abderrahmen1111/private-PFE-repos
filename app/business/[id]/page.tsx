@@ -3,7 +3,7 @@ import { getReviewsByStoreId } from '@/lib/actions/reviews';
 import { getPublicItemsByStoreId } from '@/lib/actions/items';
 import { getBusinessStories } from '@/lib/actions/stories';
 import { getPromotions } from '@/lib/actions/promotions';
-import { Star, MapPin, Phone, Globe, Clock, Share2, Bookmark, Camera, ExternalLink, Package, AlertCircle } from 'lucide-react';
+import { Star, MapPin, Phone, Globe, Clock, Bookmark, Camera, ExternalLink, Package, AlertCircle } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import BusinessImageGallery from '@/components/BusinessImageGallery';
@@ -13,6 +13,7 @@ import { ServiceCard } from '@/components/ServiceCard';
 import PromotionBanner from '@/components/PromotionBanner';
 import { notFound } from 'next/navigation';
 import { WriteReviewButton } from '@/components/WriteReviewButton';
+import { ShareBusinessButton } from '@/components/ShareBusinessButton';
 import { toast } from 'sonner';
 import { Item } from '@/lib/actions/items';
 
@@ -171,10 +172,10 @@ export default async function BusinessDetailPage({ params }: { params: { id: str
               Ajouter une photo
             </button>
 
-            <button className="bg-white border-2 px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-gray-50 font-semibold transition-all active:scale-95">
-              <Share2 className="w-4 h-4" />
-              Partager
-            </button>
+            <ShareBusinessButton
+                businessName={business.name}
+                businessUrl={`${process.env.NEXT_PUBLIC_SITE_URL}/business/${businessId}`}
+              />
 
             <button className="bg-white border-2 px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-gray-50 font-semibold transition-all active:scale-95">
               <Bookmark className="w-4 h-4" />
