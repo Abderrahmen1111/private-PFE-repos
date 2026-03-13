@@ -573,7 +573,7 @@ export default function Navbar() {
           setDisplayText(displayText.slice(0, -1));
         }, typingSpeed / 2);
       } else {
-        setPlaceholderIndex((prev) => (prev + 1) % searchSuggestions.length);
+        setPlaceholderIndex((prev: number) => (prev + 1) % searchSuggestions.length);
         setIsTyping(true);
       }
     }
@@ -828,9 +828,26 @@ export default function Navbar() {
                       initials: (user.user_metadata?.full_name || user.email || 'U')
                         .split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2),
                       status: 'online',
+                      role: user.user_metadata?.role
                     }}
                     onAction={(action: string) => {
                       if (action === 'logout') handleSignOut();
+                      const role = user.user_metadata?.role;
+                      
+                      if (action === 'profile') {
+                        if (role === 'client') {
+                          router.push('/profile/user');
+                        } else if (role === 'business_owner' || role === 'PRO') {
+                          router.push('/profile/businessOwner');
+                        } else {
+                          router.push('/profile'); 
+                        }
+                      }
+                      
+                      if ((action === 'business-settings' || action === 'billing') && 
+                          (role === 'business_owner' || role === 'PRO')) {
+                        router.push('/dashboard/account');
+                      }
                     }}
                   />
                 </>
