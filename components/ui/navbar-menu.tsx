@@ -4,7 +4,7 @@ import { motion } from "framer-motion";
 import Link from "next/link";
 
 const transition = {
-  type: "spring",
+  type: "spring" as const,
   mass: 0.5,
   damping: 11.5,
   stiffness: 100,
@@ -80,6 +80,38 @@ export const HoveredLink = ({ children, ...rest }: any) => {
       className="flex items-center gap-2 text-neutral-700 dark:text-neutral-200 hover:text-black text-sm py-1 transition-colors"
     >
       {children}
+    </Link>
+  );
+};
+
+export const ProductItem = ({
+  title,
+  description,
+  href,
+  src,
+}: {
+  title: string;
+  description: string;
+  href: string;
+  src: string;
+}) => {
+  return (
+    <Link href={href} className="flex space-x-3 group">
+      <img
+        src={src}
+        width={140}
+        height={70}
+        alt={title}
+        className="flex-shrink-0 rounded-xl shadow-md w-[120px] h-[70px] object-cover group-hover:shadow-lg transition-shadow"
+      />
+      <div>
+        <h4 className="text-sm font-bold mb-1 text-black dark:text-white group-hover:text-neutral-700 dark:group-hover:text-neutral-200 transition-colors">
+          {title}
+        </h4>
+        <p className="text-neutral-600 text-xs max-w-[10rem] dark:text-neutral-400 leading-relaxed">
+          {description}
+        </p>
+      </div>
     </Link>
   );
 };

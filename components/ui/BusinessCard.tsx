@@ -15,7 +15,7 @@ export default function BusinessCard({ business, isHighlighted, onClick }: Busin
 
   const handleClick = () => {
     onClick?.();
-    router.push(`/business/${business.id}`);
+    router.push(`/merchants/business/${business.id}`);
   };
 
   const renderStars = (rating: number) => {

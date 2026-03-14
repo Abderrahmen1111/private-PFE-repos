@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import {
   FolderKanban, Search, MapPin, Plus, Camera, X, Upload, Loader2, Mic, MicOff, Navigation,
   Utensils, Wrench, ShoppingBag, Stethoscope, GraduationCap, Car, Home, Scissors,
@@ -12,7 +12,7 @@ import { signOut } from '@/lib/supabase/auth';
 import Link from 'next/link';
 import { UserDropdown } from '@/components/ui/user-dropdown';
 import { useState as useMotionState } from 'react';
-import { Menu, MenuItem, HoveredLink } from '@/components/ui/navbar-menu';
+import { Menu, MenuItem, HoveredLink, ProductItem } from '@/components/ui/navbar-menu';
 
 // ─── Category menu data ───────────────────────────────────────────────────────
 const categoryMenuItems = [
@@ -331,23 +331,38 @@ function CategoryFloatingMenu() {
   const [active, setActive] = useMotionState<string | null>(null);
   return (
     <Menu setActive={setActive}>
+
+      {/* ── Restaurants — ProductItem grid (image cards) ── */}
       <MenuItem setActive={setActive} active={active} item="Restaurants">
-        <div className="flex flex-col space-y-1 text-sm">
-          <HoveredLink href="/search?category=restaurants&sub=tunisien">
-            <Utensils className="w-3.5 h-3.5" /> Restaurants tunisiens
-          </HoveredLink>
-          <HoveredLink href="/search?category=restaurants&sub=fastfood">
-            <Utensils className="w-3.5 h-3.5" /> Fast Food
-          </HoveredLink>
-          <HoveredLink href="/search?category=restaurants&sub=pizza">
-            <Utensils className="w-3.5 h-3.5" /> Pizzerias
-          </HoveredLink>
-          <HoveredLink href="/search?category=cafes">
-            <Utensils className="w-3.5 h-3.5" /> Cafés & Salons de thé
-          </HoveredLink>
+        <div className="grid grid-cols-2 gap-6 p-2 text-sm">
+          <ProductItem
+            title="Restaurants tunisiens"
+            href="/search?category=restaurants&sub=tunisien"
+            src="https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=300&h=150&fit=crop"
+            description="Saveurs authentiques et cuisine traditionnelle"
+          />
+          <ProductItem
+            title="Fast Food"
+            href="/search?category=restaurants&sub=fastfood"
+            src="https://images.unsplash.com/photo-1561758033-d89a9ad46330?w=300&h=150&fit=crop"
+            description="Burgers, sandwichs et repas rapides"
+          />
+          <ProductItem
+            title="Pizzerias"
+            href="/search?category=restaurants&sub=pizza"
+            src="https://images.unsplash.com/photo-1513104890138-7c749659a591?w=300&h=150&fit=crop"
+            description="Pizzas artisanales cuites au feu de bois"
+          />
+          <ProductItem
+            title="Cafés & Salons de thé"
+            href="/search?category=cafes"
+            src="https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?w=300&h=150&fit=crop"
+            description="Pause café, thé et pâtisseries"
+          />
         </div>
       </MenuItem>
 
+      {/* ── Services — simple HoveredLink list ── */}
       <MenuItem setActive={setActive} active={active} item="Services">
         <div className="flex flex-col space-y-1 text-sm">
           <HoveredLink href="/search?category=services&sub=plomberie">
@@ -365,23 +380,37 @@ function CategoryFloatingMenu() {
         </div>
       </MenuItem>
 
+      {/* ── Shopping — ProductItem grid ── */}
       <MenuItem setActive={setActive} active={active} item="Shopping">
-        <div className="flex flex-col space-y-1 text-sm">
-          <HoveredLink href="/search?category=shopping&sub=vetements">
-            <ShoppingBag className="w-3.5 h-3.5" /> Vêtements
-          </HoveredLink>
-          <HoveredLink href="/search?category=shopping&sub=electronique">
-            <ShoppingBag className="w-3.5 h-3.5" /> Électronique
-          </HoveredLink>
-          <HoveredLink href="/search?category=shopping&sub=maison">
-            <ShoppingBag className="w-3.5 h-3.5" /> Maison
-          </HoveredLink>
-          <HoveredLink href="/search?category=shopping&sub=sport">
-            <ShoppingBag className="w-3.5 h-3.5" /> Sport
-          </HoveredLink>
+        <div className="grid grid-cols-2 gap-6 p-2 text-sm">
+          <ProductItem
+            title="Vêtements"
+            href="/search?category=shopping&sub=vetements"
+            src="https://images.unsplash.com/photo-1558769132-cb1aea458c5e?w=300&h=150&fit=crop"
+            description="Mode homme, femme et enfant"
+          />
+          <ProductItem
+            title="Électronique"
+            href="/search?category=shopping&sub=electronique"
+            src="https://images.unsplash.com/photo-1468495244123-6c6c332eeece?w=300&h=150&fit=crop"
+            description="Smartphones, PC, TV et accessoires"
+          />
+          <ProductItem
+            title="Maison & Déco"
+            href="/search?category=shopping&sub=maison"
+            src="https://images.unsplash.com/photo-1555041469-a586c61ea9bc?w=300&h=150&fit=crop"
+            description="Meubles, décoration et art de vivre"
+          />
+          <ProductItem
+            title="Sport & Loisirs"
+            href="/search?category=shopping&sub=sport"
+            src="https://images.unsplash.com/photo-1517649763962-0c623066013b?w=300&h=150&fit=crop"
+            description="Équipements sportifs et loisirs"
+          />
         </div>
       </MenuItem>
 
+      {/* ── Santé — simple list ── */}
       <MenuItem setActive={setActive} active={active} item="Santé">
         <div className="flex flex-col space-y-1 text-sm">
           <HoveredLink href="/search?category=sante&sub=medecins">
@@ -399,6 +428,7 @@ function CategoryFloatingMenu() {
         </div>
       </MenuItem>
 
+      {/* ── Éducation — simple list ── */}
       <MenuItem setActive={setActive} active={active} item="Éducation">
         <div className="flex flex-col space-y-1 text-sm">
           <HoveredLink href="/search?category=education&sub=cours">
@@ -416,40 +446,67 @@ function CategoryFloatingMenu() {
         </div>
       </MenuItem>
 
+      {/* ── Auto — ProductItem grid ── */}
       <MenuItem setActive={setActive} active={active} item="Auto">
-        <div className="flex flex-col space-y-1 text-sm">
-          <HoveredLink href="/search?category=auto&sub=garages">
-            <Car className="w-3.5 h-3.5" /> Garages
-          </HoveredLink>
-          <HoveredLink href="/search?category=auto&sub=concessionnaires">
-            <Car className="w-3.5 h-3.5" /> Concessionnaires
-          </HoveredLink>
-          <HoveredLink href="/search?category=auto&sub=location">
-            <Car className="w-3.5 h-3.5" /> Location de voitures
-          </HoveredLink>
-          <HoveredLink href="/search?category=auto&sub=autoecole">
-            <Car className="w-3.5 h-3.5" /> Auto-école
-          </HoveredLink>
+        <div className="grid grid-cols-2 gap-6 p-2 text-sm">
+          <ProductItem
+            title="Garages & Réparation"
+            href="/search?category=auto&sub=garages"
+            src="https://images.unsplash.com/photo-1625047509168-a7026f36de04?w=300&h=150&fit=crop"
+            description="Mécaniciens et centres auto agréés"
+          />
+          <ProductItem
+            title="Concessionnaires"
+            href="/search?category=auto&sub=concessionnaires"
+            src="https://images.unsplash.com/photo-1552519507-da3b142c6e3d?w=300&h=150&fit=crop"
+            description="Vente de véhicules neufs et d'occasion"
+          />
+          <ProductItem
+            title="Location de voitures"
+            href="/search?category=auto&sub=location"
+            src="https://images.unsplash.com/photo-1541899481282-d53bffe3c35d?w=300&h=150&fit=crop"
+            description="Louez une voiture au meilleur prix"
+          />
+          <ProductItem
+            title="Auto-école"
+            href="/search?category=auto&sub=autoecole"
+            src="https://images.unsplash.com/photo-1449965408869-eaa3f722e40d?w=300&h=150&fit=crop"
+            description="Permis de conduire et formation"
+          />
         </div>
       </MenuItem>
 
+      {/* ── Immobilier — ProductItem grid ── */}
       <MenuItem setActive={setActive} active={active} item="Immobilier">
-        <div className="flex flex-col space-y-1 text-sm">
-          <HoveredLink href="/search?category=immobilier&sub=agences">
-            <Home className="w-3.5 h-3.5" /> Agences
-          </HoveredLink>
-          <HoveredLink href="/search?category=immobilier&sub=location">
-            <Home className="w-3.5 h-3.5" /> Location
-          </HoveredLink>
-          <HoveredLink href="/search?category=immobilier&sub=vente">
-            <Home className="w-3.5 h-3.5" /> Vente
-          </HoveredLink>
-          <HoveredLink href="/search?category=immobilier&sub=architectes">
-            <Home className="w-3.5 h-3.5" /> Architectes
-          </HoveredLink>
+        <div className="grid grid-cols-2 gap-6 p-2 text-sm">
+          <ProductItem
+            title="Agences immobilières"
+            href="/search?category=immobilier&sub=agences"
+            src="https://images.unsplash.com/photo-1560518883-ce09059eeffa?w=300&h=150&fit=crop"
+            description="Trouvez l'agence idéale près de chez vous"
+          />
+          <ProductItem
+            title="Location"
+            href="/search?category=immobilier&sub=location"
+            src="https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=300&h=150&fit=crop"
+            description="Appartements et maisons à louer"
+          />
+          <ProductItem
+            title="Vente"
+            href="/search?category=immobilier&sub=vente"
+            src="https://images.unsplash.com/photo-1570129477492-45c003edd2be?w=300&h=150&fit=crop"
+            description="Achat de biens neufs et anciens"
+          />
+          <ProductItem
+            title="Architectes"
+            href="/search?category=immobilier&sub=architectes"
+            src="https://images.unsplash.com/photo-1503387762-592deb58ef4e?w=300&h=150&fit=crop"
+            description="Conception et rénovation de projets"
+          />
         </div>
       </MenuItem>
 
+      {/* ── Beauté — simple list ── */}
       <MenuItem setActive={setActive} active={active} item="Beauté">
         <div className="flex flex-col space-y-1 text-sm">
           <HoveredLink href="/search?category=beaute&sub=coiffeurs">
@@ -467,6 +524,7 @@ function CategoryFloatingMenu() {
         </div>
       </MenuItem>
 
+      {/* ── Sport — simple list ── */}
       <MenuItem setActive={setActive} active={active} item="Sport">
         <div className="flex flex-col space-y-1 text-sm">
           <HoveredLink href="/search?category=sport&sub=salles">
@@ -484,6 +542,7 @@ function CategoryFloatingMenu() {
         </div>
       </MenuItem>
 
+      {/* ── Informatique — simple list ── */}
       <MenuItem setActive={setActive} active={active} item="Informatique">
         <div className="flex flex-col space-y-1 text-sm">
           <HoveredLink href="/search?category=informatique&sub=reparation">
@@ -500,6 +559,7 @@ function CategoryFloatingMenu() {
           </HoveredLink>
         </div>
       </MenuItem>
+
     </Menu>
   );
 }
@@ -507,6 +567,8 @@ function CategoryFloatingMenu() {
 // ─── Navbar ───────────────────────────────────────────────────────────────────
 export default function Navbar() {
   const router = useRouter();
+  const pathname = usePathname();
+  const isHome = pathname === '/';
   const [searchQuery, setSearchQuery] = useState('');
   const [locationQuery, setLocationQuery] = useState('');
   const [user, setUser] = useState<any>(null);
@@ -519,20 +581,38 @@ export default function Navbar() {
   const [isLocating, setIsLocating] = useState(false);
   const [hidden, setHidden] = useState(false);
   const lastScrollY = useRef(0);
+  const hideTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     const handleScroll = () => {
       const currentY = window.scrollY;
-      // Hide when scrolling DOWN (currentY > lastScrollY), show when scrolling UP or at top
+
+      // Clear any existing hide timeout
+      if (hideTimeoutRef.current) {
+        clearTimeout(hideTimeoutRef.current);
+      }
+
+      // Hide when scrolling DOWN, show when scrolling UP or at top
       if (currentY > lastScrollY.current && currentY > 80) {
         setHidden(true);
       } else {
         setHidden(false);
+        // Set a new timeout to hide after 2 seconds of no scrolling
+        hideTimeoutRef.current = setTimeout(() => {
+          setHidden(true);
+        }, 2000);
       }
+
       lastScrollY.current = currentY;
     };
+
     window.addEventListener('scroll', handleScroll, { passive: true });
-    return () => window.removeEventListener('scroll', handleScroll);
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+      if (hideTimeoutRef.current) {
+        clearTimeout(hideTimeoutRef.current);
+      }
+    };
   }, []);
 
   // Dynamic placeholder state
@@ -690,7 +770,7 @@ export default function Navbar() {
     const params = new URLSearchParams();
     if (searchQuery) params.set('query', searchQuery);
     if (locationQuery) params.set('location', locationQuery);
-    router.push(`/search?${params.toString()}`);
+  router.push(`/search/searchBusiness?${params.toString()}`);
   };
 
   // Called by the modal after AI analysis or direct submit
@@ -698,7 +778,7 @@ export default function Navbar() {
     const params = new URLSearchParams();
     params.set('query', query);
     if (imageUrl) params.set('imageSearch', '1');
-    router.push(`/search?${params.toString()}`);
+  router.push(`/search/searchBusiness?${params.toString()}`);
   };
 
   const handleSignOut = async () => {
@@ -872,12 +952,15 @@ export default function Navbar() {
 
         {/* ── Floating Category Menu — exactly as per prompt ─────────── */}
         {/* Desktop only: floating pill below navbar */}
-        <div className="hidden md:flex justify-center w-full mt-3 px-4">
-          <CategoryFloatingMenu />
-        </div>
+        {isHome && (
+          <div className="hidden md:flex justify-center w-full mt-3 px-4">
+            <CategoryFloatingMenu />
+          </div>
+        )}
 
         {/* Mobile: horizontal scroll chips */}
-        <div className="md:hidden border-t border-white/10 bg-black/50 backdrop-blur-md px-4 py-2">
+        {isHome && (
+          <div className="md:hidden border-t border-white/10 bg-black/50 backdrop-blur-md px-4 py-2">
           <div className="flex items-center gap-2 overflow-x-auto scrollbar-none">
             {categoryMenuItems.map((cat) => {
               const Icon = cat.icon;
@@ -900,6 +983,7 @@ export default function Navbar() {
             </Link>
           </div>
         </div>
+        )}
 
       </header>
     </>
