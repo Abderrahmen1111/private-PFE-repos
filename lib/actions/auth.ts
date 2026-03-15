@@ -237,3 +237,16 @@ export async function signout(): Promise<void> {
   revalidatePath('/', 'layout')
   redirect('/')
 }
+export async function sendPasswordResetEmail(email: string) {
+    const supabase = createClient()
+    
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/auth/update-password`,
+    });
+
+    if (error) {
+        return { error: error.message }
+    }
+
+    return { success: true }
+}

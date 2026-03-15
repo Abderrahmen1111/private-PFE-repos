@@ -20,7 +20,7 @@ export async function getBusinessById(id: string): Promise<Business | null> {
     // Try to find a store linked to this directory item
     const { data: storeData } = await supabase
         .from('stores')
-        .select('id, opening_hours, status, gallery')
+        .select('id, opening_hours, status, gallery, logo_url')
         .eq('id_business', id)
         .maybeSingle();
 
@@ -29,7 +29,7 @@ export async function getBusinessById(id: string): Promise<Business | null> {
     if (!finalStore) {
         const { data: directStore } = await supabase
             .from('stores')
-            .select('id, opening_hours, status, gallery')
+            .select('id, opening_hours, status, gallery, logo_url')
             .eq('id', id)
             .maybeSingle();
         finalStore = directStore;
@@ -37,6 +37,7 @@ export async function getBusinessById(id: string): Promise<Business | null> {
 
     const item = data as any
     const workingHours = (finalStore as any)?.opening_hours;
+    const logoUrl = (finalStore as any)?.logo_url;
 
     return {
         id: item.id.toString(),
@@ -44,7 +45,7 @@ export async function getBusinessById(id: string): Promise<Business | null> {
         id_business: item.id,
         status: (finalStore as any)?.status,
         name: item.title || '',
-        image: (item.photos && item.photos.length > 0) ? item.photos[0] : undefined,
+        image: logoUrl || ((item.photos && item.photos.length > 0) ? item.photos[0] : undefined),
         rating: Number(item.totalScore) || 0,
         reviewCount: item.reviewsCount || 0,
         category: item.vitrine_category || item.categoryName || 'Other',

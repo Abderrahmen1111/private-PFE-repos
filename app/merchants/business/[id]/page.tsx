@@ -81,8 +81,12 @@ export default async function BusinessDetailPage({ params }: { params: { id: str
               <div className="p-6 text-white w-full">
                 <div className="flex items-center gap-4">
                   {/* Logo */}
-                  <div className="w-20 h-20 rounded-full bg-white text-black flex items-center justify-center font-bold text-lg shadow-lg flex-shrink-0">
-                    {business.name.substring(0, 2).toUpperCase()}
+                  <div className="w-20 h-20 rounded-full bg-white text-black flex items-center justify-center font-bold text-lg shadow-lg flex-shrink-0 overflow-hidden border-2 border-white/20">
+                    {business.image ? (
+                      <img src={business.image} alt={business.name} className="w-full h-full object-cover" />
+                    ) : (
+                      business.name.substring(0, 2).toUpperCase()
+                    )}
                   </div>
 
                   <div>
