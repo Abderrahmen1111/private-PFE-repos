@@ -63,7 +63,7 @@ function SearchPageContent() {
   };
 
   const handleItemClick = (storeId: number) => {
-    router.push(`/business/${storeId}`);
+    router.push(`/merchants/business/${storeId}`);
   };
 
   const toggleCompare = (id: number) =>
@@ -159,7 +159,7 @@ function SearchPageContent() {
                               <ServiceCard
                                 item={item}
                                 businessName={item.stores?.name}
-                                onViewDetails={() => handleItemClick(item.stores?.id || item.store_id)}
+                                onViewDetails={() => handleItemClick(item.store_id)}
                               />
                             ) : (
                               <ProductCard
@@ -167,7 +167,7 @@ function SearchPageContent() {
                                 businessName={item.stores?.name}
                                 compared={compared.includes(item.id)}
                                 onCompare={() => toggleCompare(item.id)}
-                                onViewDetails={() => handleItemClick(item.stores?.id || item.store_id)}
+                                onViewDetails={() => handleItemClick(item.store_id)}
                               />
                             )}
                           </div>
@@ -229,7 +229,7 @@ function SearchPageContent() {
                             <ServiceCard
                               item={item}
                               businessName={item.stores?.name}
-                              onViewDetails={() => handleItemClick(item.stores?.id || item.store_id)}
+                              onViewDetails={() => handleItemClick(item.store_id)}
                             />
                           ) : (
                             <ProductCard
@@ -237,7 +237,7 @@ function SearchPageContent() {
                               businessName={item.stores?.name}
                               compared={compared.includes(item.id)}
                               onCompare={() => toggleCompare(item.id)}
-                              onViewDetails={() => handleItemClick(item.stores?.id || item.store_id)}
+                              onViewDetails={() => handleItemClick(item.store_id)}
                             />
                           )}
                         </div>

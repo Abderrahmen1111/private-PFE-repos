@@ -90,7 +90,7 @@ function StarRow({ rating }: { rating: number }) {
   return (
     <div className="flex gap-0.5">
       {[1,2,3,4,5].map(i => (
-        <Star key={i} className={`w-3.5 h-3.5 ${i <= rating ? 'fill-amber-400 text-amber-400' : 'text-muted-foreground/30'}`} />
+        <Star key={i} className={`w-3.5 h-3.5 ${i <= rating ? 'fill-amber-500 text-amber-600' : 'text-muted-foreground/30'}`} />
       ))}
     </div>
   );
@@ -115,7 +115,28 @@ export default function BusinessOwnerProfile() {
   const [editingHours, setEditingHours] = useState(false);
 
   return (
-    <div className="space-y-6 max-w-6xl mx-auto">
+    <div className="space-y-6 max-w-6xl mx-auto bg-gray-100 min-h-screen p-6" style={{
+      colorScheme: 'light',
+      ['--background' as string]: '0 0% 100%',
+      ['--foreground' as string]: '222 47% 11%',
+      ['--card' as string]: '0 0% 100%',
+      ['--card-foreground' as string]: '222 47% 11%',
+      ['--popover' as string]: '0 0% 100%',
+      ['--popover-foreground' as string]: '222 47% 11%',
+      ['--primary' as string]: '221 83% 53%',
+      ['--primary-foreground' as string]: '0 0% 100%',
+      ['--secondary' as string]: '210 40% 96%',
+      ['--secondary-foreground' as string]: '222 47% 11%',
+      ['--muted' as string]: '210 40% 94%',
+      ['--muted-foreground' as string]: '215 16% 47%',
+      ['--accent' as string]: '210 40% 94%',
+      ['--accent-foreground' as string]: '222 47% 11%',
+      ['--destructive' as string]: '0 84% 60%',
+      ['--destructive-foreground' as string]: '0 0% 100%',
+      ['--border' as string]: '214 32% 88%',
+      ['--input' as string]: '214 32% 88%',
+      ['--ring' as string]: '221 83% 53%',
+    }}>
 
       {/* ═══════════════════════════════════════════════════════════════
           1. PROFILE HEADER
@@ -145,7 +166,7 @@ export default function BusinessOwnerProfile() {
                 <div className="flex items-center gap-2 flex-wrap">
                   <h1 className="text-xl font-bold text-foreground">{owner.name}</h1>
                   {owner.verified && (
-                    <span className="inline-flex items-center gap-1 text-xs font-bold px-2 py-0.5 rounded-full bg-indigo-500/15 text-indigo-400 border border-indigo-500/25">
+                    <span className="inline-flex items-center gap-1 text-xs font-bold px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-600 border border-indigo-300">
                       <Shield className="w-3 h-3" /> Verified
                     </span>
                   )}
@@ -175,11 +196,11 @@ export default function BusinessOwnerProfile() {
 
           {/* Security status */}
           <div className="flex gap-3 flex-wrap">
-            <span className={`inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full border ${owner.twoFactor ? 'bg-green-500/10 text-green-400 border-green-500/20' : 'bg-orange-500/10 text-orange-400 border-orange-500/20'}`}>
+            <span className={`inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full border ${owner.twoFactor ? 'bg-green-100 text-green-600 border-green-300' : 'bg-orange-500/10 text-orange-400 border-orange-500/20'}`}>
               {owner.twoFactor ? <CheckCircle className="w-3 h-3" /> : <AlertTriangle className="w-3 h-3" />}
               2FA {owner.twoFactor ? 'Enabled' : 'Disabled'}
             </span>
-            <span className="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full bg-blue-500/10 text-blue-400 border border-blue-500/20">
+            <span className="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full bg-blue-100 text-blue-600 border border-blue-300">
               <Wifi className="w-3 h-3" /> Last login: 2 hours ago
             </span>
             <span className="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full bg-muted text-muted-foreground border border-border">
@@ -196,7 +217,7 @@ export default function BusinessOwnerProfile() {
         <div className="flex flex-col sm:flex-row gap-5">
           {/* Logo + info */}
           <div className="flex gap-4 flex-1">
-            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500/20 to-cyan-500/20 border border-blue-500/25 flex items-center justify-center text-3xl flex-shrink-0">
+            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500/20 to-cyan-500/20 border border-blue-300 flex items-center justify-center text-3xl flex-shrink-0">
               {business.logo}
             </div>
             <div className="flex-1 min-w-0">
@@ -212,7 +233,7 @@ export default function BusinessOwnerProfile() {
                     </span>
                   </div>
                 </div>
-                <span className="inline-flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-full bg-green-500/10 text-green-400 border border-green-500/20">
+                <span className="inline-flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-full bg-green-100 text-green-600 border border-green-300">
                   <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
                   Active
                 </span>
@@ -279,8 +300,8 @@ export default function BusinessOwnerProfile() {
                   </div>
                   <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
                     trend === 'up'
-                      ? 'bg-green-500/10 text-green-400'
-                      : 'bg-red-500/10 text-red-400'
+                      ? 'bg-green-100 text-green-600'
+                      : 'bg-red-100 text-red-600'
                   }`}>{change}</span>
                 </div>
                 <p className="text-2xl font-black text-foreground">{value}</p>
@@ -294,13 +315,13 @@ export default function BusinessOwnerProfile() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             <Card className="p-5">
               <h3 className="text-sm font-bold text-foreground mb-4 flex items-center gap-2">
-                <Star className="w-4 h-4 text-amber-400" /> Latest Reviews
+                <Star className="w-4 h-4 text-amber-600" /> Latest Reviews
               </h3>
               <div className="space-y-3">
                 {reviews.slice(0, 2).map(r => (
                   <div key={r.id} className="flex gap-3">
-                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500/20 to-blue-500/20 border border-indigo-500/20 flex items-center justify-center flex-shrink-0">
-                      <span className="text-[10px] font-bold text-indigo-400">{r.avatar}</span>
+                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500/20 to-blue-500/20 border border-indigo-300 flex items-center justify-center flex-shrink-0">
+                      <span className="text-[10px] font-bold text-indigo-600">{r.avatar}</span>
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between gap-2">
@@ -323,7 +344,7 @@ export default function BusinessOwnerProfile() {
 
             <Card className="p-5">
               <h3 className="text-sm font-bold text-foreground mb-4 flex items-center gap-2">
-                <Building2 className="w-4 h-4 text-blue-400" /> Business at a Glance
+                <Building2 className="w-4 h-4 text-blue-600" /> Business at a Glance
               </h3>
               <div className="space-y-2.5">
                 {[
@@ -372,7 +393,7 @@ export default function BusinessOwnerProfile() {
                   return (
                     <div key={i} className="flex-1 flex flex-col items-center gap-1">
                       <div
-                        className="w-full rounded-sm bg-indigo-500/70 hover:bg-indigo-400 transition-colors cursor-pointer"
+                        className="w-full rounded-sm bg-indigo-400 hover:bg-indigo-500 transition-colors cursor-pointer"
                         style={{ height: `${pct}%` }}
                         title={`${months[i]}: ${v}`}
                       />
@@ -399,7 +420,7 @@ export default function BusinessOwnerProfile() {
                   return (
                     <div key={i} className="flex-1 flex flex-col items-center gap-1">
                       <div
-                        className="w-full rounded-sm bg-emerald-500/70 hover:bg-emerald-400 transition-colors cursor-pointer"
+                        className="w-full rounded-sm bg-emerald-400 hover:bg-emerald-500 transition-colors cursor-pointer"
                         style={{ height: `${pct}%` }}
                         title={`${months[i]}: ${v}`}
                       />
@@ -418,12 +439,12 @@ export default function BusinessOwnerProfile() {
             </h3>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
               {[
-                { label: 'Click-through Rate', value: '12.4%', sub: 'from search results',  color: 'text-indigo-400', bg: 'bg-indigo-500/10' },
-                { label: 'Avg. Session Time',  value: '3m 42s', sub: 'on your profile',      color: 'text-blue-400',   bg: 'bg-blue-500/10' },
-                { label: 'Return Visitors',    value: '68%',   sub: 'visited more than once', color: 'text-emerald-400', bg: 'bg-emerald-500/10' },
-                { label: 'Photo Views',        value: '4,120', sub: 'total photo impressions', color: 'text-amber-400',  bg: 'bg-amber-500/10' },
+                { label: 'Click-through Rate', value: '12.4%', sub: 'from search results',  color: 'text-indigo-600', bg: 'bg-indigo-100' },
+                { label: 'Avg. Session Time',  value: '3m 42s', sub: 'on your profile',      color: 'text-blue-600',   bg: 'bg-blue-100' },
+                { label: 'Return Visitors',    value: '68%',   sub: 'visited more than once', color: 'text-emerald-600', bg: 'bg-emerald-100' },
+                { label: 'Photo Views',        value: '4,120', sub: 'total photo impressions', color: 'text-amber-600',  bg: 'bg-amber-100' },
               ].map(({ label, value, sub, color, bg }) => (
-                <div key={label} className={`${bg} rounded-xl p-4 border border-white/5`}>
+                <div key={label} className={`${bg} rounded-xl p-4 border border-border`}>
                   <p className={`text-2xl font-black ${color}`}>{value}</p>
                   <p className="text-xs font-semibold text-foreground mt-1">{label}</p>
                   <p className="text-[10px] text-muted-foreground">{sub}</p>
@@ -477,15 +498,15 @@ export default function BusinessOwnerProfile() {
               {reviews.map(r => (
                 <Card key={r.id} className="p-4">
                   <div className="flex gap-3">
-                    <div className="w-9 h-9 rounded-full bg-gradient-to-br from-indigo-500/20 to-blue-500/20 border border-indigo-500/20 flex items-center justify-center flex-shrink-0">
-                      <span className="text-[11px] font-bold text-indigo-400">{r.avatar}</span>
+                    <div className="w-9 h-9 rounded-full bg-gradient-to-br from-indigo-500/20 to-blue-500/20 border border-indigo-300 flex items-center justify-center flex-shrink-0">
+                      <span className="text-[11px] font-bold text-indigo-600">{r.avatar}</span>
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-start justify-between gap-2 flex-wrap">
                         <div>
                           <span className="text-sm font-semibold text-foreground">{r.author}</span>
                           {r.replied && (
-                            <span className="ml-2 text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-blue-500/10 text-blue-400 border border-blue-500/20">Replied</span>
+                            <span className="ml-2 text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-blue-100 text-blue-600 border border-blue-300">Replied</span>
                           )}
                         </div>
                         <span className="text-[10px] text-muted-foreground">{r.date}</span>
@@ -523,12 +544,12 @@ export default function BusinessOwnerProfile() {
                           {!r.replied && (
                             <button
                               onClick={() => setReplyingTo(r.id)}
-                              className="flex items-center gap-1 px-2.5 py-1 text-[11px] rounded-lg bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 hover:bg-indigo-500/20 font-semibold transition-colors"
+                              className="flex items-center gap-1 px-2.5 py-1 text-[11px] rounded-lg bg-indigo-100 text-indigo-600 border border-indigo-300 hover:bg-indigo-500/20 font-semibold transition-colors"
                             >
                               <MessageSquare className="w-3 h-3" /> Reply
                             </button>
                           )}
-                          <button className="flex items-center gap-1 px-2.5 py-1 text-[11px] rounded-lg bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/20 font-semibold transition-colors">
+                          <button className="flex items-center gap-1 px-2.5 py-1 text-[11px] rounded-lg bg-red-100 text-red-600 border border-red-300 hover:bg-red-500/20 font-semibold transition-colors">
                             <Flag className="w-3 h-3" /> Report Fake
                           </button>
                         </div>
@@ -596,7 +617,7 @@ export default function BusinessOwnerProfile() {
             {/* Opening hours */}
             <Card className="p-5">
               <h3 className="text-sm font-bold text-foreground mb-3 flex items-center justify-between">
-                <span className="flex items-center gap-2"><Clock className="w-4 h-4 text-amber-400" /> Opening Hours</span>
+                <span className="flex items-center gap-2"><Clock className="w-4 h-4 text-amber-600" /> Opening Hours</span>
                 <button
                   onClick={() => setEditingHours(!editingHours)}
                   className="text-xs text-primary font-semibold hover:underline"
@@ -608,7 +629,7 @@ export default function BusinessOwnerProfile() {
                 {business.openingHours.map(({ day, hours }) => (
                   <div key={day} className="flex items-center justify-between py-1.5 border-b border-border/30 last:border-0">
                     <span className="text-xs font-semibold text-foreground">{day}</span>
-                    <span className={`text-xs ${hours === 'Closed' ? 'text-red-400 font-semibold' : 'text-muted-foreground'}`}>
+                    <span className={`text-xs ${hours === 'Closed' ? 'text-red-600 font-semibold' : 'text-muted-foreground'}`}>
                       {hours}
                     </span>
                   </div>
@@ -619,7 +640,7 @@ export default function BusinessOwnerProfile() {
             {/* Map location */}
             <Card className="p-5">
               <h3 className="text-sm font-bold text-foreground mb-3 flex items-center gap-2">
-                <MapPin className="w-4 h-4 text-red-400" /> Map Location
+                <MapPin className="w-4 h-4 text-red-600" /> Map Location
               </h3>
 
               {/* Fake map placeholder */}
@@ -685,13 +706,13 @@ export default function BusinessOwnerProfile() {
             {/* Account security */}
             <Card className="p-5">
               <h3 className="text-sm font-bold text-foreground mb-4 flex items-center gap-2">
-                <Lock className="w-4 h-4 text-indigo-400" /> Security
+                <Lock className="w-4 h-4 text-indigo-600" /> Security
               </h3>
               <div className="space-y-3">
                 {[
-                  { icon: Key,    label: 'Change Password',        sub: 'Last changed 3 months ago',  action: 'Update', color: 'text-indigo-400' },
-                  { icon: Shield, label: 'Two-Factor Auth',        sub: owner.twoFactor ? 'Enabled via SMS' : 'Not enabled', action: owner.twoFactor ? 'Manage' : 'Enable', color: 'text-green-400' },
-                  { icon: Wifi,   label: 'Active Sessions',        sub: '2 devices logged in',         action: 'Review', color: 'text-blue-400' },
+                  { icon: Key,    label: 'Change Password',        sub: 'Last changed 3 months ago',  action: 'Update', color: 'text-indigo-600' },
+                  { icon: Shield, label: 'Two-Factor Auth',        sub: owner.twoFactor ? 'Enabled via SMS' : 'Not enabled', action: owner.twoFactor ? 'Manage' : 'Enable', color: 'text-green-600' },
+                  { icon: Wifi,   label: 'Active Sessions',        sub: '2 devices logged in',         action: 'Review', color: 'text-blue-600' },
                 ].map(({ icon: Icon, label, sub, action, color }) => (
                   <div key={label} className="flex items-center justify-between py-2 border-b border-border/40 last:border-0">
                     <div className="flex items-center gap-3">
@@ -712,7 +733,7 @@ export default function BusinessOwnerProfile() {
             {/* Notifications */}
             <Card className="p-5">
               <h3 className="text-sm font-bold text-foreground mb-4 flex items-center gap-2">
-                <Activity className="w-4 h-4 text-amber-400" /> Notifications
+                <Activity className="w-4 h-4 text-amber-600" /> Notifications
               </h3>
               <div className="space-y-3">
                 {[
@@ -745,22 +766,22 @@ export default function BusinessOwnerProfile() {
               </h3>
               <div className="space-y-2">
                 <button className="w-full flex items-center gap-3 px-4 py-3 rounded-xl bg-muted/50 hover:bg-muted border border-border text-sm font-semibold text-foreground transition-colors text-left">
-                  <Users className="w-4 h-4 text-blue-400" />
+                  <Users className="w-4 h-4 text-blue-600" />
                   <span className="flex-1">Manage Team Members</span>
                   <ChevronRight className="w-4 h-4 text-muted-foreground" />
                 </button>
                 <button className="w-full flex items-center gap-3 px-4 py-3 rounded-xl bg-muted/50 hover:bg-muted border border-border text-sm font-semibold text-foreground transition-colors text-left">
-                  <Image className="w-4 h-4 text-purple-400" />
+                  <Image className="w-4 h-4 text-purple-600" />
                   <span className="flex-1">Media Library</span>
                   <ChevronRight className="w-4 h-4 text-muted-foreground" />
                 </button>
                 <button className="w-full flex items-center gap-3 px-4 py-3 rounded-xl bg-muted/50 hover:bg-muted border border-border text-sm font-semibold text-foreground transition-colors text-left">
-                  <BarChart2 className="w-4 h-4 text-green-400" />
+                  <BarChart2 className="w-4 h-4 text-green-600" />
                   <span className="flex-1">Export Analytics</span>
                   <ChevronRight className="w-4 h-4 text-muted-foreground" />
                 </button>
                 <div className="pt-2 border-t border-border/50">
-                  <button className="w-full flex items-center gap-3 px-4 py-3 rounded-xl bg-red-500/5 hover:bg-red-500/10 border border-red-500/20 text-sm font-semibold text-red-400 transition-colors text-left">
+                  <button className="w-full flex items-center gap-3 px-4 py-3 rounded-xl bg-red-50 hover:bg-red-100 border border-red-300 text-sm font-semibold text-red-600 transition-colors text-left">
                     <AlertTriangle className="w-4 h-4" />
                     <span className="flex-1">Deactivate Account</span>
                     <ChevronRight className="w-4 h-4 opacity-50" />

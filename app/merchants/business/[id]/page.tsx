@@ -3,7 +3,7 @@ import { getReviewsByStoreId } from '@/lib/actions/reviews';
 import { getPublicItemsByStoreId } from '@/lib/actions/items';
 import { getBusinessStories } from '@/lib/actions/stories';
 import { getPromotions } from '@/lib/actions/promotions';
-import { Star, MapPin, Phone, Globe, Clock, Share2, Bookmark, Camera, ExternalLink, Package, AlertCircle } from 'lucide-react';
+import { Star, MapPin, Phone, Globe, Clock, Bookmark, Camera, Package, AlertCircle } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import BusinessImageGallery from '@/components/BusinessImageGallery';
@@ -13,8 +13,9 @@ import { ServiceCard } from '@/components/ServiceCard';
 import PromotionBanner from '@/components/PromotionBanner';
 import { notFound } from 'next/navigation';
 import { WriteReviewButton } from '@/components/WriteReviewButton';
-import { toast } from 'sonner';
+import { ShareBusinessButton } from '@/components/ShareBusinessButton';
 import { Item } from '@/lib/actions/items';
+import BusinessReservationSidebar from '@/components/BusinessReservationSidebar';
 
 interface Promotion {
   id: number;
@@ -171,10 +172,10 @@ export default async function BusinessDetailPage({ params }: { params: { id: str
               Ajouter une photo
             </button>
 
-            <button className="bg-white border-2 px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-gray-50 font-semibold transition-all active:scale-95">
-              <Share2 className="w-4 h-4" />
-              Partager
-            </button>
+            <ShareBusinessButton
+                businessName={business.name}
+                businessUrl={`${process.env.NEXT_PUBLIC_SITE_URL}/business/${businessId}`}
+              />
 
             <button className="bg-white border-2 px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-gray-50 font-semibold transition-all active:scale-95">
               <Bookmark className="w-4 h-4" />
@@ -348,79 +349,16 @@ export default async function BusinessDetailPage({ params }: { params: { id: str
 
           {/* Right Column - Sidebar */}
           <div className="space-y-6">
-            {/* Contact Card */}
-            <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100 sticky top-24">
-              <h3 className="text-gray-900 font-bold text-xl mb-6">Informations</h3>
-
-              <div className="space-y-6">
-                {/* Phone */}
-                {business.phone && (
-                  <div className="flex items-start gap-3">
-                    <Phone className="w-5 h-5 text-gray-400 mt-1" />
-                    <div>
-                      <p className="text-sm font-semibold text-gray-900">Téléphone</p>
-                      <a href={`tel:${business.phone}`} className="text-blue-600 hover:underline">{business.phone}</a>
-                    </div>
-                  </div>
-                )}
-
-                {/* Website */}
-                {business.website && (
-                  <div className="flex items-start gap-3">
-                    <Globe className="w-5 h-5 text-gray-400 mt-1" />
-                    <div>
-                      <p className="text-sm font-semibold text-gray-900">Site Web</p>
-                      <a href={business.website} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline break-all">
-                        {business.website.replace(/^https?:\/\/(www\.)?/, '')}
-                      </a>
-                    </div>
-                  </div>
-                )}
-
-                {/* Address */}
-                <div className="flex items-start gap-3">
-                  <MapPin className="w-5 h-5 text-gray-400 mt-1" />
-                  <div>
-                    <p className="text-sm font-semibold text-gray-900">Adresse</p>
-                    <p className="text-gray-700 text-sm">{business.location.address}</p>
-                    <button className="mt-1 text-blue-600 text-sm font-semibold hover:underline">
-                      Itinéraire
-                    </button>
-                  </div>
-                </div>
-
-                {/* Working Hours */}
-                {business.workingHours && (
-                  <div className="flex items-start gap-3 pt-4 border-t border-gray-100">
-                    <Clock className="w-5 h-5 text-gray-400 mt-1" />
-                    <div className="w-full">
-                      <p className="text-sm font-semibold text-gray-900 mb-2">Horaires d'ouverture</p>
-                      <div className="space-y-1.5">
-                        {Object.entries(business.workingHours as Record<string, any>).map(([day, hours]: [string, any]) => {
-                          const isToday = new Date().toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase() === day;
-                          return (
-                            <div key={day} className={`flex justify-between text-sm ${isToday ? 'font-bold text-gray-900' : 'text-gray-600'}`}>
-                              <span className="capitalize">{day}</span>
-                              <span>{hours.closed ? 'Fermé' : `${hours.open} - ${hours.close}`}</span>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Action Buttons */}
-              <div className="mt-8 space-y-3">
-                <button className="w-full bg-red-500 hover:bg-red-600 text-white font-bold py-3 rounded-lg flex items-center justify-center gap-2 transition-all shadow-md">
-                  Envoyer un message
-                </button>
-                <button className="w-full bg-white border-2 text-gray-900 font-bold py-3 rounded-lg flex items-center justify-center gap-2 hover:bg-gray-50 transition-all">
-                  Réserver
-                </button>
-              </div>
-            </div>
+            <BusinessReservationSidebar
+              businessId={businessId}
+              businessName={business.name}
+              rating={business.rating}
+              reviewCount={business.reviewCount}
+              phone={business.phone}
+              website={business.website}
+              address={business.location.address}
+              workingHours={business.workingHours as Record<string, any> | null}
+            />
           </div>
         </div>
       </div>

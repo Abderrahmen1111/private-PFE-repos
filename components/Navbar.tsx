@@ -1,12 +1,132 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
-import { FolderKanban, Search, MapPin, Plus, Camera, X, Upload, Loader2, Mic, MicOff, Navigation } from "lucide-react";
+import { useRouter, usePathname } from 'next/navigation';
+import {
+  FolderKanban, Search, MapPin, Plus, Camera, X, Upload, Loader2, Mic, MicOff, Navigation,
+  Utensils, Wrench, ShoppingBag, Stethoscope, GraduationCap, Car, Home, Scissors,
+  Dumbbell, Laptop,
+} from "lucide-react";
 import { createClient } from '@/lib/supabase/client';
 import { signOut } from '@/lib/supabase/auth';
 import Link from 'next/link';
 import { UserDropdown } from '@/components/ui/user-dropdown';
+import { useState as useMotionState } from 'react';
+import { Menu, MenuItem, HoveredLink, ProductItem } from '@/components/ui/navbar-menu';
+
+// ─── Category menu data ───────────────────────────────────────────────────────
+const categoryMenuItems = [
+  {
+    label: 'Restaurants',
+    icon: Utensils,
+    href: '/search?category=restaurants',
+    sub: [
+      { label: 'Restaurants tunisiens', href: '/search?category=restaurants&sub=tunisien' },
+      { label: 'Fast Food',             href: '/search?category=restaurants&sub=fastfood' },
+      { label: 'Pizzerias',             href: '/search?category=restaurants&sub=pizza' },
+      { label: 'Cafés & Salons de thé', href: '/search?category=cafes' },
+    ],
+  },
+  {
+    label: 'Services',
+    icon: Wrench,
+    href: '/search?category=services',
+    sub: [
+      { label: 'Plomberie',       href: '/search?category=services&sub=plomberie' },
+      { label: 'Électricité',     href: '/search?category=services&sub=electricite' },
+      { label: 'Climatisation',   href: '/search?category=services&sub=clim' },
+      { label: 'Déménagement',    href: '/search?category=services&sub=demenagement' },
+    ],
+  },
+  {
+    label: 'Shopping',
+    icon: ShoppingBag,
+    href: '/search?category=shopping',
+    sub: [
+      { label: 'Vêtements',    href: '/search?category=shopping&sub=vetements' },
+      { label: 'Électronique', href: '/search?category=shopping&sub=electronique' },
+      { label: 'Maison',       href: '/search?category=shopping&sub=maison' },
+      { label: 'Sport',        href: '/search?category=shopping&sub=sport' },
+    ],
+  },
+  {
+    label: 'Santé',
+    icon: Stethoscope,
+    href: '/search?category=sante',
+    sub: [
+      { label: 'Médecins',      href: '/search?category=sante&sub=medecins' },
+      { label: 'Pharmacies',    href: '/search?category=sante&sub=pharmacies' },
+      { label: 'Dentistes',     href: '/search?category=sante&sub=dentistes' },
+      { label: 'Laboratoires',  href: '/search?category=sante&sub=labo' },
+    ],
+  },
+  {
+    label: 'Éducation',
+    icon: GraduationCap,
+    href: '/search?category=education',
+    sub: [
+      { label: 'Cours particuliers', href: '/search?category=education&sub=cours' },
+      { label: 'Langues',            href: '/search?category=education&sub=langues' },
+      { label: 'Informatique',       href: '/search?category=education&sub=info' },
+      { label: 'Musique',            href: '/search?category=education&sub=musique' },
+    ],
+  },
+  {
+    label: 'Auto',
+    icon: Car,
+    href: '/search?category=auto',
+    sub: [
+      { label: 'Garages',           href: '/search?category=auto&sub=garages' },
+      { label: 'Concessionnaires',  href: '/search?category=auto&sub=concessionnaires' },
+      { label: 'Location de voitures', href: '/search?category=auto&sub=location' },
+      { label: 'Auto-école',        href: '/search?category=auto&sub=autoecole' },
+    ],
+  },
+  {
+    label: 'Immobilier',
+    icon: Home,
+    href: '/search?category=immobilier',
+    sub: [
+      { label: 'Agences',       href: '/search?category=immobilier&sub=agences' },
+      { label: 'Location',      href: '/search?category=immobilier&sub=location' },
+      { label: 'Vente',         href: '/search?category=immobilier&sub=vente' },
+      { label: 'Architectes',   href: '/search?category=immobilier&sub=architectes' },
+    ],
+  },
+  {
+    label: 'Beauté',
+    icon: Scissors,
+    href: '/search?category=beaute',
+    sub: [
+      { label: 'Coiffeurs',     href: '/search?category=beaute&sub=coiffeurs' },
+      { label: 'Spa & Massage', href: '/search?category=beaute&sub=spa' },
+      { label: 'Esthétique',    href: '/search?category=beaute&sub=esthetique' },
+      { label: 'Tatouage',      href: '/search?category=beaute&sub=tatouage' },
+    ],
+  },
+  {
+    label: 'Sport',
+    icon: Dumbbell,
+    href: '/search?category=sport',
+    sub: [
+      { label: 'Salles de sport', href: '/search?category=sport&sub=salles' },
+      { label: 'Yoga & Pilates',  href: '/search?category=sport&sub=yoga' },
+      { label: 'Natation',        href: '/search?category=sport&sub=natation' },
+      { label: 'Arts martiaux',   href: '/search?category=sport&sub=artsmartiaux' },
+    ],
+  },
+  {
+    label: 'Informatique',
+    icon: Laptop,
+    href: '/search?category=informatique',
+    sub: [
+      { label: 'Réparation PC',       href: '/search?category=informatique&sub=reparation' },
+      { label: 'Développement web',   href: '/search?category=informatique&sub=devweb' },
+      { label: 'Sécurité réseau',     href: '/search?category=informatique&sub=securite' },
+      { label: 'Formation bureautique', href: '/search?category=informatique&sub=formation' },
+    ],
+  },
+];
 
 // ─── Image Search Modal ───────────────────────────────────────────────────────
 function ImageSearchModal({ onClose, onSearch }: {
@@ -206,9 +326,249 @@ function ImageSearchModal({ onClose, onSearch }: {
   );
 }
 
+// ─── Floating Category Menu (prompt-exact pattern) ───────────────────────────
+function CategoryFloatingMenu() {
+  const [active, setActive] = useMotionState<string | null>(null);
+  return (
+    <Menu setActive={setActive}>
+
+      {/* ── Restaurants — ProductItem grid (image cards) ── */}
+      <MenuItem setActive={setActive} active={active} item="Restaurants">
+        <div className="grid grid-cols-2 gap-6 p-2 text-sm">
+          <ProductItem
+            title="Restaurants tunisiens"
+            href="/search?category=restaurants&sub=tunisien"
+            src="https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=300&h=150&fit=crop"
+            description="Saveurs authentiques et cuisine traditionnelle"
+          />
+          <ProductItem
+            title="Fast Food"
+            href="/search?category=restaurants&sub=fastfood"
+            src="https://images.unsplash.com/photo-1561758033-d89a9ad46330?w=300&h=150&fit=crop"
+            description="Burgers, sandwichs et repas rapides"
+          />
+          <ProductItem
+            title="Pizzerias"
+            href="/search?category=restaurants&sub=pizza"
+            src="https://images.unsplash.com/photo-1513104890138-7c749659a591?w=300&h=150&fit=crop"
+            description="Pizzas artisanales cuites au feu de bois"
+          />
+          <ProductItem
+            title="Cafés & Salons de thé"
+            href="/search?category=cafes"
+            src="https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?w=300&h=150&fit=crop"
+            description="Pause café, thé et pâtisseries"
+          />
+        </div>
+      </MenuItem>
+
+      {/* ── Services — simple HoveredLink list ── */}
+      <MenuItem setActive={setActive} active={active} item="Services">
+        <div className="flex flex-col space-y-1 text-sm">
+          <HoveredLink href="/search?category=services&sub=plomberie">
+            <Wrench className="w-3.5 h-3.5" /> Plomberie
+          </HoveredLink>
+          <HoveredLink href="/search?category=services&sub=electricite">
+            <Wrench className="w-3.5 h-3.5" /> Électricité
+          </HoveredLink>
+          <HoveredLink href="/search?category=services&sub=clim">
+            <Wrench className="w-3.5 h-3.5" /> Climatisation
+          </HoveredLink>
+          <HoveredLink href="/search?category=services&sub=demenagement">
+            <Wrench className="w-3.5 h-3.5" /> Déménagement
+          </HoveredLink>
+        </div>
+      </MenuItem>
+
+      {/* ── Shopping — ProductItem grid ── */}
+      <MenuItem setActive={setActive} active={active} item="Shopping">
+        <div className="grid grid-cols-2 gap-6 p-2 text-sm">
+          <ProductItem
+            title="Vêtements"
+            href="/search?category=shopping&sub=vetements"
+            src="https://images.unsplash.com/photo-1558769132-cb1aea458c5e?w=300&h=150&fit=crop"
+            description="Mode homme, femme et enfant"
+          />
+          <ProductItem
+            title="Électronique"
+            href="/search?category=shopping&sub=electronique"
+            src="https://images.unsplash.com/photo-1468495244123-6c6c332eeece?w=300&h=150&fit=crop"
+            description="Smartphones, PC, TV et accessoires"
+          />
+          <ProductItem
+            title="Maison & Déco"
+            href="/search?category=shopping&sub=maison"
+            src="https://images.unsplash.com/photo-1555041469-a586c61ea9bc?w=300&h=150&fit=crop"
+            description="Meubles, décoration et art de vivre"
+          />
+          <ProductItem
+            title="Sport & Loisirs"
+            href="/search?category=shopping&sub=sport"
+            src="https://images.unsplash.com/photo-1517649763962-0c623066013b?w=300&h=150&fit=crop"
+            description="Équipements sportifs et loisirs"
+          />
+        </div>
+      </MenuItem>
+
+      {/* ── Santé — simple list ── */}
+      <MenuItem setActive={setActive} active={active} item="Santé">
+        <div className="flex flex-col space-y-1 text-sm">
+          <HoveredLink href="/search?category=sante&sub=medecins">
+            <Stethoscope className="w-3.5 h-3.5" /> Médecins
+          </HoveredLink>
+          <HoveredLink href="/search?category=sante&sub=pharmacies">
+            <Stethoscope className="w-3.5 h-3.5" /> Pharmacies
+          </HoveredLink>
+          <HoveredLink href="/search?category=sante&sub=dentistes">
+            <Stethoscope className="w-3.5 h-3.5" /> Dentistes
+          </HoveredLink>
+          <HoveredLink href="/search?category=sante&sub=labo">
+            <Stethoscope className="w-3.5 h-3.5" /> Laboratoires
+          </HoveredLink>
+        </div>
+      </MenuItem>
+
+      {/* ── Éducation — simple list ── */}
+      <MenuItem setActive={setActive} active={active} item="Éducation">
+        <div className="flex flex-col space-y-1 text-sm">
+          <HoveredLink href="/search?category=education&sub=cours">
+            <GraduationCap className="w-3.5 h-3.5" /> Cours particuliers
+          </HoveredLink>
+          <HoveredLink href="/search?category=education&sub=langues">
+            <GraduationCap className="w-3.5 h-3.5" /> Langues
+          </HoveredLink>
+          <HoveredLink href="/search?category=education&sub=info">
+            <GraduationCap className="w-3.5 h-3.5" /> Informatique
+          </HoveredLink>
+          <HoveredLink href="/search?category=education&sub=musique">
+            <GraduationCap className="w-3.5 h-3.5" /> Musique
+          </HoveredLink>
+        </div>
+      </MenuItem>
+
+      {/* ── Auto — ProductItem grid ── */}
+      <MenuItem setActive={setActive} active={active} item="Auto">
+        <div className="grid grid-cols-2 gap-6 p-2 text-sm">
+          <ProductItem
+            title="Garages & Réparation"
+            href="/search?category=auto&sub=garages"
+            src="https://images.unsplash.com/photo-1625047509168-a7026f36de04?w=300&h=150&fit=crop"
+            description="Mécaniciens et centres auto agréés"
+          />
+          <ProductItem
+            title="Concessionnaires"
+            href="/search?category=auto&sub=concessionnaires"
+            src="https://images.unsplash.com/photo-1552519507-da3b142c6e3d?w=300&h=150&fit=crop"
+            description="Vente de véhicules neufs et d'occasion"
+          />
+          <ProductItem
+            title="Location de voitures"
+            href="/search?category=auto&sub=location"
+            src="https://images.unsplash.com/photo-1541899481282-d53bffe3c35d?w=300&h=150&fit=crop"
+            description="Louez une voiture au meilleur prix"
+          />
+          <ProductItem
+            title="Auto-école"
+            href="/search?category=auto&sub=autoecole"
+            src="https://images.unsplash.com/photo-1449965408869-eaa3f722e40d?w=300&h=150&fit=crop"
+            description="Permis de conduire et formation"
+          />
+        </div>
+      </MenuItem>
+
+      {/* ── Immobilier — ProductItem grid ── */}
+      <MenuItem setActive={setActive} active={active} item="Immobilier">
+        <div className="grid grid-cols-2 gap-6 p-2 text-sm">
+          <ProductItem
+            title="Agences immobilières"
+            href="/search?category=immobilier&sub=agences"
+            src="https://images.unsplash.com/photo-1560518883-ce09059eeffa?w=300&h=150&fit=crop"
+            description="Trouvez l'agence idéale près de chez vous"
+          />
+          <ProductItem
+            title="Location"
+            href="/search?category=immobilier&sub=location"
+            src="https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=300&h=150&fit=crop"
+            description="Appartements et maisons à louer"
+          />
+          <ProductItem
+            title="Vente"
+            href="/search?category=immobilier&sub=vente"
+            src="https://images.unsplash.com/photo-1570129477492-45c003edd2be?w=300&h=150&fit=crop"
+            description="Achat de biens neufs et anciens"
+          />
+          <ProductItem
+            title="Architectes"
+            href="/search?category=immobilier&sub=architectes"
+            src="https://images.unsplash.com/photo-1503387762-592deb58ef4e?w=300&h=150&fit=crop"
+            description="Conception et rénovation de projets"
+          />
+        </div>
+      </MenuItem>
+
+      {/* ── Beauté — simple list ── */}
+      <MenuItem setActive={setActive} active={active} item="Beauté">
+        <div className="flex flex-col space-y-1 text-sm">
+          <HoveredLink href="/search?category=beaute&sub=coiffeurs">
+            <Scissors className="w-3.5 h-3.5" /> Coiffeurs
+          </HoveredLink>
+          <HoveredLink href="/search?category=beaute&sub=spa">
+            <Scissors className="w-3.5 h-3.5" /> Spa & Massage
+          </HoveredLink>
+          <HoveredLink href="/search?category=beaute&sub=esthetique">
+            <Scissors className="w-3.5 h-3.5" /> Esthétique
+          </HoveredLink>
+          <HoveredLink href="/search?category=beaute&sub=tatouage">
+            <Scissors className="w-3.5 h-3.5" /> Tatouage
+          </HoveredLink>
+        </div>
+      </MenuItem>
+
+      {/* ── Sport — simple list ── */}
+      <MenuItem setActive={setActive} active={active} item="Sport">
+        <div className="flex flex-col space-y-1 text-sm">
+          <HoveredLink href="/search?category=sport&sub=salles">
+            <Dumbbell className="w-3.5 h-3.5" /> Salles de sport
+          </HoveredLink>
+          <HoveredLink href="/search?category=sport&sub=yoga">
+            <Dumbbell className="w-3.5 h-3.5" /> Yoga & Pilates
+          </HoveredLink>
+          <HoveredLink href="/search?category=sport&sub=natation">
+            <Dumbbell className="w-3.5 h-3.5" /> Natation
+          </HoveredLink>
+          <HoveredLink href="/search?category=sport&sub=artsmartiaux">
+            <Dumbbell className="w-3.5 h-3.5" /> Arts martiaux
+          </HoveredLink>
+        </div>
+      </MenuItem>
+
+      {/* ── Informatique — simple list ── */}
+      <MenuItem setActive={setActive} active={active} item="Informatique">
+        <div className="flex flex-col space-y-1 text-sm">
+          <HoveredLink href="/search?category=informatique&sub=reparation">
+            <Laptop className="w-3.5 h-3.5" /> Réparation PC
+          </HoveredLink>
+          <HoveredLink href="/search?category=informatique&sub=devweb">
+            <Laptop className="w-3.5 h-3.5" /> Développement web
+          </HoveredLink>
+          <HoveredLink href="/search?category=informatique&sub=securite">
+            <Laptop className="w-3.5 h-3.5" /> Sécurité réseau
+          </HoveredLink>
+          <HoveredLink href="/search?category=informatique&sub=formation">
+            <Laptop className="w-3.5 h-3.5" /> Formation bureautique
+          </HoveredLink>
+        </div>
+      </MenuItem>
+
+    </Menu>
+  );
+}
+
 // ─── Navbar ───────────────────────────────────────────────────────────────────
 export default function Navbar() {
   const router = useRouter();
+  const pathname = usePathname();
+  const isHome = pathname === '/';
   const [searchQuery, setSearchQuery] = useState('');
   const [locationQuery, setLocationQuery] = useState('');
   const [user, setUser] = useState<any>(null);
@@ -219,6 +579,41 @@ export default function Navbar() {
   const recognitionRef = useRef<any>(null);
   const [isListening, setIsListening] = useState(false);
   const [isLocating, setIsLocating] = useState(false);
+  const [hidden, setHidden] = useState(false);
+  const lastScrollY = useRef(0);
+  const hideTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      const currentY = window.scrollY;
+
+      // Clear any existing hide timeout
+      if (hideTimeoutRef.current) {
+        clearTimeout(hideTimeoutRef.current);
+      }
+
+      // Hide when scrolling DOWN, show when scrolling UP or at top
+      if (currentY > lastScrollY.current && currentY > 80) {
+        setHidden(true);
+      } else {
+        setHidden(false);
+        // Set a new timeout to hide after 2 seconds of no scrolling
+        hideTimeoutRef.current = setTimeout(() => {
+          setHidden(true);
+        }, 2000);
+      }
+
+      lastScrollY.current = currentY;
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+      if (hideTimeoutRef.current) {
+        clearTimeout(hideTimeoutRef.current);
+      }
+    };
+  }, []);
 
   // Dynamic placeholder state
   const [placeholderIndex, setPlaceholderIndex] = useState(0);
@@ -375,7 +770,7 @@ export default function Navbar() {
     const params = new URLSearchParams();
     if (searchQuery) params.set('query', searchQuery);
     if (locationQuery) params.set('location', locationQuery);
-    router.push(`/search?${params.toString()}`);
+  router.push(`/search/searchBusiness?${params.toString()}`);
   };
 
   // Called by the modal after AI analysis or direct submit
@@ -383,7 +778,7 @@ export default function Navbar() {
     const params = new URLSearchParams();
     params.set('query', query);
     if (imageUrl) params.set('imageSearch', '1');
-    router.push(`/search?${params.toString()}`);
+  router.push(`/search/searchBusiness?${params.toString()}`);
   };
 
   const handleSignOut = async () => {
@@ -401,7 +796,7 @@ export default function Navbar() {
         />
       )}
 
-      <header className="fixed top-0 left-0 right-0 z-50">
+      <header className={`fixed top-0 left-0 right-0 z-50 transition-transform duration-300 ${hidden ? '-translate-y-full' : 'translate-y-0'}`}>
         <div>
           <div className="max-w-7xl mx-auto px-6 flex items-center gap-6 h-16">
 
@@ -554,6 +949,42 @@ export default function Navbar() {
 
           </div>
         </div>
+
+        {/* ── Floating Category Menu — exactly as per prompt ─────────── */}
+        {/* Desktop only: floating pill below navbar */}
+        {isHome && (
+          <div className="hidden md:flex justify-center w-full mt-3 px-4">
+            <CategoryFloatingMenu />
+          </div>
+        )}
+
+        {/* Mobile: horizontal scroll chips */}
+        {isHome && (
+          <div className="md:hidden border-t border-white/10 bg-black/50 backdrop-blur-md px-4 py-2">
+          <div className="flex items-center gap-2 overflow-x-auto scrollbar-none">
+            {categoryMenuItems.map((cat) => {
+              const Icon = cat.icon;
+              return (
+                <Link
+                  key={cat.label}
+                  href={cat.href}
+                  className="flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/8 border border-white/10 text-xs text-white/70 hover:text-white hover:bg-white/15 transition-all active:scale-95"
+                >
+                  <Icon className="w-3 h-3" />
+                  {cat.label}
+                </Link>
+              );
+            })}
+            <Link
+              href="/categories"
+              className="flex-shrink-0 px-3 py-1.5 rounded-full bg-red-600/20 border border-red-500/30 text-xs text-red-400 font-semibold hover:bg-red-600/30 transition-all"
+            >
+              Tout voir
+            </Link>
+          </div>
+        </div>
+        )}
+
       </header>
     </>
   );
