@@ -49,7 +49,7 @@ async function getRoleFromDB(userId: string): Promise<string> {
     .from('profiles')
     .select('role')
     .eq('id', userId)
-    .single()
+    .single<{ role: string }>()
   return data?.role ?? 'client'
 }
 
