@@ -19,7 +19,7 @@ const ContentSecurityPolicy = `
     https://*.supabase.co
     https://*.supabase.io
     wss://*.supabase.co
-    ${isDev ? 'ws://localhost:3000' : ''};
+  ${isDev ? 'ws://localhost:3000 http://localhost:3000' : ''};
   frame-src 'none';
   object-src 'none';
   base-uri 'self';

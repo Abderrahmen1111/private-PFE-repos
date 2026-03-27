@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useTransition, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import {
   Eye, EyeOff, Mail, Info, Sparkles, ArrowRight, Loader2, CheckCircle2,
 } from 'lucide-react';
@@ -66,6 +66,8 @@ function emptySignUpState() {
 
 export function AuthCard({ defaultFlipped = false }: AuthCardProps) {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const redirectTo = searchParams.get('redirectTo') || undefined;
 
   // ── Card flip ──────────────────────────────────────────────────────────────
   const [isFlipped, setIsFlipped] = useState(defaultFlipped);
@@ -147,8 +149,17 @@ export function AuthCard({ defaultFlipped = false }: AuthCardProps) {
       const formData = new FormData();
       formData.append('email', loginData.email);
       formData.append('password', loginData.password);
+      if (redirectTo) {
+        formData.append('redirectTo', redirectTo);
+      }
       const result = await login(formData);
-      if (result && 'error' in result) setLoginError(result.error);
+      if (result && 'error' in result) {
+        setLoginError(result.error);
+      } else if (result && 'success' in result) {
+        // Login successful - redirect to dashboard or specified URL
+        const destination = redirectTo || '/';
+        router.push(destination);
+      }
     });
   };
 
@@ -161,6 +172,9 @@ export function AuthCard({ defaultFlipped = false }: AuthCardProps) {
     startLoginMagicTransition(async () => {
       const formData = new FormData();
       formData.append('email', loginData.email);
+      if (redirectTo) {
+        formData.append('redirectTo', redirectTo);
+      }
       // Reuses magic link — sends a login link that acts as password reset
       const result = await sendLoginMagicLink(formData);
       if (result && 'error' in result) {
@@ -179,6 +193,9 @@ export function AuthCard({ defaultFlipped = false }: AuthCardProps) {
     startLoginMagicTransition(async () => {
       const formData = new FormData();
       formData.append('email', loginData.email);
+      if (redirectTo) {
+        formData.append('redirectTo', redirectTo);
+      }
       const result = await sendLoginMagicLink(formData);
       if (result && 'error' in result) setLoginMagicError(result.error);
       else setLoginMagicSent(true);
@@ -207,6 +224,9 @@ export function AuthCard({ defaultFlipped = false }: AuthCardProps) {
       formData.append('email', signUpData.email);
       formData.append('password', signUpData.password);
       formData.append('confirmPassword', signUpData.confirmPassword);
+      if (redirectTo) {
+        formData.append('redirectTo', redirectTo);
+      }
       const result = await signup(formData);
       if (result && 'error' in result) {
         setSignUpError(result.error);
@@ -228,6 +248,9 @@ export function AuthCard({ defaultFlipped = false }: AuthCardProps) {
       const formData = new FormData();
       formData.append('fullName', signUpData.fullName);
       formData.append('email', signUpData.email);
+      if (redirectTo) {
+        formData.append('redirectTo', redirectTo);
+      }
       const result = await sendSignupMagicLink(formData);
       if (result && 'error' in result) setSignupMagicError(result.error);
       else setSignupMagicSent(true);
@@ -245,7 +268,7 @@ export function AuthCard({ defaultFlipped = false }: AuthCardProps) {
   // ─────────────────────────────────────────────────────────────────────────────
 
   return (
-    <div className="flip-container w-full max-w-lg aspect-square">
+    <div className="flip-container w-full max-w-md">
       <div className={`flip-card ${isFlipped ? 'flipped' : ''}`}>
 
         {/* ════════════════════════════════════════

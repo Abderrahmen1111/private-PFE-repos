@@ -47,6 +47,7 @@ import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuIte
 import { UserDropdown } from '@/components/ui/user-dropdown';
 import { cn } from '@/lib/utils';
 import { Toaster } from 'sonner';
+import AIAgent from '@/components/ai-agent/AIAgent';
 import { getSidebarStats } from '@/lib/actions/overviews';
 import { useEffect } from 'react';
 
@@ -335,6 +336,7 @@ export default function DashboardLayout({
         </>
       )}
       <Toaster position="top-right" richColors />
+      <AIAgent storeId={id} />
     </div>
   );
 }

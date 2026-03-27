@@ -11,6 +11,7 @@ import Offers from '@/components/Offers';
 import { CommerceHero } from '@/components/commerce-hero';
 import { LogoCarouselDemo } from "@/components/ui/testimonials"
 import { FloatingAiAssistant } from "@/components/ui/glowing-ai-chat-assistant"
+import ShortAdsSection from '@/components/ShortAdsSection';
 const BackgroundScene = dynamic(
   () => import('@/components/BackgroundScene'),
   { ssr: false }
@@ -26,6 +27,7 @@ export default function Home() {
       <div className="relative" style={{ zIndex: 10 }}>
         <Navbar />
         <Hero />
+        <ShortAdsSection />
         <Offers />
         <OffersCarouselDemo />
         <Sponsors />

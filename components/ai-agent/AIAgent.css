@@ -1,0 +1,337 @@
+.aag-wrap {
+  position: fixed;
+  bottom: 28px;
+  right: 28px;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 12px;
+}
+
+.aag-panel {
+  width: 375px;
+  max-height: 580px;
+  min-height: 0;
+  background: #0d1117;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 20px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.6);
+}
+
+.aag-header {
+  padding: 13px 16px;
+  background: linear-gradient(135deg, #0f1f3d, #0d1117);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 10px;
+}
+
+.aag-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  background: rgba(56, 139, 237, 0.25);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.aag-pulse {
+  width: 6px;
+  height: 6px;
+  border-radius: 9999px;
+  background: #22c55e;
+  animation: aag-pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes aag-pulse {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.5;
+    transform: scale(1.15);
+  }
+}
+
+.aag-messages {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  background: #070c14;
+}
+
+.aag-messages::-webkit-scrollbar {
+  width: 3px;
+}
+
+.aag-messages::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 3px;
+}
+
+.aag-bubble.ai {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  color: rgba(255, 255, 255, 0.85);
+  border-radius: 14px;
+  border-bottom-left-radius: 4px;
+  padding: 10px 12px;
+  font-size: 13px;
+  line-height: 1.45;
+  max-width: 100%;
+  word-break: break-word;
+}
+
+.aag-bubble.user {
+  align-self: flex-end;
+  background: rgba(99, 102, 241, 0.2);
+  border: 1px solid rgba(99, 102, 241, 0.25);
+  color: #e0e7ff;
+  border-radius: 14px;
+  border-bottom-right-radius: 4px;
+  padding: 10px 12px;
+  font-size: 13px;
+  line-height: 1.45;
+  max-width: 92%;
+  word-break: break-word;
+}
+
+.aag-bubble.streaming {
+  border-color: rgba(56, 139, 237, 0.25);
+}
+
+.aag-meta {
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.35);
+  margin-top: 4px;
+  padding-left: 2px;
+}
+
+.aag-h2 {
+  font-size: 15px;
+  font-weight: 700;
+  margin: 8px 0 4px;
+  color: rgba(255, 255, 255, 0.95);
+}
+
+.aag-h3 {
+  font-size: 13px;
+  font-weight: 600;
+  margin: 6px 0 3px;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.aag-li {
+  display: block;
+  padding-left: 10px;
+  position: relative;
+  margin: 2px 0;
+}
+
+.aag-li::before {
+  content: '•';
+  position: absolute;
+  left: 0;
+  color: rgba(255, 255, 255, 0.45);
+}
+
+.aag-typing {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 12px;
+}
+
+.aag-typing span {
+  width: 6px;
+  height: 6px;
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.45);
+  animation: aag-blink 1.1s ease-in-out infinite;
+}
+
+.aag-typing span:nth-child(2) {
+  animation-delay: 0.15s;
+}
+
+.aag-typing span:nth-child(3) {
+  animation-delay: 0.3s;
+}
+
+@keyframes aag-blink {
+  0%,
+  100% {
+    opacity: 0.35;
+    transform: scale(0.9);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.05);
+  }
+}
+
+.aag-qa-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 5px;
+}
+
+.aag-qa-btn {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 9px;
+  padding: 8px 6px;
+  font-size: 11px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.82);
+  text-align: left;
+  cursor: pointer;
+  line-height: 1.25;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.aag-qa-btn:hover {
+  background: rgba(56, 139, 237, 0.12);
+  border-color: rgba(56, 139, 237, 0.35);
+}
+
+.aag-input-row {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 13px;
+  padding: 6px 8px;
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+}
+
+.aag-input-row:focus-within {
+  border-color: rgba(56, 139, 237, 0.4);
+}
+
+.aag-input-row textarea {
+  flex: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  resize: none;
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 13px;
+  line-height: 1.4;
+  max-height: 90px;
+  padding: 6px 4px;
+}
+
+.aag-input-row textarea::placeholder {
+  color: rgba(255, 255, 255, 0.35);
+}
+
+.aag-send-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 9px;
+  border: none;
+  background: #2563eb;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: opacity 0.15s ease;
+}
+
+.aag-send-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.aag-send-btn.stop {
+  background: rgba(220, 38, 38, 0.85);
+}
+
+.aag-footer {
+  padding: 10px 12px 12px;
+  background: #0a0f18;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.aag-fab {
+  width: 52px;
+  height: 52px;
+  border-radius: 15px;
+  border: none;
+  cursor: pointer;
+  background: linear-gradient(135deg, #1d4ed8, #4f46e5);
+  box-shadow: 0 8px 24px rgba(29, 78, 216, 0.4);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+.aag-fab-badge {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  min-width: 18px;
+  height: 18px;
+  border-radius: 9999px;
+  background: #ef4444;
+  color: white;
+  font-size: 10px;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 4px;
+}
+
+.aag-toggle-row {
+  display: flex;
+  justify-content: flex-end;
+  padding: 0 14px 6px;
+}
+
+.aag-toggle-btn {
+  font-size: 11px;
+  font-weight: 600;
+  color: rgba(56, 139, 237, 0.95);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px 0;
+}
+
+.aag-toggle-btn:hover {
+  text-decoration: underline;
+}
+
+.aag-trash {
+  margin-left: auto;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px;
+  opacity: 0.65;
+}
+
+.aag-trash:hover {
+  opacity: 1;
+}
