@@ -95,14 +95,22 @@ export async function POST(req: NextRequest) {
   const storeIdRaw = body.storeId
   const messagesRaw = body.messages
 
-  if (
-    storeIdRaw === undefined ||
-    storeIdRaw === null ||
-    messagesRaw === undefined ||
-    messagesRaw === null ||
-    !Array.isArray(messagesRaw)
-  ) {
-    return new Response(JSON.stringify({ error: 'storeId and messages are required' }), {
+  console.log(
+    '[AI Agent] storeId:',
+    storeIdRaw,
+    'messages:',
+    Array.isArray(messagesRaw) ? messagesRaw.length : messagesRaw,
+  )
+
+  if (!storeIdRaw) {
+    return new Response(JSON.stringify({ error: 'Missing storeId' }), {
+      status: 400,
+      headers: { 'Content-Type': 'application/json' },
+    })
+  }
+
+  if (!messagesRaw || !Array.isArray(messagesRaw) || messagesRaw.length === 0) {
+    return new Response(JSON.stringify({ error: 'messages must not be empty' }), {
       status: 400,
       headers: { 'Content-Type': 'application/json' },
     })
@@ -117,12 +125,6 @@ export async function POST(req: NextRequest) {
   }
 
   const messages = messagesRaw as ChatTurn[]
-  if (messages.length === 0) {
-    return new Response(JSON.stringify({ error: 'messages must not be empty' }), {
-      status: 400,
-      headers: { 'Content-Type': 'application/json' },
-    })
-  }
 
   const lastUser = [...messages].reverse().find((m) => m.role === 'user')
   const lastUserMessage = lastUser?.content ?? ''
@@ -140,7 +142,7 @@ export async function POST(req: NextRequest) {
     })
   }
 
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:streamGenerateContent?alt=sse&key=${geminiKey}`
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:streamGenerateContent?alt=sse&key=${process.env.GEMINI_API_KEY}`
 
   const geminiBody = {
     systemInstruction: { parts: [{ text: systemPrompt }] },
@@ -148,16 +150,48 @@ export async function POST(req: NextRequest) {
     generationConfig: { maxOutputTokens: 1024, temperature: 0.7 },
   }
 
-  let geminiRes: Response
-  try {
-    geminiRes = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(geminiBody),
-    })
-  } catch (e) {
-    const msg = e instanceof Error ? e.message : 'Gemini request failed'
-    return new Response(JSON.stringify({ error: msg }), {
+  let geminiRes: Response | undefined = undefined
+  let retryCount = 0
+
+  while (retryCount <= 2) {
+    try {
+      geminiRes = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(geminiBody),
+      })
+
+      if (geminiRes.status === 429) {
+        if (retryCount < 2) {
+          retryCount++
+          await new Promise((resolve) => setTimeout(resolve, 2000))
+          continue
+        }
+        return new Response(
+          'The AI service is busy. Please wait a few seconds and try again.',
+          { status: 429 }
+        )
+      }
+
+      // Not a 429, or succeeded, so break out of the loop
+      break
+    } catch (e) {
+      if (retryCount < 2) {
+        retryCount++
+        await new Promise((resolve) => setTimeout(resolve, 2000))
+        continue
+      }
+      const msg = e instanceof Error ? e.message : 'Gemini request failed'
+      return new Response(JSON.stringify({ error: msg }), {
+        status: 502,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    }
+  }
+
+  // Typescript safety since we broke out
+  if (!geminiRes) {
+    return new Response(JSON.stringify({ error: 'Failed to fetch Gemini' }), {
       status: 502,
       headers: { 'Content-Type': 'application/json' },
     })
@@ -165,6 +199,7 @@ export async function POST(req: NextRequest) {
 
   if (!geminiRes.ok) {
     const errText = await geminiRes.text().catch(() => '')
+    console.error('[Gemini Error]', geminiRes.status, errText)
     return new Response(
       JSON.stringify({
         error: `Gemini error (${geminiRes.status})`,

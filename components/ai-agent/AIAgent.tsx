@@ -7,17 +7,14 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 
 import { useAIAgent } from '@/components/ai-agent/useAIAgent'
 
-function BotIcon() {
+function BotIcon({ size = 22 }: { size?: number } = {}) {
   return (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden>
-      <path
-        d="M12 2a2 2 0 012 2c1.66 0 3 1 3 2.5V9h1a2 2 0 012 2v6a2 2 0 01-2 2H6a2 2 0 01-2-2v-6a2 2 0 012-2h1V6.5C7 5 8.34 4 10 4a2 2 0 012-2z"
-        fill="currentColor"
-        opacity="0.9"
-      />
-      <circle cx="9" cy="13" r="1.2" fill="#0d1117" />
-      <circle cx="15" cy="13" r="1.2" fill="#0d1117" />
-    </svg>
+    <img
+      src="/ro2ya_logo11.png"
+      alt="Ro2ya Copilot"
+      style={{ width: `${size}px`, height: `${size}px`, objectFit: 'contain' }}
+      aria-hidden="true"
+    />
   )
 }
 
@@ -42,11 +39,11 @@ function StopIcon() {
 
 function CloseIcon() {
   return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden>
+    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" aria-hidden>
       <path
         d="M6 6l12 12M18 6L6 18"
         stroke="currentColor"
-        strokeWidth="2"
+        strokeWidth="2.5"
         strokeLinecap="round"
       />
     </svg>
@@ -366,7 +363,7 @@ export default function AIAgent({ storeId }: { storeId: string }) {
         whileHover={{ scale: 1.06 }}
         whileTap={{ scale: 0.96 }}
       >
-        {open ? <CloseIcon /> : <BotIcon />}
+        {open ? <CloseIcon /> : <BotIcon size={46} />}
         {!open && assistantCount > 0 ? (
           <span className="aag-fab-badge">{assistantCount > 99 ? '99+' : assistantCount}</span>
         ) : null}

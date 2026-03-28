@@ -45,16 +45,15 @@ export function useAIAgent(storeId: string) {
         timestamp: new Date(),
       }
 
-      let historySnapshot: HistoryTurn[] = []
+      const historySnapshot: HistoryTurn[] = [
+        ...messages,
+        userMessage,
+      ].map((m) => ({
+        role: m.role,
+        content: m.content,
+      }))
 
-      setMessages((prev) => {
-        const next = [...prev, userMessage]
-        historySnapshot = next.map((m) => ({
-          role: m.role,
-          content: m.content,
-        }))
-        return next
-      })
+      setMessages((prev) => [...prev, userMessage])
 
       setIsLoading(true)
       setStreamingText('')
@@ -73,6 +72,20 @@ export function useAIAgent(storeId: string) {
             messages: historySnapshot,
           }),
         })
+
+        if (res.status === 429) {
+          setMessages((prev) => [
+            ...prev,
+            {
+              id: randomId(),
+              role: 'assistant',
+              content: 'The AI is busy right now. Please wait a few seconds and try again.',
+              timestamp: new Date(),
+            },
+          ])
+          setIsLoading(false)
+          return
+        }
 
         if (!res.ok) {
           const errJson = await res.json().catch(() => ({ error: res.statusText }))

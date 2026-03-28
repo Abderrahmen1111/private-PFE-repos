@@ -51,11 +51,13 @@
 }
 
 @keyframes aag-pulse {
+
   0%,
   100% {
     opacity: 1;
     transform: scale(1);
   }
+
   50% {
     opacity: 0.5;
     transform: scale(1.15);
@@ -172,11 +174,13 @@
 }
 
 @keyframes aag-blink {
+
   0%,
   100% {
     opacity: 0.35;
     transform: scale(0.9);
   }
+
   50% {
     opacity: 1;
     transform: scale(1.05);
@@ -246,7 +250,7 @@
   height: 32px;
   border-radius: 9px;
   border: none;
-  background: #2563eb;
+  background: #15519a;
   color: white;
   display: flex;
   align-items: center;
@@ -277,13 +281,15 @@
   border-radius: 15px;
   border: none;
   cursor: pointer;
-  background: linear-gradient(135deg, #1d4ed8, #4f46e5);
-  box-shadow: 0 8px 24px rgba(29, 78, 216, 0.4);
-  color: white;
+  background: transparent;
+  box-shadow: none;
+  color: #15519a;
+  /* Logo color for CloseIcon */
   display: flex;
   align-items: center;
   justify-content: center;
   position: relative;
+  transition: transform 0.2s ease;
 }
 
 .aag-fab-badge {
