@@ -42,29 +42,8 @@ export default function ShortAdsSection() {
     loadStories();
   }, []);
 
-  if (isLoading) {
-    return (
-      <section className="py-12 bg-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <Loader2 className="w-10 h-10 animate-spin text-primary mx-auto mb-4" />
-          <p className="text-muted-foreground">Chargement des Reels communautaires...</p>
-        </div>
-      </section>
-    );
-  }
-
-  if (error) {
-    return (
-      <section className="py-12 bg-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="bg-red-50 border border-red-100 rounded-2xl p-8 text-center">
-             <AlertCircle className="w-12 h-12 text-red-400 mx-auto mb-4" />
-             <h3 className="text-lg font-bold text-red-900">Erreur de chargement</h3>
-             <p className="text-red-700 mt-1">{error}</p>
-          </div>
-        </div>
-      </section>
-    );
+  if (isLoading || error || stories.length === 0) {
+    return null;
   }
 
   return (
@@ -90,37 +69,20 @@ export default function ShortAdsSection() {
           </Button>
         </div>
 
-        {stories.length > 0 ? (
-          <div className="relative">
-            <StoriesCarousel 
-              stories={stories.map(s => ({
-                id: s.id,
-                media_url: s.media_url,
-                media_type: s.media_type,
-                author: {
-                  name: s.stores.name,
-                  avatar: s.stores.logo_url || undefined,
-                },
-                caption: s.caption || undefined
-              }))} 
-            />
-          </div>
-        ) : (
-          <Card className="border-dashed border-2 border-slate-200 bg-slate-50/50 py-16 text-center">
-            <div className="max-w-sm mx-auto space-y-4">
-              <div className="w-16 h-16 bg-slate-200 rounded-full flex items-center justify-center mx-auto text-slate-400">
-                <PlusCircle className="w-8 h-8" />
-              </div>
-              <div className="space-y-2">
-                <h3 className="text-xl font-bold text-slate-900">Pas encore de Stories</h3>
-                <p className="text-slate-500 text-sm">Soyez le premier à partager un moment fort de votre business avec la communauté !</p>
-              </div>
-              <Button asChild>
-                <Link href="/dashboard">Créer une Story</Link>
-              </Button>
-            </div>
-          </Card>
-        )}
+        <div className="relative">
+          <StoriesCarousel 
+            stories={stories.map(s => ({
+              id: s.id,
+              media_url: s.media_url,
+              media_type: s.media_type,
+              author: {
+                name: s.stores.name,
+                avatar: s.stores.logo_url || undefined,
+              },
+              caption: s.caption || undefined
+            }))} 
+          />
+        </div>
       </div>
     </section>
   );

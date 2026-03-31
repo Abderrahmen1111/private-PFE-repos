@@ -8,7 +8,6 @@ import {
   DialogHeader, 
   DialogTitle, 
   DialogTrigger,
-  DialogFooter,
 } from '@/components/ui/dialog';
 import { 
   Story, 
@@ -23,7 +22,6 @@ import {
   Camera, 
   X, 
   Video as VideoIcon, 
-  Check,
   Send,
 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -121,7 +119,6 @@ function StoryItem({ story, accentColor }: { story: RealStory; accentColor: stri
                   {story.caption}
                 </p>
               )}
-              {/* Optional: Add quick reply or like here later */}
             </DialogHeader>
           </StorySlide>
 
@@ -314,6 +311,10 @@ export function BusinessStories({ storeId, initialStories = [] }: BusinessStorie
     setStories(prev => [newStory, ...prev]);
   };
 
+  if (stories.length === 0) {
+    return null;
+  }
+
   return (
     <div className="bg-white border-y border-slate-100 py-6 px-4">
       <div className="max-w-7xl mx-auto">
@@ -344,15 +345,6 @@ export function BusinessStories({ storeId, initialStories = [] }: BusinessStorie
                <StoryItem story={story} accentColor={ACCENT_COLORS[i % ACCENT_COLORS.length]} />
             </div>
           ))}
-
-          {stories.length === 0 && (
-            <div className="flex items-center px-4">
-               <div className="bg-slate-50/50 border border-dashed border-slate-200 rounded-2xl px-6 py-4 flex flex-col items-center justify-center gap-1">
-                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">Aucune story</span>
-                  <span className="text-[9px] text-slate-400 text-center leading-none">Soyez le premier à poster !</span>
-               </div>
-            </div>
-          )}
         </div>
       </div>
     </div>
