@@ -1,16 +1,18 @@
 'use client';
 
-import { Star, Heart, Activity, Settings } from 'lucide-react';
+import { Star, Heart, Activity, Settings, ShoppingBag } from 'lucide-react';
+import { motion } from 'framer-motion';
 
-export type TabId = 'reviews' | 'saved' | 'activity' | 'settings';
+export type TabId = 'reviews' | 'saved' | 'activity' | 'settings' | 'orders';
 
 interface ProfileTabsProps {
   activeTab: TabId;
   onTabChange: (tab: TabId) => void;
-  counts: { reviews: number; saved: number; activity: number };
+  counts: { reviews: number; saved: number; activity: number; orders: number };
 }
 
 const tabs: { id: TabId; label: string; icon: any; count?: keyof ProfileTabsProps['counts'] }[] = [
+  { id: 'orders', label: 'Orders', icon: ShoppingBag, count: 'orders' },
   { id: 'reviews', label: 'Reviews', icon: Star, count: 'reviews' },
   { id: 'saved', label: 'Saved Places', icon: Heart, count: 'saved' },
   { id: 'activity', label: 'Activity', icon: Activity, count: 'activity' },
@@ -19,28 +21,37 @@ const tabs: { id: TabId; label: string; icon: any; count?: keyof ProfileTabsProp
 
 export default function ProfileTabs({ activeTab, onTabChange, counts }: ProfileTabsProps) {
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-100 px-2">
-      <div className="flex overflow-x-auto scrollbar-hide">
+    <div className="bg-white/50 backdrop-blur-xl rounded-2xl shadow-sm border border-gray-100 p-1.5 sticky top-4 z-30">
+      <div className="flex overflow-x-auto scrollbar-hide relative gap-1">
         {tabs.map(({ id, label, icon: Icon, count }) => {
           const isActive = activeTab === id;
           return (
             <button
               key={id}
               onClick={() => onTabChange(id)}
-              className={`flex items-center gap-2 px-5 py-4 text-sm font-semibold whitespace-nowrap border-b-2 transition-all ${
+              className={`group relative flex items-center gap-2.5 px-6 py-3.5 text-sm font-black whitespace-nowrap transition-all duration-300 rounded-xl flex-1 justify-center sm:flex-none ${
                 isActive
-                  ? 'border-blue-600 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-800 hover:border-gray-200'
+                  ? 'text-indigo-600'
+                  : 'text-gray-400 hover:text-gray-600 hover:bg-gray-50/50'
               }`}
             >
-              <Icon className="w-4 h-4" />
-              {label}
+              <Icon className={`w-4 h-4 transition-transform duration-300 ${isActive ? 'scale-110' : 'group-hover:scale-110'}`} />
+              <span className="relative z-10">{label}</span>
+              
               {count && counts[count] > 0 && (
-                <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium ${
-                  isActive ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-500'
+                <span className={`text-[10px] px-2 py-0.5 rounded-full font-black tracking-tighter transition-colors ${
+                  isActive ? 'bg-indigo-100 text-indigo-700' : 'bg-gray-100 text-gray-500'
                 }`}>
                   {counts[count]}
                 </span>
+              )}
+
+              {isActive && (
+                <motion.div
+                  layoutId="activeTabIndicator"
+                  className="absolute inset-0 bg-indigo-50 border border-indigo-100/50 rounded-xl -z-0"
+                  transition={{ type: "spring", bounce: 0.25, duration: 0.5 }}
+                />
               )}
             </button>
           );

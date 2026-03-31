@@ -572,6 +572,7 @@ export default function Navbar() {
   const [searchQuery, setSearchQuery] = useState('');
   const [locationQuery, setLocationQuery] = useState('');
   const [user, setUser] = useState<any>(null);
+  const [userRole, setUserRole] = useState<string | null>(null);
   const [storeId, setStoreId] = useState<string | null>(null);
   const [profileOpen, setProfileOpen] = useState(false);
   const [imageSearchOpen, setImageSearchOpen] = useState(false);
@@ -663,9 +664,20 @@ export default function Navbar() {
   // Auth state
   useEffect(() => {
     const supabase = createClient();
-    const fetchStoreId = async (userId: string) => {
-      // Fetch ANY store owned by this user
-      const { data } = await supabase
+    const fetchUserData = async (userId: string) => {
+      // 1. Fetch official role from database
+      const { data: profile } = await supabase
+        .from('users')
+        .select('role')
+        .eq('id', userId)
+        .single();
+      
+      if (profile) {
+        setUserRole((profile as any).role);
+      }
+
+      // 2. Fetch ANY store owned by this user
+      const { data: store } = await supabase
         .from('stores')
         .select('id')
         .eq('owner_id', userId)
@@ -673,24 +685,25 @@ export default function Navbar() {
         .limit(1)
         .maybeSingle();
 
-      if (data) {
-        setStoreId((data as any).id.toString());
+      if (store) {
+        setStoreId((store as any).id.toString());
       }
     };
 
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null);
       if (session?.user) {
-        fetchStoreId(session.user.id);
+        fetchUserData(session.user.id);
       }
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       setUser(session?.user ?? null);
       if (session?.user) {
-        fetchStoreId(session.user.id);
+        fetchUserData(session.user.id);
       } else {
         setStoreId(null);
+        setUserRole(null);
       }
       if (event === 'SIGNED_IN') {
         router.refresh();
@@ -884,21 +897,29 @@ export default function Navbar() {
 
               {user ? (
                 <>
-                  {storeId ? (
-                    <Link href={`/dashboard/${storeId}`}>
-                      <button className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:shadow-lg hover:shadow-cyan-500/20 text-sm font-bold text-white transition-all ring-1 ring-white/10">
-                        <FolderKanban className="w-4 h-4" />
-                        My Dashboard
-                      </button>
-                    </Link>
-                  ) : (
-                    <Link href="/business/add">
-                      <button className="flex items-center gap-2 px-4 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-sm font-semibold text-white transition shadow-lg shadow-red-600/20">
-                        <Plus className="w-4 h-4" />
-                        Add Business
-                      </button>
-                    </Link>
-                  )}
+                  {/* Dashboard/Add Business - ONLY FOR PRO/BUSINESS OWNER */}
+                  {(() => {
+                    const effectiveRole = userRole?.toLowerCase() || user.user_metadata?.role?.toLowerCase();
+                    const isBusiness = effectiveRole === 'pro' || effectiveRole === 'business_owner' || effectiveRole === 'admin';
+                    
+                    if (!isBusiness) return null;
+
+                    return storeId ? (
+                      <Link href={`/dashboard/${storeId}`}>
+                        <button className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:shadow-lg hover:shadow-cyan-500/20 text-sm font-bold text-white transition-all ring-1 ring-white/10">
+                          <FolderKanban className="w-4 h-4" />
+                          Dashboard
+                        </button>
+                      </Link>
+                    ) : (
+                      <Link href="/business/add">
+                        <button className="flex items-center gap-2 px-4 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-sm font-semibold text-white transition shadow-lg shadow-red-600/20">
+                          <Plus className="w-4 h-4" />
+                          Add Business
+                        </button>
+                      </Link>
+                    );
+                  })()}
 
                   <UserDropdown
                     user={{
@@ -908,25 +929,32 @@ export default function Navbar() {
                       initials: (user.user_metadata?.full_name || user.email || 'U')
                         .split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2),
                       status: 'online',
-                      role: user.user_metadata?.role
+                      role: userRole || user.user_metadata?.role
                     }}
                     onAction={(action: string) => {
                       if (action === 'logout') handleSignOut();
-                      const role = user.user_metadata?.role;
                       
+                      const currentRole = userRole?.toLowerCase() || user.user_metadata?.role?.toLowerCase();
+
                       if (action === 'profile') {
-                        if (role === 'client') {
-                          router.push('/profile/user');
-                        } else if (role === 'business_owner' || role === 'PRO') {
+                        if (currentRole === 'business_owner' || currentRole === 'pro' || currentRole === 'admin') {
                           router.push('/profile/businessOwner');
                         } else {
-                          router.push('/profile'); 
+                          router.push('/profile/user');
                         }
                       }
                       
                       if ((action === 'business-settings' || action === 'billing') && 
-                          (role === 'business_owner' || role === 'PRO')) {
+                          (currentRole === 'business_owner' || currentRole === 'pro')) {
                         router.push('/dashboard/account');
+                      }
+
+                      if (action === 'notifications' && currentRole === 'client') {
+                        router.push('/profile/notifications');
+                      }
+
+                      if (action === 'panier' && currentRole === 'client') {
+                        router.push('/profile/cart');
                       }
                     }}
                   />

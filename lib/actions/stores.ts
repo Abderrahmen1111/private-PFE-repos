@@ -1,6 +1,7 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { revalidatePath } from 'next/cache'
 import { Database } from '@/types/supabase'
 
@@ -37,11 +38,6 @@ export async function getStoreByBusinessId(businessId: number) {
         return { error: error.message }
     }
 
-    // If not found, maybe the businessId IS the store id (fallback)
-    if (!data) {
-        return getStoreById(businessId)
-    }
-
     return { data: data as Store }
 }
 
@@ -69,7 +65,108 @@ export async function updateStoreProfile(id: number, data: any) {
     }
 
     revalidatePath(`/dashboard/${id}/profile`)
-    revalidatePath(`/business/${id}`)
+    revalidatePath(`/merchants/business/${id}`)
 
     return { success: true }
+}
+
+export async function deleteStore(id: number) {
+    const supabase = createClient()
+    const adminSupabase = createAdminClient()
+    
+    try {
+        // 1. Get the store to find the owner and directory link
+        const { data: store, error: fetchError } = await supabase
+            .from('stores')
+            .select('*')
+            .eq('id', id)
+            .single()
+
+        if (fetchError || !store) {
+            return { success: false, error: "Boutique introuvable." }
+        }
+
+        const storeData = store as any;
+
+        // 2. Security Check: Only the owner can delete
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user || user.id !== storeData.owner_id) {
+            return { success: false, error: "Non autorisé." }
+        }
+
+        // 3. Sequential deletion using admin client to bypass RLS
+        // Delete story views first (foreign key to stories)
+        const { data: stories } = await (adminSupabase as any).from('stories').select('id').eq('store_id', id)
+        if (stories && (stories as any[]).length > 0) {
+            const storyIds = (stories as any[]).map(s => s.id)
+            await (adminSupabase as any).from('story_views').delete().in('story_id', storyIds)
+        }
+
+        // Delete stories/reels
+        await (adminSupabase as any).from('stories').delete().eq('store_id', id)
+
+        // Delete service schedules first (foreign key to items)
+        const { data: items } = await (adminSupabase as any).from('items').select('id').eq('store_id', id)
+        if (items && (items as any[]).length > 0) {
+            const itemIds = (items as any[]).map(i => i.id)
+            await (adminSupabase as any).from('service_schedules').delete().in('item_id', itemIds)
+        }
+
+        // Delete items (products/services)
+        await (adminSupabase as any).from('items').delete().eq('store_id', id)
+
+        // Delete reviews
+        await (adminSupabase as any).from('reviews').delete().eq('store_id', id)
+
+        // Delete bookings
+        await (adminSupabase as any).from('bookings').delete().eq('store_id', id)
+
+        // Delete orders
+        await (adminSupabase as any).from('orders').delete().eq('store_id', id)
+
+        // Delete promotions
+        await (adminSupabase as any).from('promotions').delete().eq('store_id', id)
+
+        // 4. Handle business directory unclaiming
+        const directoryId = storeData.business_directory_id || storeData.id_business;
+        if (directoryId) {
+            await (adminSupabase as any)
+                .from('business_directory_tunisia')
+                .update({ 
+                    is_claimed: false, 
+                    claimed_by: null,
+                    store_id: null 
+                })
+                .eq('id', directoryId)
+        }
+
+        // 5. Delete the store record itself
+        const { error: deleteError } = await (adminSupabase as any)
+            .from('stores')
+            .delete()
+            .eq('id', id)
+
+        if (deleteError) throw deleteError
+
+        // 6. Revert user role to CLIENT
+        const { error: roleError } = await (adminSupabase as any)
+            .from('users')
+            .update({ role: 'CLIENT' })
+            .eq('id', user.id);
+
+        if (roleError) {
+            console.error("CRITICAL: Error reverting role to CLIENT:", roleError);
+        } else {
+            console.log(`Successfully downgraded user ${user.id} to CLIENT`);
+        }
+
+        revalidatePath('/')
+        revalidatePath('/dashboard')
+        revalidatePath('/profile')
+
+        return { success: true }
+    } catch (err: any) {
+        console.error('Error during full store deletion:', err)
+        return { error: err.message || 'Une erreur est survenue lors de la suppression.' }
+    }
 }

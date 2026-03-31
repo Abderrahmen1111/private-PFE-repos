@@ -1,5 +1,6 @@
 'use client';
 
+
 import { useState, useEffect } from 'react';
 import {
   Star, MapPin, Phone, Globe, Mail, Shield, Edit2, Key,
@@ -16,7 +17,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import Link from 'next/link';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { getOwnerProfileData } from '@/lib/actions/profile';
 import { sendPasswordResetEmail } from '@/lib/actions/auth';
 import Navbar from '@/components/Navbar';
@@ -45,6 +46,7 @@ const tabs: { id: Tab; label: string; icon: typeof Eye }[] = [
 ];
 
 export default function BusinessOwnerProfile() {
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState<Tab>('overview');
   const [replyingTo, setReplyingTo] = useState<string | null>(null);
   const [replyText, setReplyText] = useState('');
@@ -61,6 +63,16 @@ export default function BusinessOwnerProfile() {
     async function loadData() {
         try {
             const data = await getOwnerProfileData(businessIdParam || undefined);
+            
+            const role = data?.user?.profile?.role?.toLowerCase();
+            const isBusinessRole = role === 'pro' || role === 'admin' || role === 'business_owner';
+
+            // Security: Redirect anyone without a business role to their user profile
+            if (!isBusinessRole) {
+                router.push('/profile/user');
+                return;
+            }
+            
             setInitialData(data);
         } catch (error) {
             console.error("Failed to load profile data", error);
@@ -69,7 +81,7 @@ export default function BusinessOwnerProfile() {
         }
     }
     loadData();
-  }, [businessIdParam]);
+  }, [businessIdParam, router]);
 
   if (isLoading) {
       return (
@@ -819,10 +831,10 @@ export default function BusinessOwnerProfile() {
                   <ChevronRight className="w-4 h-4 text-muted-foreground" />
                 </button>
                 <button className="w-full flex items-center gap-3 px-4 py-3 rounded-xl bg-muted/50 hover:bg-muted border border-border text-sm font-semibold text-foreground transition-colors text-left">
-                  <Image className="w-4 h-4 text-purple-400" />
+                  <ImageIcon className="w-4 h-4 text-purple-400" />
                   <span className="flex-1">Media Library</span>
                   <ChevronRight className="w-4 h-4 text-muted-foreground" />
-                </Link>
+                </button>
                 <button className="w-full flex items-center gap-3 px-4 py-3 rounded-xl bg-muted/50 hover:bg-muted border border-border text-sm font-semibold text-foreground transition-colors text-left">
                   <BarChart2 className="w-4 h-4 text-green-600" />
                   <span className="flex-1">Export Analytics</span>
@@ -840,9 +852,6 @@ export default function BusinessOwnerProfile() {
           </div>
         </div>
       )}
-        </div>
-      </main>
-      <Footer />
     </div>
   );
 }

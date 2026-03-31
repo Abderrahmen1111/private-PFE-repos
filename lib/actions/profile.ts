@@ -140,3 +140,188 @@ export async function getOwnerProfileData(businessId?: number | string) {
         recentReviews,
     }
 }
+
+export async function getUserProfileData() {
+    const supabase = createClient()
+
+    // 1. Authenticate user
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    
+    if (authError || !user) {
+        redirect('/login')
+    }
+
+    // 2. Fetch User Profile
+    const { data: userData, error: userError } = await supabase
+        .from('users' as any)
+        .select('*')
+        .eq('id', user.id)
+        .single() as any;
+        
+    if (userError) {
+        console.error("Error fetching user data:", userError)
+    }
+
+    // 3. Fetch Statistics
+    // - Reviews count
+    const { count: reviewsCount } = await supabase
+        .from('reviews' as any)
+        .select('*', { count: 'exact', head: true })
+        .eq('author_id', user.id);
+
+    // - Bookings count
+    const { count: bookingsCount } = await supabase
+        .from('bookings' as any)
+        .select('*', { count: 'exact', head: true })
+        .eq('customer_id', user.id);
+
+    // - Orders count (optional activity)
+    const { count: ordersCount } = await supabase
+        .from('orders' as any)
+        .select('*', { count: 'exact', head: true })
+        .eq('customer_id', user.id);
+
+    // - Saved places count
+    const { count: savedCount } = await supabase
+        .from('saved_places' as any)
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', user.id);
+
+    // 4. Fetch User's Orders (with Store info) for the new Orders tab
+    const { data: userOrders, error: ordersError } = await supabase
+        .from('orders' as any)
+        .select(`
+            *,
+            stores!store_id (
+                name,
+                logo_url,
+                category
+            )
+        `)
+        .eq('customer_id', user.id)
+        .order('created_at', { ascending: false });
+
+    if (ordersError) {
+        console.error("Error fetching user orders:", ordersError)
+    }
+
+    // 5. Fetch User's Reviews (with Store info)
+    const { data: userReviews, error: reviewsError } = await supabase
+        .from('reviews' as any)
+        .select(`
+            *,
+            stores!store_id (
+                name,
+                logo_url,
+                category
+            )
+        `)
+        .eq('author_id', user.id)
+        .order('created_at', { ascending: false });
+
+    if (reviewsError) {
+        console.error("Error fetching user reviews:", reviewsError)
+    }
+
+    // 6. Fetch Activity (Latest 10 items from Reviews, Bookings, Orders)
+    // Combine and sort by date for a unified feed
+    const activityItems: any[] = [];
+    
+    if (userReviews) {
+        userReviews.slice(0, 3).forEach((r: any) => {
+            activityItems.push({
+                id: `rev-${r.id}`,
+                type: 'review',
+                text: 'You wrote a review for',
+                businessName: r.stores?.name || 'a business',
+                timestamp: r.created_at,
+                dateObj: new Date(r.created_at)
+            });
+        });
+    }
+
+    if (userOrders) {
+        userOrders.slice(0, 3).forEach((o: any) => {
+            activityItems.push({
+                id: `order-${o.id}`,
+                type: 'order',
+                text: 'You placed an order with',
+                businessName: o.stores?.name || 'a business',
+                timestamp: o.created_at,
+                dateObj: new Date(o.created_at)
+            });
+        });
+    }
+
+    // Fetch latest bookings for activity
+    const { data: lastBookings } = await supabase
+        .from('bookings' as any)
+        .select('*, stores!store_id(name)')
+        .eq('customer_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(3);
+
+    if (lastBookings) {
+        lastBookings.forEach((b: any) => {
+            activityItems.push({
+                id: `book-${b.id}`,
+                type: 'visited',
+                text: 'You booked a session at',
+                businessName: b.stores?.name || 'a business',
+                timestamp: b.created_at,
+                dateObj: new Date(b.created_at)
+            });
+        });
+    }
+
+    // Sort combined activity
+    const sortedActivity = activityItems
+        .sort((a, b) => b.dateObj.getTime() - a.dateObj.getTime())
+        .map(({ dateObj, ...rest }) => ({
+            ...rest,
+            timestamp: new Date(rest.timestamp).toLocaleString('en-US', { 
+                month: 'long', 
+                day: 'numeric', 
+                year: 'numeric',
+                hour: 'numeric',
+                minute: 'numeric'
+            })
+        }));
+
+    return {
+        user: {
+            ...user,
+            profile: userData,
+            avatar: userData?.avatar_url || null,
+            email: user.email,
+        },
+        stats: {
+            reviewsCount: reviewsCount || 0,
+            bookingsCount: bookingsCount || 0,
+            ordersCount: ordersCount || 0,
+            savedCount: savedCount || 0,
+            citiesCount: 1, 
+            helpfulVotes: 0,
+        },
+        reviews: (userReviews || []).map((r: any) => ({
+            id: r.id.toString(),
+            businessName: r.stores?.name || 'Unknown Business',
+            businessImage: r.stores?.logo_url || '/placeholder-business.png',
+            businessCategory: r.stores?.category || 'General',
+            rating: r.rating,
+            reviewText: r.comment,
+            date: new Date(r.created_at).toLocaleDateString('en-US', { month: 'long', year: 'numeric' }),
+            helpfulCount: 0,
+        })),
+        orders: (userOrders || []).map((o: any) => ({
+            id: o.id.toString(),
+            order_number: o.order_number,
+            businessName: o.stores?.name || 'Unknown Business',
+            businessImage: o.stores?.logo_url || '/placeholder-business.png',
+            status: o.status,
+            total_price: o.total_price,
+            date: new Date(o.created_at).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }),
+        })),
+        activity: sortedActivity,
+    }
+}

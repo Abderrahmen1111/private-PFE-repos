@@ -20,6 +20,9 @@ export type DiscoverFeedItem = {
   description: string
   price: string
   image: string
+
+  mediaType?: 'image' | 'video'
+
   likes: number
   comments: number
   category: FeedCategory

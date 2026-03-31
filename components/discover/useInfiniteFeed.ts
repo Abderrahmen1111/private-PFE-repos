@@ -10,6 +10,8 @@ import {
   rankFeedItems,
 } from '@/components/discover/feed-algorithm'
 
+import { getDiscoverStories } from '@/lib/actions/stories'
+
 const PAGE_SIZE = 12
 const MAX_PAGES = 6
 
@@ -162,13 +164,48 @@ export function useInfiniteFeed() {
     setIsLoading(true)
 
     try {
-      const nextPage = page + 1
-      const raw = await fetchFeed(nextPage)
-      const ranked = rankFeedItems(raw, userPreferences)
-      const merged = insertSponsoredPosts(ranked, sponsoredPool, 5)
-      setItems((prev) => [...prev, ...merged])
-      setPage(nextPage)
-      if (nextPage >= MAX_PAGES) setHasMore(false)
+      const nextPage = page + 1;
+      const raw = await fetchFeed(nextPage);
+      const ranked = rankFeedItems(raw, userPreferences);
+
+      // Fetch real stories from DB on the first page
+      let realStories: DiscoverFeedItem[] = [];
+      if (page === 0) {
+        try {
+          const stories = await getDiscoverStories(10);
+          realStories = stories.map((s: any) => ({
+            id: `story-${s.id}`,
+            merchantId: s.store_id.toString(),
+            merchantName: s.stores?.name || 'Local Business',
+            product: 'New Update',
+            description: s.caption || '',
+            price: 'Free to watch',
+            image: s.media_url,
+            mediaType: s.media_type,
+            likes: Math.floor(Math.random() * 1000),
+            comments: Math.floor(Math.random() * 50),
+            category: 'lifestyle',
+            popularityScore: 90,
+            engagementScore: 85,
+            timestamp: new Date(s.created_at).getTime(),
+            merchant: {
+              rating: 5.0,
+              totalSales: 100,
+              responseRate: 100,
+            }
+          } as DiscoverFeedItem));
+        } catch (e) {
+          console.error("Error fetching real stories for feed:", e);
+        }
+      }
+
+      // Combine real stories with mock data
+      const combined = page === 0 ? [...realStories, ...ranked] : ranked;
+      const merged = insertSponsoredPosts(combined, sponsoredPool, 5);
+
+      setItems((prev) => [...prev, ...merged]);
+      setPage(nextPage);
+      if (nextPage >= MAX_PAGES) setHasMore(false);
     } finally {
       setIsLoading(false)
     }

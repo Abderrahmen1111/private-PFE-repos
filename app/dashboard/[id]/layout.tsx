@@ -1,55 +1,37 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import '@/app/globals.css';
-import { useParams, usePathname } from 'next/navigation';
+import { useParams, usePathname, useRouter } from 'next/navigation';
 import {
   LayoutDashboard,
   Briefcase,
   Package,
-  Star,
   Bell,
   Zap,
   Settings,
   Menu,
-  X,
   ChevronDown,
   LogOut,
   Home,
   Search,
-  Plus,
   MessageCircle,
-  Camera,
-  List,
-  Clock,
-  Users,
-  Calendar,
-  ShoppingCart,
-  Award,
-  MessageSquare,
-  BarChart2,
-  Megaphone,
-  Tag,
-  Ticket,
-  Activity,
-  Eye,
-  CalendarCheck,
+  Video,
   LifeBuoy,
   Mail,
-  HelpCircle,
   CreditCard,
+  MessageSquare,
 } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '@/components/ui/dropdown-menu';
 import { UserDropdown } from '@/components/ui/user-dropdown';
 import { cn } from '@/lib/utils';
-import { Toaster } from 'sonner';
+import { Toaster, toast } from 'sonner';
 import AIAgent from '@/components/ai-agent/AIAgent';
 import { getSidebarStats } from '@/lib/actions/overviews';
-import { useEffect } from 'react';
 
 export default function DashboardLayout({
   children,
@@ -61,6 +43,7 @@ export default function DashboardLayout({
   const id = params.id as string;
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const router = useRouter();
 
   // business switcher state
   const businesses = ['Elegance Boutique', 'Modern Salon'];
@@ -91,6 +74,29 @@ export default function DashboardLayout({
     fetchStats();
   }, [id]);
 
+  interface NavItem {
+    href: string;
+    label: string;
+    icon: React.ReactNode;
+    badge?: number;
+  }
+
+  const navItems: NavItem[] = [
+    { href: '/', label: 'Back to Marketplace', icon: <Home className="w-5 h-5" /> },
+    { href: `/dashboard/${id}`, label: 'Overview', icon: <LayoutDashboard className="w-5 h-5" /> },
+    { href: `/dashboard/${id}/profile`, label: 'Business Profile', icon: <Briefcase className="w-5 h-5" /> },
+    { href: `/dashboard/${id}/products`, label: 'Products & Services', icon: <Package className="w-5 h-5" /> },
+    { href: `/dashboard/${id}/reels`, label: 'Discovery Reels', icon: <Video className="w-5 h-5" /> },
+    { href: `/dashboard/${id}/leads`, label: 'Customer Actions', icon: <Bell className="w-5 h-5" /> },
+    { href: `/dashboard/${id}/promotions`, label: 'Promotions & Offers', icon: <Zap className="w-5 h-5" /> },
+    { href: `/dashboard/${id}/support/tickets`, label: 'Client Support', icon: <LifeBuoy className="w-5 h-5" /> },
+    { href: `/dashboard/${id}/support/chat`, label: 'Messages', icon: <Mail className="w-5 h-5" /> },
+    { href: `/dashboard/${id}/account`, label: 'Account & Subscription', icon: <Settings className="w-5 h-5" /> },
+    { href: `/dashboard/${id}/transactions`, label: 'Transactions', icon: <Home className="w-5 h-5" /> },
+    { href: `/dashboard/${id}/refunds`, label: 'Refunds', icon: <CreditCard className="w-5 h-5" /> },
+    { href: `/dashboard/${id}/reviews`, label: 'Reviews', icon: <MessageSquare className="w-5 h-5" />, badge: Math.max(0, stats.reviews - (lastSeenCounts[`/dashboard/${id}/reviews`] || 0)) },
+  ];
+
   // Update lastSeenCounts when visiting a page
   useEffect(() => {
     const currentNavItem = navItems.find(item => item.href === pathname);
@@ -105,31 +111,6 @@ export default function DashboardLayout({
       }
     }
   }, [pathname, stats, id]);
-
-  interface NavItem {
-    href: string;
-    label: string;
-    icon: React.ReactNode;
-    badge?: number;
-  }
-
-  const navItems: NavItem[] = [
-    { href: '/', label: 'Back to Marketplace', icon: <Home className="w-5 h-5" /> },
-    // original sections preserved below
-    { href: `/dashboard/${id}`, label: 'Overview', icon: <LayoutDashboard className="w-5 h-5" /> },
-    { href: `/dashboard/${id}/profile`, label: 'Business Profile', icon: <Briefcase className="w-5 h-5" /> },
-    { href: `/dashboard/${id}/products`, label: 'Products & Services', icon: <Package className="w-5 h-5" /> },
-    { href: `/dashboard/${id}/leads`, label: 'Customer Actions', icon: <Bell className="w-5 h-5" /> },
-    { href: `/dashboard/${id}/promotions`, label: 'Promotions & Offers', icon: <Zap className="w-5 h-5" /> },
-    { href: `/dashboard/${id}/support/tickets`, label: 'Client Support', icon: <LifeBuoy className="w-5 h-5" /> },
-    { href: `/dashboard/${id}/support/chat`, label: 'Messages', icon: <Mail className="w-5 h-5" /> },
-    { href: `/dashboard/${id}/account`, label: 'Account & Subscription', icon: <Settings className="w-5 h-5" /> },
-    { href: `/dashboard/${id}/transactions`, label: 'Transactions', icon: <Home className="w-5 h-5" /> },
-    { href: `/dashboard/${id}/refunds`, label: 'Refunds', icon: <CreditCard className="w-5 h-5" /> },
-    { href: `/dashboard/${id}/reviews`, label: 'Reviews', icon: <MessageSquare className="w-5 h-5" />, badge: Math.max(0, stats.reviews - (lastSeenCounts[`/dashboard/${id}/reviews`] || 0)) },
-    
-    
-  ];
 
   const isActive = (href: string) => {
     if (href === `/dashboard/${id}`) {
@@ -149,9 +130,7 @@ export default function DashboardLayout({
           sidebarOpen ? 'w-64' : 'w-20'
         )}
       >
-        {/* Sidebar Header */}
         <div className="flex items-center justify-center p-6 border-b border-white/10">
-          {/* business logo - swap with real src when available */}
           {currentBusiness ? (
             <img
               src={`/logos/${currentBusiness.replace(/\s+/g, '-').toLowerCase()}.png`}
@@ -166,9 +145,8 @@ export default function DashboardLayout({
           )}
         </div>
 
-        {/* Navigation - Icons Only */}
         <nav className={cn('flex-1 overflow-y-auto px-4 py-8 space-y-6 flex flex-col', sidebarOpen ? 'items-start' : 'items-center')}>
-          {navItems.map((item, idx) => (
+          {navItems.map((item) => (
             <Link key={item.href} href={item.href}>
               <motion.button
                 whileHover={{ scale: 1.05 }}
@@ -189,7 +167,6 @@ export default function DashboardLayout({
                     {item.badge}
                   </span>
                 )}
-                {/* Tooltip hint on hover */}
                 {!sidebarOpen && (
                   <div className="absolute left-full ml-4 px-3 py-1 bg-black/90 backdrop-blur-xl border border-white/10 rounded-lg text-xs font-bold text-white opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity whitespace-nowrap z-50">
                     {item.label}
@@ -200,7 +177,6 @@ export default function DashboardLayout({
           ))}
         </nav>
 
-        {/* Sidebar Footer */}
         <div className={cn('p-4 border-t', sidebarOpen ? 'border-border' : 'border-border')}>
           <motion.button
             whileHover={{ scale: 1.1, rotate: -10 }}
@@ -218,13 +194,10 @@ export default function DashboardLayout({
 
       {/* Main Content */}
       <div className="flex-1 flex flex-col overflow-hidden relative">
-        {/* Abstract Background Elements */}
         <div className="absolute top-[-10%] right-[-10%] w-[50%] h-[50%] bg-blue-600/10 blur-[120px] rounded-full -z-10" />
         <div className="absolute bottom-[-10%] left-[-10%] w-[50%] h-[50%] bg-purple-600/10 blur-[120px] rounded-full -z-10" />
 
-        {/* Top Bar */}
         <header className="sticky top-0 h-16 border-b bg-card z-30 flex items-center px-4">
-          {/* Left section */}
           <div className="flex items-center space-x-4">
             <button
               onClick={() => setSidebarOpen(!sidebarOpen)}
@@ -240,7 +213,6 @@ export default function DashboardLayout({
               })()}
             </h1>
 
-            {/* Business switcher */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <button className="flex items-center gap-1 px-3 py-1 rounded-md bg-white/10 hover:bg-white/20 text-white text-sm">
@@ -261,7 +233,6 @@ export default function DashboardLayout({
             </DropdownMenu>
           </div>
 
-          {/* Center search */}
           <div className="flex-1 flex justify-center px-4">
             <div className="relative w-full max-w-md">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-white/60" />
@@ -272,7 +243,6 @@ export default function DashboardLayout({
             </div>
           </div>
 
-          {/* Right section */}
           <div className="flex items-center space-x-4">
             <Button size="sm">Support</Button>
 
@@ -296,13 +266,11 @@ export default function DashboardLayout({
           </div> 
         </header>
 
-        {/* Page Content */}
         <div className="flex-1 overflow-auto">
           <div className="h-full">{children}</div>
         </div>
       </div>
 
-      {/* Mobile overlay + sliding panel */}
       {mobileMenuOpen && (
         <>
           <div
@@ -314,21 +282,16 @@ export default function DashboardLayout({
             animate={{ x: 0 }}
             className="fixed inset-y-0 left-0 z-40 w-64 bg-card border-r border-border p-4 md:hidden overflow-y-auto"
           >
-            {/* replicate nav items for mobile */}
             <nav className="flex flex-col space-y-4">
               {navItems.map(item => (
-                <Link key={item.href} href={item.href}>
-                  <a
-                    className={cn(
-                      'flex items-center gap-2 p-2 rounded-md transition-colors',
-                      isActive(item.href)
-                        ? 'bg-primary text-primary-foreground'
-                        : 'text-white/80 hover:text-white hover:bg-white/5'
-                    )}
-                  >
-                    {item.icon}
-                    <span className="text-sm truncate">{item.label}</span>
-                  </a>
+                <Link key={item.href} href={item.href} className={cn(
+                  'flex items-center gap-2 p-2 rounded-md transition-colors',
+                  isActive(item.href)
+                    ? 'bg-primary text-primary-foreground'
+                    : 'text-white/80 hover:text-white hover:bg-white/5'
+                )}>
+                  {item.icon}
+                  <span className="text-sm truncate">{item.label}</span>
                 </Link>
               ))}
             </nav>

@@ -8,6 +8,8 @@ import { Button } from '@/components/ui/button';
 import { CheckCircle2, ArrowRight, Package, TrendingUp, Zap, BarChart3, Crown, AlertCircle, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { deleteAccount } from '@/lib/actions/account_subscription';
+import { deleteStore } from '@/lib/actions/stores';
+import { useRouter } from 'next/navigation';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -59,6 +61,7 @@ const plans: Record<'free' | 'pro' | 'business', { features: string[]; price: nu
 export default function AccountPage() {
   const params = useParams();
   const storeId = Number(params.id);
+  const router = useRouter();
 
   const [account, setAccount] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -87,6 +90,25 @@ export default function AccountPage() {
       }, 1500);
     } else {
       toast.error("Erreur lors de la suppression du compte: " + error);
+    }
+  };
+
+  const handleDeleteStore = async () => {
+    if (!storeId) return;
+
+    try {
+      const { success, error } = await deleteStore(storeId);
+      if (success) {
+          toast.success("Votre boutique et toutes ses données ont été supprimées. Votre compte est maintenant un compte 'Client'. Redirection...");
+          // Using window.location.href to ensure a full reload and clear any dashboard-specific state
+          setTimeout(() => {
+            window.location.href = '/';
+          }, 2000);
+      } else {
+          toast.error("Erreur lors de la suppression de la boutique: " + error);
+      }
+    } catch (err) {
+      toast.error("Une erreur inattendue est survenue.");
     }
   };
 
@@ -243,6 +265,32 @@ export default function AccountPage() {
                   className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                 >
                   Supprimer définitivement
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button variant="ghost" className="text-destructive hover:text-destructive hover:bg-destructive/10">
+                Supprimer la boutique
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle className="text-white font-bold text-xl">Supprimer la boutique ?</AlertDialogTitle>
+                <AlertDialogDescription className="text-gray-300 text-base">
+                  Cette action est irréversible. Elle supprimera définitivement votre boutique et toutes les données associées.
+                  Votre rôle redeviendra 'Client'.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel className="text-foreground border-input hover:bg-accent">Annuler</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={handleDeleteStore}
+                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                >
+                  Supprimer définitivement la boutique
                 </AlertDialogAction>
               </AlertDialogFooter>
             </AlertDialogContent>

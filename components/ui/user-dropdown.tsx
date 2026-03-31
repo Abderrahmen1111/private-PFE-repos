@@ -24,7 +24,7 @@ interface UserDropdownProps {
 }
 
 export const UserDropdown = ({ user, onAction = () => {} }: UserDropdownProps) => {
-  const isClient = user.role === 'client';
+  const isClient = user.role?.toLowerCase() === 'client';
 
   return (
     <DropdownMenu>
@@ -76,7 +76,7 @@ export const UserDropdown = ({ user, onAction = () => {} }: UserDropdownProps) =
           </DropdownMenuItem>
           <DropdownMenuItem
             className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-white/70 hover:text-white hover:bg-white/10 cursor-pointer transition"
-            onClick={() => onAction(isClient ? 'cart' : 'billing')}
+            onClick={() => onAction(isClient ? 'panier' : 'billing')}
           >
             {isClient ? <ShoppingCart className="w-4 h-4" /> : <CreditCard className="w-4 h-4" />}
             <span className="text-sm font-medium">{isClient ? 'Panier' : 'Billing'}</span>

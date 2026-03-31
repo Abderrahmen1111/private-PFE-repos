@@ -286,3 +286,56 @@ export type StoryAuthorNameProps = HTMLAttributes<HTMLSpanElement>;
 export const StoryAuthorName = ({ className, ...props }: StoryAuthorNameProps) => (
   <span className={cn('truncate font-medium text-sm', className)} {...props} />
 );
+
+// ─── Composite Carousel (High level API) ──────────────────────────────────────
+
+export interface StoriesCarouselProps {
+  stories: {
+    id: string;
+    media_url: string;
+    media_type: 'image' | 'video';
+    author: {
+      name: string;
+      avatar?: string;
+    };
+    caption?: string;
+  }[];
+}
+
+export function StoriesCarousel({ stories }: StoriesCarouselProps) {
+  return (
+    <Stories>
+      <StoriesContent>
+        {stories.map((story) => (
+          <Story key={story.id}>
+            <StoryThumbnail>
+              {story.media_type === 'video' ? (
+                <StoryVideo src={story.media_url} />
+              ) : (
+                <StoryImage src={story.media_url} alt={story.author.name} />
+              )}
+              
+              <StoryOverlay side="bottom" />
+              
+              <StoryAuthor>
+                <StoryAuthorImage 
+                  src={story.author.avatar} 
+                  name={story.author.name} 
+                />
+                <StoryAuthorName>{story.author.name}</StoryAuthorName>
+              </StoryAuthor>
+            </StoryThumbnail>
+
+            {story.caption && (
+              <StoryInfo className="mt-2">
+                <StoryMeta>
+                  <StoryTitle>{story.caption}</StoryTitle>
+                </StoryMeta>
+              </StoryInfo>
+            )}
+          </Story>
+        ))}
+      </StoriesContent>
+    </Stories>
+  );
+}

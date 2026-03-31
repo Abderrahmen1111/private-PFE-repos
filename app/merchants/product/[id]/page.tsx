@@ -2,6 +2,8 @@ import { notFound } from 'next/navigation';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import { getProductById, getProductReviews, getRelatedProducts } from '@/lib/actions/product_detail';
+import { getBusinessStories } from '@/lib/actions/stories';
+import { BusinessStories } from '@/components/BusinessStories';
 import ProductOrderCard from '@/components/ProductOrderCard';
 import {
   Star, MapPin, Phone, CheckCircle, Package,
@@ -58,6 +60,8 @@ export default async function ProductProfilePage({ params }: { params: { id: str
   ]);
 
   if (!product) notFound();
+
+  const stories = await getBusinessStories(product.store.id);
 
   const related    = await getRelatedProducts(product.store.id, id);
   const images     = [product.main_image, product.image_2, product.image_3].filter(Boolean) as string[];
@@ -153,6 +157,13 @@ export default async function ProductProfilePage({ params }: { params: { id: str
                 </div>
               </div>
             )}
+
+            {/* Stories Section */}
+            <BusinessStories 
+              businessName={product.store.name} 
+              storeId={product.store.id} 
+              initialStories={stories} 
+            />
 
             {/* Store card */}
             <div className="bg-white rounded-2xl shadow-sm border border-stone-100 p-5">

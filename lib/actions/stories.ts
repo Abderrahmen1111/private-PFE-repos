@@ -15,9 +15,13 @@ export async function getBusinessStories(storeId: number) {
       caption,
       views_count,
       created_at,
-      author:author_id (
+      author:users!author_id (
         full_name,
         avatar_url
+      ),
+      stores:store_id (
+        name,
+        logo_url
       )
     `)
         .eq('store_id', storeId)
@@ -27,6 +31,41 @@ export async function getBusinessStories(storeId: number) {
 
     if (error) {
         console.error('Error fetching stories:', error)
+        return []
+    }
+    return data || []
+}
+
+// Fetch all active stories for Global Discover Feed
+export async function getDiscoverStories(limit: number = 20) {
+    const supabase = createClient()
+
+    const { data, error } = await (supabase as any)
+        .from('stories')
+        .select(`
+            id,
+            media_url,
+            media_type,
+            caption,
+            views_count,
+            created_at,
+            store_id,
+            stores:store_id (
+              name,
+              logo_url
+            ),
+            author:users!author_id (
+                full_name,
+                avatar_url
+            )
+        `)
+        .eq('is_approved', true)
+        .gt('expires_at', new Date().toISOString())
+        .order('created_at', { ascending: false })
+        .limit(limit)
+
+    if (error) {
+        console.error('Error fetching discover stories:', error)
         return []
     }
     return data || []

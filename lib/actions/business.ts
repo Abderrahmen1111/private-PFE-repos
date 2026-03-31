@@ -45,12 +45,14 @@ export async function getBusinessById(id: string): Promise<Business | null> {
         id_business: item.id,
         status: (finalStore as any)?.status,
         name: item.title || '',
+        // Prioritize store logo, then first directory photo
         image: logoUrl || ((item.photos && item.photos.length > 0) ? item.photos[0] : undefined),
-        rating: Number(item.totalScore) || 0,
-        reviewCount: item.reviewsCount || 0,
+        // Prioritize store rating/reviews if it's a verified/claimed store
+        rating: Number((finalStore as any)?.rating_average || item.totalScore) || 0,
+        reviewCount: Number((finalStore as any)?.total_reviews || item.reviewsCount) || 0,
         category: item.vitrine_category || item.categoryName || 'Other',
         priceRange: item.price_range || undefined,
-        isOpen: true, // Fallback for simple status
+        isOpen: true, 
         workingHours: workingHours || undefined,
         description: item.description || item.full_address || '',
         phone: item.phone || undefined,

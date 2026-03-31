@@ -53,17 +53,31 @@ function DiscoverCardComponent({ item, priority = false }: DiscoverCardProps) {
       onDoubleClick={triggerLike}
       onTouchEnd={onMediaTouchEnd}
     >
-      <img
-        src={item.image}
-        alt={`${item.product} by ${item.merchantName}`}
-        loading={priority ? 'eager' : 'lazy'}
-        decoding="async"
-        className={cn(
-          'h-full w-full object-cover transition-all duration-700',
-          entered ? 'scale-100 opacity-100' : 'scale-[1.03] opacity-85',
-        )}
-      />
 
+      {item.mediaType === 'video' ? (
+        <video
+          src={item.image}
+          className={cn(
+            'h-full w-full object-cover transition-all duration-700',
+            entered ? 'scale-100 opacity-100' : 'scale-[1.03] opacity-85',
+          )}
+          autoPlay
+          loop
+          muted
+          playsInline
+        />
+      ) : (
+        <img
+          src={item.image}
+          alt={`${item.product} by ${item.merchantName}`}
+          loading={priority ? 'eager' : 'lazy'}
+          decoding="async"
+          className={cn(
+            'h-full w-full object-cover transition-all duration-700',
+            entered ? 'scale-100 opacity-100' : 'scale-[1.03] opacity-85',
+          )}
+        />
+      )}
       <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/30 via-black/10 to-black/25" />
 
       <div

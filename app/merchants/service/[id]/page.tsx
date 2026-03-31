@@ -2,6 +2,8 @@ import { notFound } from 'next/navigation';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import { getServiceById, getServiceReviews, getRelatedServices } from '@/lib/actions/service_detail';
+import { getBusinessStories } from '@/lib/actions/stories';
+import { BusinessStories } from '@/components/BusinessStories';
 import ServiceBookingCard from '@/components/ServiceBookingCard';
 import {
   Star, MapPin, Phone, Clock, CheckCircle, Wrench,
@@ -63,6 +65,8 @@ export default async function ServiceProfilePage({ params }: { params: { id: str
   ]);
 
   if (!service) notFound();
+
+  const stories = await getBusinessStories(service.store.id);
 
   const related    = await getRelatedServices(service.store.id, id);
   const images     = [service.main_image, service.image_2, service.image_3].filter(Boolean) as string[];
@@ -149,6 +153,13 @@ export default async function ServiceProfilePage({ params }: { params: { id: str
                 </div>
               </div>
             )}
+
+            {/* Stories Section */}
+            <BusinessStories 
+              businessName={service.store.name} 
+              storeId={service.store.id} 
+              initialStories={stories} 
+            />
 
             {/* Schedule */}
             {service.schedules.length > 0 && (
@@ -346,7 +357,6 @@ export default async function ServiceProfilePage({ params }: { params: { id: str
               price={Number(service.price)}
               priceUnit={service.price_unit}
               duration={formatDuration(service.duration_minutes)}
-              isBookable={service.is_bookable}
               storePhone={service.store.phone}
               storeSlug={service.store.slug}
               isVerified={isVerified}

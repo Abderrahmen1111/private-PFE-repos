@@ -43,7 +43,7 @@ export async function getDashboardOverview(storeId: number) {
     // 4. Fetch Recent Activity for the Feed
     const { data: recentReviews } = await (supabase as any)
         .from('reviews')
-        .select('id, rating, created_at, author:author_id(full_name)')
+        .select('id, rating, created_at, author:users!author_id(full_name)')
         .eq('store_id', storeId)
         .eq('is_approved', true)
         .order('created_at', { ascending: false })
@@ -160,7 +160,7 @@ export async function getStoreReviews(storeId: number) {
     const { data, error } = await supabase
         .from('reviews')
         .select(`id, rating, comment, created_at, vendor_response, responded_at,
-      author:author_id(full_name, avatar_url)`)
+      author:users!author_id(full_name, avatar_url)`)
         .eq('store_id', storeId)
         .eq('is_approved', true)
         .order('created_at', { ascending: false })
