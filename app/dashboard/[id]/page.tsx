@@ -196,11 +196,11 @@ export default function DashboardPage() {
           color="green"
         />
         <StatCard
-          label="Total Actions"
-          value={totalActions}
-          icon={<TrendingUp className="w-8 h-8" />}
-          trend={11}
-          color="blue"
+          label="Revenu Total"
+          value={data.totalRevenue || 0}
+          icon={<DollarSign className="w-8 h-8" />}
+          trend={12}
+          color="orange"
         />
       </div>
 

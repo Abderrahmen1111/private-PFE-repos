@@ -4,11 +4,12 @@ import { useState, useEffect, useRef, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import BusinessCard from '@/components/ui/BusinessCard';
 import ResultsMap from '@/components/ui/ResultsMap';
-import { Search, SlidersHorizontal, Loader2, Package, LayoutGrid, Store, Tags } from 'lucide-react';
+import { Search, SlidersHorizontal, Loader2, Package, LayoutGrid, Store, Tags, Star } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import { searchStores } from '@/lib/actions/search_bus';
-import { searchItems, SearchResultItem } from '@/lib/actions/search_prod_serv';
+import { searchItems, SearchResultItem } from '@/lib/actions/search_items';
+import { searchServicesDirectory } from '@/lib/actions/search_service';
 import { ProductCard } from '@/components/ProductCard';
 import { ServiceCard } from '@/components/ServiceCard';
 import { Business } from '@/types/business';
@@ -23,7 +24,8 @@ function SearchPageContent() {
   const [activeTab, setActiveTab] = useState(initialTab);
   const [activeBusinessId, setActiveBusinessId] = useState<string | undefined>();
   const [businesses, setBusinesses] = useState<Business[]>([]);
-  const [items, setItems] = useState<SearchResultItem[]>([]);
+  const [products, setProducts] = useState<SearchResultItem[]>([]);
+  const [services, setServices] = useState<SearchResultItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [compared, setCompared] = useState<number[]>([]);
   const businessRefs = useRef<Map<string, HTMLDivElement>>(new Map());
@@ -32,12 +34,14 @@ function SearchPageContent() {
     const fetchAllResults = async () => {
       setIsLoading(true);
       try {
-        const [busResults, itemResults] = await Promise.all([
+        const [busResults, prodResults, servResults] = await Promise.all([
           searchStores(query, location),
-          searchItems(query)
+          searchItems(query),
+          searchServicesDirectory(query, location)
         ]);
         setBusinesses(busResults);
-        setItems(itemResults.data || []);
+        setProducts(prodResults.data || []);
+        setServices(servResults.data || []);
       } catch (err) {
         console.error('Fetch error:', err);
       } finally {
@@ -62,8 +66,8 @@ function SearchPageContent() {
     setTimeout(() => setActiveBusinessId(undefined), 5000);
   };
 
-  const handleItemClick = (storeId: number) => {
-    router.push(`/merchants/business/${storeId}`);
+  const handleProductClick = (item: SearchResultItem) => {
+    router.push(`/merchants/product/${item.id}`);
   };
 
   const toggleCompare = (id: number) =>
@@ -92,7 +96,8 @@ function SearchPageContent() {
           {[
             { id: 'tout', label: 'Tout', icon: LayoutGrid },
             { id: 'boutiques', label: 'Boutiques', icon: Store },
-            { id: 'annonces', label: 'Annonces', icon: Tags },
+            { id: 'items', label: 'Items', icon: Package },
+            { id: 'services', label: 'Services', icon: Tags },
           ].map((tab) => (
             <button
               key={tab.id}
@@ -107,8 +112,11 @@ function SearchPageContent() {
               {tab.id === 'boutiques' && businesses.length > 0 && (
                 <span className="ml-1 px-1.5 py-0.5 rounded-full bg-stone-200 text-[10px]">{businesses.length}</span>
               )}
-              {tab.id === 'annonces' && items.length > 0 && (
-                <span className="ml-1 px-1.5 py-0.5 rounded-full bg-stone-200 text-[10px]">{items.length}</span>
+              {tab.id === 'items' && products.length > 0 && (
+                <span className="ml-1 px-1.5 py-0.5 rounded-full bg-stone-200 text-[10px]">{products.length}</span>
+              )}
+              {tab.id === 'services' && services.length > 0 && (
+                <span className="ml-1 px-1.5 py-0.5 rounded-full bg-stone-200 text-[10px]">{services.length}</span>
               )}
             </button>
           ))}
@@ -146,28 +154,31 @@ function SearchPageContent() {
                   )}
 
                   {/* Top Items Section */}
-                  {items.length > 0 && (
+                  {(products.length > 0 || services.length > 0) && (
                     <section>
                       <div className="flex items-center justify-between mb-4">
-                        <h2 className="text-xl font-bold text-stone-900">Annonces récentes</h2>
-                        <button onClick={() => setActiveTab('annonces')} className="text-sm font-bold text-red-600 hover:text-red-700">Voir tout</button>
+                        <h2 className="text-xl font-bold text-stone-900">Articles et Services</h2>
+                        <button onClick={() => setActiveTab('items')} className="text-sm font-bold text-red-600 hover:text-red-700">Voir tout</button>
                       </div>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                        {items.slice(0, 4).map((item: SearchResultItem) => (
+                        {[...products, ...services].slice(0, 4).map((item: SearchResultItem) => (
                           <div key={item.id}>
                             {item.item_type === 'SERVICE' ? (
-                              <ServiceCard
-                                item={item}
-                                businessName={item.stores?.name}
-                                onViewDetails={() => handleItemClick(item.store_id)}
-                              />
+                            /* Service Card Component */
+                            <ServiceCard 
+                              item={item} 
+                              businessName={item.stores?.name}
+                              onViewDetails={() => router.push(`/merchants/service/${item.id}`)}
+
+                              hideBooking={false} 
+                            />
                             ) : (
                               <ProductCard
                                 item={item}
                                 businessName={item.stores?.name}
                                 compared={compared.includes(item.id)}
                                 onCompare={() => toggleCompare(item.id)}
-                                onViewDetails={() => handleItemClick(item.store_id)}
+                                onViewDetails={() => router.push(`/merchants/product/${item.id}`)}
                               />
                             )}
                           </div>
@@ -176,7 +187,7 @@ function SearchPageContent() {
                     </section>
                   )}
 
-                  {businesses.length === 0 && items.length === 0 && (
+                  {businesses.length === 0 && products.length === 0 && services.length === 0 && (
                     <div className="text-center py-16">
                       <Search className="w-16 h-16 text-gray-200 mx-auto mb-4" />
                       <h2 className="text-xl font-semibold text-stone-800 mb-2">Aucun résultat trouvé</h2>
@@ -213,23 +224,25 @@ function SearchPageContent() {
                 </div>
               )}
 
-              {/* ANNONCES TAB */}
-              {activeTab === 'annonces' && (
+              {/* ITEMS TAB */}
+              {activeTab === 'items' && (
                 <div className="space-y-6">
-                  {items.length === 0 ? (
+                  {products.length === 0 ? (
                     <div className="text-center py-16">
                       <Package className="w-16 h-16 text-gray-200 mx-auto mb-4" />
-                      <h2 className="text-xl font-semibold text-stone-800">Aucune annonce trouvée</h2>
+                      <h2 className="text-xl font-semibold text-stone-800">Aucun élément trouvé</h2>
                     </div>
                   ) : (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                      {items.map((item: SearchResultItem) => (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                      {products.map((item: SearchResultItem) => (
                         <div key={item.id}>
                           {item.item_type === 'SERVICE' ? (
-                            <ServiceCard
-                              item={item}
+                            <ServiceCard 
+                              item={item} 
                               businessName={item.stores?.name}
-                              onViewDetails={() => handleItemClick(item.store_id)}
+                              onViewDetails={() => router.push(`/merchants/service/${item.id}`)}
+
+                              hideBooking={false}
                             />
                           ) : (
                             <ProductCard
@@ -237,9 +250,35 @@ function SearchPageContent() {
                               businessName={item.stores?.name}
                               compared={compared.includes(item.id)}
                               onCompare={() => toggleCompare(item.id)}
-                              onViewDetails={() => handleItemClick(item.store_id)}
+                              onViewDetails={() => handleProductClick(item)}
                             />
                           )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* SERVICES TAB */}
+              {activeTab === 'services' && (
+                <div className="space-y-4">
+                  {services.length === 0 ? (
+                    <div className="text-center py-16">
+                      <Tags className="w-16 h-16 text-gray-200 mx-auto mb-4" />
+                      <h2 className="text-xl font-semibold text-stone-800">Aucun service trouvé</h2>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                      {services.map((item: SearchResultItem) => (
+                        <div key={item.id}>
+                          <ServiceCard 
+                            item={item} 
+                            businessName={item.stores?.name}
+                            onViewDetails={() => router.push(`/merchants/business/${item.id}`)}
+                            hideBooking={false}
+                            hidePricing={true}
+                          />
                         </div>
                       ))}
                     </div>

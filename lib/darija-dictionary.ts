@@ -1,0 +1,262 @@
+/**
+ * Dictionnaire Darija Tunisien Complet
+ * Inclut: Arabe, Phonétique (français/chiffres), Variations régionales
+ */
+
+export const DARIJA_TUNISIAN_DICTIONARY: Record<string, { french: string; category: string }> = {
+  // ========== VERBES COURANTS ==========
+  
+  // "Vouloir" (toutes variantes)
+  'نحب': { french: 'je veux', category: 'verb' },
+  'n7eb': { french: 'je veux', category: 'verb' },
+  'nhb': { french: 'je veux', category: 'verb' },
+  'n7b': { french: 'je veux', category: 'verb' },
+  'n7ib': { french: 'je veux', category: 'verb' },
+  
+  // "Chercher/Trouver"
+  'نلقى': { french: 'trouver', category: 'verb' },
+  'nel9a': { french: 'trouver', category: 'verb' },
+  'nl9a': { french: 'trouver', category: 'verb' },
+  'nlka': { french: 'trouver', category: 'verb' },
+  'نبحث': { french: 'chercher', category: 'verb' },
+  'nba7eth': { french: 'chercher', category: 'verb' },
+  
+  // "Acheter"
+  'نشري': { french: 'acheter', category: 'verb' },
+  'nechri': { french: 'acheter', category: 'verb' },
+  'nchri': { french: 'acheter', category: 'verb' },
+  
+  // ========== ADJECTIFS & ÉTATS ==========
+  
+  // "Ouvert"
+  'مفتوح': { french: 'ouvert', category: 'state' },
+  'maftouh': { french: 'ouvert', category: 'state' },
+  'mftouh': { french: 'ouvert', category: 'state' },
+  'maftou7': { french: 'ouvert', category: 'state' },
+  
+  // "Fermé"
+  'مسكر': { french: 'fermé', category: 'state' },
+  'msakker': { french: 'fermé', category: 'state' },
+  'msaker': { french: 'fermé', category: 'state' },
+  
+  // "Maintenant"
+  'تو': { french: 'maintenant', category: 'time' },
+  'توا': { french: 'maintenant', category: 'time' },
+  'tawa': { french: 'maintenant', category: 'time' },
+  'taw': { french: 'maintenant', category: 'time' },
+  'tou': { french: 'maintenant', category: 'time' },
+  
+  // ========== PRÉPOSITIONS & LIEUX ==========
+  
+  // "À/Dans"
+  'في': { french: 'à dans', category: 'preposition' },
+  'fi': { french: 'à dans', category: 'preposition' },
+  'f': { french: 'à dans', category: 'preposition' },
+  
+  // "Où"
+  'وين': { french: 'où', category: 'question' },
+  'wayn': { french: 'où', category: 'question' },
+  'win': { french: 'où', category: 'question' },
+  'wainek': { french: 'où es-tu', category: 'question' },
+  
+  // "Près/Proche"
+  'قريب': { french: 'proche près', category: 'location' },
+  '9rib': { french: 'proche près', category: 'location' },
+  'krib': { french: 'proche près', category: 'location' },
+  'karieb': { french: 'proche près', category: 'location' },
+  
+  // ========== VILLES TUNISIENNES (Phonétique) ==========
+  
+  'medenien': { french: 'Médenine', category: 'city' },
+  'medenine': { french: 'Médenine', category: 'city' },
+  'مدنين': { french: 'Médenine', category: 'city' },
+  'sfax': { french: 'Sfax', category: 'city' },
+  'صفاقس': { french: 'Sfax', category: 'city' },
+  'sousse': { french: 'Sousse', category: 'city' },
+  'سوسة': { french: 'Sousse', category: 'city' },
+  'gabes': { french: 'Gabès', category: 'city' },
+  'قابس': { french: 'Gabès', category: 'city' },
+  'bizerte': { french: 'Bizerte', category: 'city' },
+  'بنزرت': { french: 'Bizerte', category: 'city' },
+  'kairouan': { french: 'Kairouan', category: 'city' },
+  '9ayrawon': { french: 'Kairouan', category: 'city' },
+  'القيروان': { french: 'Kairouan', category: 'city' },
+  'tatwin': { french: 'Tataouine', category: 'city' },
+  'tataouine': { french: 'Tataouine', category: 'city' },
+  'تطاوين': { french: 'Tataouine', category: 'city' },
+  'jerba': { french: 'Djerba', category: 'city' },
+  'djerba': { french: 'Djerba', category: 'city' },
+  'جربة': { french: 'Djerba', category: 'city' },
+  'ariana': { french: 'Ariana', category: 'city' },
+  'اريانة': { french: 'Ariana', category: 'city' },
+  'manouba': { french: 'Manouba', category: 'city' },
+  'منوبة': { french: 'Manouba', category: 'city' },
+  'ben arous': { french: 'Ben Arous', category: 'city' },
+  'بن عروس': { french: 'Ben Arous', category: 'city' },
+  'nabeul': { french: 'Nabeul', category: 'city' },
+  'نابل': { french: 'Nabeul', category: 'city' },
+  
+  // ========== QUANTITÉS ==========
+  
+  'برشا': { french: 'beaucoup', category: 'quantity' },
+  'barcha': { french: 'beaucoup', category: 'quantity' },
+  'برشة': { french: 'beaucoup', category: 'quantity' },
+  'bercha': { french: 'beaucoup', category: 'quantity' },
+  'ياسر': { french: 'très beaucoup', category: 'quantity' },
+  'yaser': { french: 'très beaucoup', category: 'quantity' },
+  'yasser': { french: 'très beaucoup', category: 'quantity' },
+  'شوية': { french: 'un peu', category: 'quantity' },
+  'chwaya': { french: 'un peu', category: 'quantity' },
+  'chwiya': { french: 'un peu', category: 'quantity' },
+  
+  // ========== NOURRITURE & VÉHICULES ==========
+  
+  'mekla': { french: 'nourriture', category: 'product' },
+  'makla': { french: 'nourriture', category: 'product' },
+  'ماكلة': { french: 'nourriture', category: 'product' },
+  'karhba': { french: 'voiture', category: 'product' },
+  'كرهبة': { french: 'voiture', category: 'product' },
+  
+  // ========== QUESTIONS & EXISTENCE ==========
+  
+  'fama': { french: "il y a", category: 'state' },
+  'famma': { french: "il y a", category: 'state' },
+  'فما': { french: "il y a", category: 'state' },
+  'chkoun': { french: 'qui', category: 'question' },
+  'شكون': { french: 'qui', category: 'question' },
+  'lel': { french: 'pour', category: 'preposition' },
+  'ل': { french: 'pour', category: 'preposition' },
+  'mara': { french: 'femme', category: 'person' },
+  'mra': { french: 'femme', category: 'person' },
+  'مرا': { french: 'femme', category: 'person' },
+  
+  // ========== QUALITÉS ==========
+  
+  // "Bon/Meilleur"
+  'بهي': { french: 'bon bien', category: 'quality' },
+  'behi': { french: 'bon bien', category: 'quality' },
+  'behy': { french: 'bon bien', category: 'quality' },
+  'أحسن': { french: 'meilleur', category: 'quality' },
+  'a7sen': { french: 'meilleur', category: 'quality' },
+  '7sen': { french: 'meilleur', category: 'quality' },
+  
+  // "Pas cher"
+  'رخيص': { french: 'pas cher', category: 'price' },
+  'rkhis': { french: 'pas cher', category: 'price' },
+  'rkhiss': { french: 'pas cher', category: 'price' },
+  'rakhis': { french: 'pas cher', category: 'price' },
+  
+  // "Cher"
+  'غالي': { french: 'cher', category: 'price' },
+  'ghali': { french: 'cher', category: 'price' },
+  'ghalya': { french: 'cher', category: 'price' },
+  
+  // "Beau"
+  'زوين': { french: 'beau', category: 'quality' },
+  'zwin': { french: 'beau', category: 'quality' },
+  'zouine': { french: 'beau', category: 'quality' },
+  'زوينة': { french: 'belle', category: 'quality' },
+  'zwina': { french: 'belle', category: 'quality' },
+  
+  // ========== COMMERCE & SERVICES ==========
+  
+  'كدوة': { french: 'cadeau', category: 'product' },
+  'kadwa': { french: 'cadeau', category: 'product' },
+  'kadoua': { french: 'cadeau', category: 'product' },
+  'محل': { french: 'magasin commerce', category: 'business' },
+  'm7el': { french: 'magasin commerce', category: 'business' },
+  'm7al': { french: 'magasin commerce', category: 'business' },
+  'ma7el': { french: 'magasin commerce', category: 'business' },
+  'كسوة': { french: 'vêtements habits', category: 'product' },
+  'kswa': { french: 'vêtements habits', category: 'product' },
+  'ksou': { french: 'vêtements habits', category: 'product' },
+  
+  // ========== PERSONNES ==========
+  
+  'صغير': { french: 'petit enfant', category: 'person' },
+  's\'ghir': { french: 'petit enfant', category: 'person' },
+  'sghir': { french: 'petit enfant', category: 'person' },
+  'صغيرة': { french: 'petite fille', category: 'person' },
+  'sghira': { french: 'petite fille', category: 'person' },
+  'بنت': { french: 'fille', category: 'person' },
+  'bent': { french: 'fille', category: 'person' },
+  'bnet': { french: 'filles', category: 'person' },
+  'ولد': { french: 'garçon fils', category: 'person' },
+  'weld': { french: 'garçon fils', category: 'person' },
+  'ould': { french: 'garçon fils', category: 'person' },
+  
+  // ========== ARGENT & PAIEMENT ==========
+  
+  'فلوس': { french: 'argent', category: 'money' },
+  'flous': { french: 'argent', category: 'money' },
+  'flouss': { french: 'argent', category: 'money' },
+  'نخلص': { french: 'payer', category: 'verb' },
+  'nekhles': { french: 'payer', category: 'verb' },
+  'nkhales': { french: 'payer', category: 'verb' },
+  'بكداش': { french: 'combien', category: 'question' },
+  'bkdech': { french: 'combien', category: 'question' },
+  'b9adech': { french: 'combien', category: 'question' },
+}
+
+/**
+ * Normaliser mot darija → français
+ */
+export function normalizeDarijaWord(word: string): string {
+  const normalized = word.toLowerCase().trim()
+  
+  if (DARIJA_TUNISIAN_DICTIONARY[normalized]) {
+    return DARIJA_TUNISIAN_DICTIONARY[normalized].french
+  }
+  
+  return word
+}
+
+/**
+ * Détecter si un mot est darija
+ */
+export function isDarijaWord(word: string): boolean {
+  const normalized = word.toLowerCase().trim()
+  return normalized in DARIJA_TUNISIAN_DICTIONARY
+}
+
+/**
+ * Extraire tous les mots darija d'une phrase
+ */
+export function extractDarijaWords(text: string): Array<{
+  original: string
+  french: string
+  category: string
+}> {
+  const words = text.split(/\s+/)
+  const darijaWords: Array<any> = []
+  
+  words.forEach(word => {
+    const normalized = word.toLowerCase().trim()
+    if (DARIJA_TUNISIAN_DICTIONARY[normalized]) {
+      darijaWords.push({
+        original: word,
+        french: DARIJA_TUNISIAN_DICTIONARY[normalized].french,
+        category: DARIJA_TUNISIAN_DICTIONARY[normalized].category,
+      })
+    }
+  })
+  
+  return darijaWords
+}
+
+/**
+ * Convert a full phrase replacing Darija words with French words, 
+ * keeping other words intact to enhance semantic search.
+ */
+export function translateDarijaForSearch(query: string): string {
+  if (!query) return query;
+  
+  // Split by whitespace
+  const words = query.split(/\s+/);
+  
+  const mappedWords = words.map(word => {
+    return normalizeDarijaWord(word);
+  });
+  
+  return mappedWords.join(' ');
+}

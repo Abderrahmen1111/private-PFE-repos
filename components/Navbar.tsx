@@ -13,6 +13,8 @@ import Link from 'next/link';
 import { UserDropdown } from '@/components/ui/user-dropdown';
 import { useState as useMotionState } from 'react';
 import { Menu, MenuItem, HoveredLink, ProductItem } from '@/components/ui/navbar-menu';
+import { useVoiceSearch } from '@/hooks/useVoiceSearch';
+import { useSmartSearch } from '@/hooks/useSmartSearch';
 
 // ─── Category menu data ───────────────────────────────────────────────────────
 const categoryMenuItems = [
@@ -577,8 +579,38 @@ export default function Navbar() {
   const [profileOpen, setProfileOpen] = useState(false);
   const [imageSearchOpen, setImageSearchOpen] = useState(false);
   const profileRef = useRef<HTMLDivElement>(null);
-  const recognitionRef = useRef<any>(null);
-  const [isListening, setIsListening] = useState(false);
+  
+  const { isListening, transcript, isSupported, startListening, stopListening, resetTranscript } = useVoiceSearch({
+    language: 'ar-TN',
+    continuous: false,
+    interimResults: false
+  });
+
+  const { search: doSmartSearch, results: searchResults, isLoading: isSearchLoading } = useSmartSearch();
+  const [debouncedQuery, setDebouncedQuery] = useState('');
+  const [showDropdown, setShowDropdown] = useState(false);
+
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedQuery(searchQuery);
+    }, 400);
+    return () => clearTimeout(handler);
+  }, [searchQuery]);
+
+  useEffect(() => {
+    if (debouncedQuery.trim().length > 2) {
+      doSmartSearch(debouncedQuery, { limit: 5 });
+      setShowDropdown(true);
+    } else {
+      setShowDropdown(false);
+    }
+  }, [debouncedQuery, doSmartSearch]);
+
+  useEffect(() => {
+    if (transcript) {
+      setSearchQuery(transcript);
+    }
+  }, [transcript]);
   const [isLocating, setIsLocating] = useState(false);
   const [hidden, setHidden] = useState(false);
   const lastScrollY = useRef(0);
@@ -715,31 +747,18 @@ export default function Navbar() {
 
   // ─── Voice Search ───────────────────────────────────────────────────────────
   const handleVoiceSearch = () => {
-    const SpeechRecognition =
-      (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    if (!SpeechRecognition) {
+    if (!isSupported) {
       alert('Voice search is not supported in your browser.');
       return;
     }
+    
     if (isListening) {
-      recognitionRef.current?.stop();
-      setIsListening(false);
-      return;
+      stopListening();
+    } else {
+      resetTranscript();
+      setSearchQuery('');
+      startListening();
     }
-    const recognition = new SpeechRecognition();
-    recognition.lang = 'fr-FR';
-    recognition.interimResults = false;
-    recognition.maxAlternatives = 1;
-    recognitionRef.current = recognition;
-    recognition.onstart = () => setIsListening(true);
-    recognition.onresult = (e: any) => {
-      const transcript = e.results[0][0].transcript;
-      setSearchQuery(transcript);
-      setIsListening(false);
-    };
-    recognition.onerror = () => setIsListening(false);
-    recognition.onend = () => setIsListening(false);
-    recognition.start();
   };
 
   // ─── Near Me (Geolocation) ──────────────────────────────────────────────────
@@ -783,7 +802,7 @@ export default function Navbar() {
     const params = new URLSearchParams();
     if (searchQuery) params.set('query', searchQuery);
     if (locationQuery) params.set('location', locationQuery);
-  router.push(`/search/searchBusiness?${params.toString()}`);
+  router.push(`/search?${params.toString()}`);
   };
 
   // Called by the modal after AI analysis or direct submit
@@ -791,7 +810,7 @@ export default function Navbar() {
     const params = new URLSearchParams();
     params.set('query', query);
     if (imageUrl) params.set('imageSearch', '1');
-  router.push(`/search/searchBusiness?${params.toString()}`);
+  router.push(`/search?${params.toString()}`);
   };
 
   const handleSignOut = async () => {
@@ -830,12 +849,14 @@ export default function Navbar() {
               <div className="flex flex-1 items-center bg-black/60 border border-white/20 rounded-xl backdrop-blur-md">
 
                 {/* Text search */}
-                <div className="flex-1 flex items-center rounded-xl gap-2 px-4 py-2 border-r border-white/10">
+                <div className="flex-1 flex items-center rounded-xl gap-2 px-4 py-2 border-r border-white/10 relative">
                   <Search className="w-4 h-4 text-white/60 shrink-0" />
                   <input
                     type="text"
                     placeholder={displayText}
                     value={searchQuery}
+                    onFocus={() => { if (searchQuery.length > 2) setShowDropdown(true); }}
+                    onBlur={() => setTimeout(() => setShowDropdown(false), 200)}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     className="w-full bg-transparent outline-none text-sm text-white placeholder-white/50"
                   />
@@ -847,6 +868,40 @@ export default function Navbar() {
                   >
                     {isListening ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
                   </button>
+
+                  {/* SMART SEARCH DROPDOWN */}
+                  {showDropdown && (
+                    <div className="absolute top-[115%] left-0 w-full min-w-[300px] md:w-[130%] bg-zinc-900 border border-white/10 rounded-2xl shadow-[0_10px_40px_rgba(0,0,0,0.8)] overflow-hidden z-50 flex flex-col backdrop-blur-xl">
+                       {isSearchLoading ? (
+                          <div className="p-5 text-center text-white/60 text-sm flex items-center justify-center gap-3 font-medium">
+                             <Loader2 className="w-5 h-5 animate-spin text-red-500" /> Analyse sémantique...
+                          </div>
+                       ) : searchResults && searchResults.length > 0 ? (
+                          <div className="py-2">
+                             {searchResults.slice(0, 5).map((res: any, idx: number) => (
+                                <Link key={idx} href={`/merchants/business/${res.store_id || res.id || '#'}`} className="block px-4 py-3 hover:bg-white/5 transition border-b border-white/5 last:border-0">
+                                   <div className="flex items-center gap-3">
+                                     <div className="w-10 h-10 rounded-lg bg-red-500/10 flex items-center justify-center shrink-0">
+                                       <Search className="w-4 h-4 text-red-500" />
+                                     </div>
+                                     <div className="min-w-0">
+                                       <div className="text-white text-sm font-semibold truncate">{res.name || res.title}</div>
+                                       <div className="text-white/50 text-xs truncate mt-0.5">{res.description?.substring(0, 60) || 'Découvrir cette offre...' }</div>
+                                     </div>
+                                   </div>
+                                </Link>
+                             ))}
+                             <button type="button" onClick={handleSearch as any} className="w-full px-4 py-3 text-sm text-center text-red-400 font-bold hover:bg-white/5 transition border-t border-white/10 mt-1 flex justify-center items-center gap-2">
+                               <Search className="w-4 h-4"/> Voir tous les résultats
+                             </button>
+                          </div>
+                       ) : (
+                          <div className="p-5 text-center text-white/50 text-sm">
+                             Aucune correspondance avec cette recherche.
+                          </div>
+                       )}
+                    </div>
+                  )}
                 </div>
 
                 {/* Location */}

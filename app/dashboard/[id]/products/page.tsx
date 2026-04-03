@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { Item, getAdminItemsByStoreId, upsertItem, deleteItem } from '@/lib/actions/items';
-import { getStoreByBusinessId } from '@/lib/actions/stores';
+import { getStoreByAnyId } from '@/lib/actions/stores';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -64,8 +64,8 @@ export default function ProductsPage() {
     async function resolveAndFetch() {
       if (storeId) {
         setIsLoading(true);
-        // Resolve the actual internal store ID
-        const { data: store, error: storeError } = await getStoreByBusinessId(storeId) as any;
+        // Resolve the actual internal store ID using the universal resolver
+        const { data: store, error: storeError } = await getStoreByAnyId(storeId) as any;
 
         if (storeError || !store) {
           toast.error("Impossible de trouver la boutique correspondante");

@@ -4,67 +4,141 @@ import { createClient } from '@/lib/supabase/server'
 import { Business } from '@/types/business'
 
 export async function getBusinessById(id: string): Promise<Business | null> {
-    const supabase = createClient()
+    const supabase = createClient();
+    const isNumeric = /^\d+$/.test(id);
 
-    const { data, error } = await supabase
-        .from('business_directory_tunisia' as any)
-        .select('*')
-        .eq('id', id)
-        .single()
-
-    if (error || !data) {
-        if (error) console.error('Error fetching business by ID:', error)
-        return null
+    // 1. Try fetching from stores (by slug or numeric id)
+    let storeQuery = supabase.from('stores')
+        .select('id, id_business, name, slug, description, category, phone, email, website, address, city, rating_average, total_reviews, opening_hours, status, gallery, logo_url');
+    if (isNumeric) {
+        storeQuery = storeQuery.eq('id', Number(id));
+    } else {
+        storeQuery = storeQuery.eq('slug', id);
     }
+    const { data: storeData } = await storeQuery.maybeSingle() as { data: any };
 
-    // Try to find a store linked to this directory item
-    const { data: storeData } = await supabase
-        .from('stores')
-        .select('id, opening_hours, status, gallery, logo_url')
-        .eq('id_business', id)
-        .maybeSingle();
+    let directoryData: any = null;
 
-    // If not found, maybe the ID passed is already the store ID
-    let finalStore = storeData;
-    if (!finalStore) {
-        const { data: directStore } = await supabase
-            .from('stores')
-            .select('id, opening_hours, status, gallery, logo_url')
-            .eq('id', id)
+    // 2. If a store is found with a linked business_directory profile, fetch it
+    if (storeData?.id_business) {
+        const { data: dirData } = await supabase
+            .from('business_directory_tunisia' as any)
+            .select('*')
+            .eq('id', storeData.id_business)
             .maybeSingle();
-        finalStore = directStore;
+        directoryData = dirData;
     }
+    // 3. No store found — try business_directory_tunisia directly (numeric only)
+    else if (!storeData && isNumeric) {
+        const { data: dirData } = await supabase
+            .from('business_directory_tunisia' as any)
+            .select('*')
+            .eq('id', Number(id))
+            .maybeSingle();
+        directoryData = dirData;
 
-    const item = data as any
-    const workingHours = (finalStore as any)?.opening_hours;
-    const logoUrl = (finalStore as any)?.logo_url;
-
-    return {
-        id: item.id.toString(),
-        store_id: (finalStore as any)?.id,
-        id_business: item.id,
-        status: (finalStore as any)?.status,
-        name: item.title || '',
-        // Prioritize store logo, then first directory photo
-        image: logoUrl || ((item.photos && item.photos.length > 0) ? item.photos[0] : undefined),
-        // Prioritize store rating/reviews if it's a verified/claimed store
-        rating: Number((finalStore as any)?.rating_average || item.totalScore) || 0,
-        reviewCount: Number((finalStore as any)?.total_reviews || item.reviewsCount) || 0,
-        category: item.vitrine_category || item.categoryName || 'Other',
-        priceRange: item.price_range || undefined,
-        isOpen: true, 
-        workingHours: workingHours || undefined,
-        description: item.description || item.full_address || '',
-        phone: item.phone || undefined,
-        website: item.website || undefined,
-        photos: item.photos || [],
-        gallery: (finalStore as any)?.gallery || [],
-        location: {
-            address: item.full_address || '',
-            lat: (!isNaN(Number(item.latitude)) && item.latitude !== null) ? Number(item.latitude) : 36.8065,
-            lng: (!isNaN(Number(item.longitude)) && item.longitude !== null) ? Number(item.longitude) : 10.1815,
+        // Also check if a store is linked to this directory entry
+        if (directoryData) {
+            const { data: orphanStore } = await supabase
+                .from('stores')
+                .select('id, id_business, name, slug, description, category, phone, email, website, address, city, rating_average, total_reviews, opening_hours, status, gallery, logo_url')
+                .eq('id_business', Number(id))
+                .maybeSingle();
+            if (orphanStore) (storeData as any) || Object.assign({}, orphanStore);
         }
     }
 
+    // 4. Nothing found in stores or business_directory — try service_directory
+    let serviceDir: any = null;
+    if (!storeData && !directoryData) {
+        // Try by slug first (non-numeric), then by service_id (numeric)
+        const sdQuery = supabase
+            .from('service_directory' as any)
+            .select('service_id, name, slug, description, category, phone, address, city, latitude, longitude, rating_average, total_reviews, opening_hours, status');
+
+        const { data: sd } = isNumeric
+            ? await sdQuery.eq('service_id', Number(id)).maybeSingle()
+            : await sdQuery.eq('slug', id).maybeSingle();
+
+        serviceDir = sd;
+    }
+
+    if (!storeData && !directoryData && !serviceDir) return null;
+
+    // 5. Build unified Business object
+    const sData: any = storeData || {};
+    const dData: any = directoryData || {};
+    const sdData: any = serviceDir || {};
+
+    // Service directory takes over if no store/directory found
+    if (serviceDir && !storeData && !directoryData) {
+        return {
+            id: sdData.service_id?.toString() || id,
+            store_id: undefined,
+            id_business: undefined,
+            status: sdData.status || 'ACTIVE',
+            name: sdData.name || '',
+            image: undefined,
+            rating: Number(sdData.rating_average) || 0,
+            reviewCount: Number(sdData.total_reviews) || 0,
+            category: sdData.category || 'Service',
+            priceRange: undefined,
+            isOpen: true,
+            workingHours: sdData.opening_hours || undefined,
+            description: sdData.description || '',
+            phone: sdData.phone || undefined,
+            website: undefined,
+            photos: [],
+            gallery: [],
+            location: {
+                address: sdData.address || sdData.city || '',
+                lat: (!isNaN(Number(sdData.latitude)) && sdData.latitude !== null) ? Number(sdData.latitude) : 36.8065,
+                lng: (!isNaN(Number(sdData.longitude)) && sdData.longitude !== null) ? Number(sdData.longitude) : 10.1815,
+            }
+        };
+    }
+
+    return {
+        id: (directoryData ? dData.id?.toString() : sData?.id?.toString()) || id,
+        store_id: sData.id,
+        id_business: dData.id || undefined,
+        status: sData.status || (directoryData ? 'PUBLISHED' : 'DRAFT'),
+        name: sData.name || dData.title || '',
+        image: sData.logo_url || ((dData.photos?.length > 0) ? dData.photos[0] : undefined),
+        rating: Number(sData.rating_average || dData.totalScore) || 0,
+        reviewCount: Number(sData.total_reviews || dData.reviewsCount) || 0,
+        category: sData.category || dData.vitrine_category || dData.categoryName || 'Other',
+        priceRange: dData.price_range || undefined,
+        isOpen: true,
+        workingHours: sData.opening_hours || undefined,
+        description: sData.description || dData.description || dData.full_address || '',
+        phone: sData.phone || dData.phone || undefined,
+        website: sData.website || dData.website || undefined,
+        photos: dData.photos || [],
+        gallery: sData.gallery || [],
+        location: {
+            address: sData.address || dData.full_address || '',
+            lat: (!isNaN(Number(dData.latitude)) && dData.latitude !== null) ? Number(dData.latitude) : 36.8065,
+            lng: (!isNaN(Number(dData.longitude)) && dData.longitude !== null) ? Number(dData.longitude) : 10.1815,
+        }
+    };
+}
+
+export async function getLatestStores(limit: number = 10) {
+    const supabase = createClient()
+
+    const { data, error } = await supabase
+        .from('stores')
+        .select('id, name, logo_url, status')
+        .eq('status', 'PUBLISHED')
+        .order('created_at', { ascending: false })
+        .limit(limit)
+
+    if (error) {
+        console.error('Error fetching latest stores:', error)
+        return []
+    }
+
+    return data || []
 }
 

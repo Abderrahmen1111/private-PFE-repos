@@ -81,7 +81,7 @@ export async function upsertItem(item: Partial<Item> & { store_id: number }) {
 /**
  * Deletes an item.
  */
-export async function deleteItem(itemId: number, storeId: number) {
+export async function deleteItem(itemId: number, store_id: number) {
     const supabase = createClient()
 
     const { error } = await supabase
@@ -94,8 +94,35 @@ export async function deleteItem(itemId: number, storeId: number) {
         return { error: error.message }
     }
 
-    revalidatePath(`/business/${storeId}`)
-    revalidatePath(`/dashboard/${storeId}/products`)
+    revalidatePath(`/business/${store_id}`)
+    revalidatePath(`/dashboard/${store_id}/products`)
 
     return { success: true }
+}
+
+/**
+ * Fetches the most recent items (Products/Services) for discovery.
+ */
+export async function getLatestItems(limit: number = 10) {
+    const supabase = createClient()
+
+    const { data, error } = await supabase
+        .from('items')
+        .select(`
+            *,
+            stores (
+                name,
+                logo_url
+            )
+        `)
+        .eq('status', 'AVAILABLE')
+        .order('created_at', { ascending: false })
+        .limit(limit)
+
+    if (error) {
+        console.error('Error fetching latest items:', error)
+        return []
+    }
+
+    return data || []
 }

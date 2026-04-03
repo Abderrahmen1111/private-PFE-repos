@@ -1,47 +1,33 @@
 'use client';
 
-import { useState, useMemo } from 'react';
-import { Search, Download, X, ChevronLeft, ChevronRight } from 'lucide-react';
+import React from 'react';
+import { getStoreTransactions, Transaction } from '@/lib/actions/transactions';
+import { useParams } from 'next/navigation';
+import { 
+  Loader2, Search, Filter, ShieldCheck, CreditCard, 
+  Calendar, ArrowRight, TrendingUp, Info, MoreVertical, 
+  CheckCircle, XCircle, Clock, Download, ChevronLeft, ChevronRight 
+} from 'lucide-react';
+import { format } from 'date-fns';
+import { fr } from 'date-fns/locale';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-
-const mockTransactions = Array.from({ length: 30 }, (_, i) => ({
-  id: `txn-${String(i + 1).padStart(8, '0')}`,
-  orderNumber: `ORD-${String(i + 1).padStart(6, '0')}`,
-  customerId: `cust-${Math.floor(i / 3) + 1}`,
-  customerName: `Customer ${Math.floor(i / 3) + 1}`,
-  merchantId: `merchant-${(i % 5) + 1}`,
-  merchantNumber: `MERCH-${String((i % 5) + 1).padStart(4, '0')}`,
-  merchantName: `Store ${(i % 5) + 1}`,
-  driverName: `Driver ${Math.floor(i / 4) + 1}`,
-  dropLocation: ['Downtown', 'Suburbs', 'Mall', 'Port'][i % 4],
-  amount: Math.floor(Math.random() * 5000) + 100,
-  gateway: ['stripe', 'paypal', 'razorpay', 'cod', 'wallet'][i % 5] as any,
-  status: ['completed', 'pending', 'failed', 'completed'][i % 4] as any,
-  type: ['payment', 'refund', 'wallet_topup'][i % 3] as any,
-  date: new Date(Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000),
-  timeCreated: new Date(Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000),
-  timeAccepted: new Date(Date.now() - Math.random() * 29 * 24 * 60 * 60 * 1000),
-  collectionTime: new Date(Date.now() - Math.random() * 28 * 24 * 60 * 60 * 1000),
-  waitDuration: Math.floor(Math.random() * 60) + 5,
-  pickupTime: new Date(Date.now() - Math.random() * 27 * 24 * 60 * 60 * 1000),
-  deliveryDuration: Math.floor(Math.random() * 120) + 15,
-  timeDelivered: new Date(Date.now() - Math.random() * 26 * 24 * 60 * 60 * 1000),
-  km: Math.floor(Math.random() * 50) + 5,
-  fee: Math.floor(Math.random() * 200) + 10,
-}));
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
+import { Scanner } from '@yudiel/react-qr-scanner';
+import { updateBookingStatus } from '@/lib/actions/reservation';
+import { updateOrderStatus } from '@/lib/actions/leads';
+import { toast } from 'sonner';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 
 const statusColors: Record<string, string> = {
-  completed: 'bg-green-500/20 text-green-500 border-green-500/40',
-  pending: 'bg-yellow-500/20 text-yellow-500 border-yellow-500/40',
-  failed: 'bg-red-500/20 text-red-500 border-red-500/40',
-  processing: 'bg-blue-500/20 text-blue-500 border-blue-500/40',
+  completed: 'bg-green-500/10 text-green-500 border-green-500/20',
+  pending: 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20',
+  failed: 'bg-red-500/10 text-red-500 border-red-500/20',
+  cancelled: 'bg-red-500/10 text-red-500 border-red-500/20',
+  shipped: 'bg-blue-500/10 text-blue-500 border-blue-500/20',
+  validated: 'bg-indigo-500/10 text-indigo-500 border-indigo-500/20',
 };
-
-const fmt = (d: Date) => d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
-const fmtTime = (d: Date) => d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
 
 const PAGE_SIZE = 10;
 
@@ -61,54 +47,110 @@ function FilterSelect({ label, children, ...props }: SelectProps) {
 }
 
 export default function TransactionsPage() {
-  const [searchQuery, setSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState('');
-  const [gatewayFilter, setGatewayFilter] = useState('');
-  const [merchantFilter, setMerchantFilter] = useState('');
-  const [filterType, setFilterType] = useState('');
-  const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
-  const [page, setPage] = useState(1);
+  const { id } = useParams();
+  const storeId = Number(id);
 
-  const filteredTransactions = useMemo(() => {
-    return mockTransactions.filter(txn => {
+  const [transactions, setTransactions] = React.useState<Transaction[]>([]);
+  const [isLoading, setIsLoading] = React.useState(true);
+  const [searchQuery, setSearchQuery] = React.useState('');
+  const [statusFilter, setStatusFilter] = React.useState('');
+  const [typeFilter, setTypeFilter] = React.useState('');
+  const [startDate, setStartDate] = React.useState('');
+  const [endDate, setEndDate] = React.useState('');
+  const [page, setPage] = React.useState(1);
+
+  const [selectedTxn, setSelectedTxn] = React.useState<Transaction | null>(null);
+  const [isScannerOpen, setIsScannerOpen] = React.useState(false);
+  const [isUpdating, setIsUpdating] = React.useState(false);
+
+  const handleStatusUpdate = async (newStatus: 'completed' | 'cancelled' | 'failed') => {
+    if (!selectedTxn) return;
+    setIsUpdating(true);
+    try {
+      const isBooking = selectedTxn.type === 'booking';
+      const actualStatus = newStatus === 'failed' ? 'CANCELLED' : newStatus.toUpperCase();
+      
+      const realId = parseInt(selectedTxn.id.split('-')[1]);
+      
+      if (isBooking) {
+        await updateBookingStatus(realId, actualStatus as any);
+      } else {
+        await updateOrderStatus(realId, actualStatus as any);
+      }
+      
+      toast.success(newStatus === 'completed' ? 'Transaction finalisée avec succès' : 'Transaction marquée comme échouée');
+      
+      setTransactions(prev => prev.map(t => t.id === selectedTxn.id ? { ...t, status: newStatus === 'failed' ? 'cancelled' : newStatus } : t));
+      setSelectedTxn(null);
+      setIsScannerOpen(false);
+    } catch (err: any) {
+      toast.error(err.message || 'Erreur lors de la mise à jour');
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  const onScan = (result: any) => {
+    const code = result?.[0]?.rawValue || result?.rawValue || result;
+    if (code && selectedTxn) {
+      if (typeof code === 'string' && code.includes(selectedTxn.reference)) {
+        toast.success('QR Code valide !');
+        handleStatusUpdate('completed');
+      } else {
+        toast.error('QR Code invalide. Ne correspond pas à la référence attendue.');
+      }
+    }
+  };
+
+  React.useEffect(() => {
+    async function fetchData() {
+      setIsLoading(true);
+      if (storeId) {
+        const data = await getStoreTransactions(storeId);
+        setTransactions(data);
+      }
+      setIsLoading(false);
+    }
+    fetchData();
+  }, [storeId]);
+
+  const filteredTransactions = React.useMemo(() => {
+    return transactions.filter(txn => {
       const q = searchQuery.toLowerCase();
       const matchesSearch =
         !q ||
         txn.id.toLowerCase().includes(q) ||
-        txn.orderNumber.toLowerCase().includes(q) ||
-        txn.customerName.toLowerCase().includes(q) ||
-        txn.merchantName.toLowerCase().includes(q) ||
-        txn.merchantNumber.toLowerCase().includes(q) ||
-        txn.driverName.toLowerCase().includes(q) ||
-        txn.dropLocation.toLowerCase().includes(q);
+        txn.reference.toLowerCase().includes(q) ||
+        txn.customer_name.toLowerCase().includes(q);
+      
       const matchesStatus = !statusFilter || txn.status === statusFilter;
-      const matchesGateway = !gatewayFilter || txn.gateway === gatewayFilter;
-      const matchesMerchant = !merchantFilter || txn.merchantId === merchantFilter;
-      const matchesType = !filterType || txn.type === filterType;
+      const matchesType = !typeFilter || txn.type === typeFilter;
+      
+      const transDate = new Date(txn.created_at);
       const start = startDate ? new Date(startDate) : null;
       const end = endDate ? new Date(endDate + 'T23:59:59') : null;
-      const inDateRange = (!start || txn.date >= start) && (!end || txn.date <= end);
-      return matchesSearch && matchesStatus && matchesGateway && matchesMerchant && matchesType && inDateRange;
+      const inDateRange = (!start || transDate >= start) && (!end || transDate <= end);
+      
+      return matchesSearch && matchesStatus && matchesType && inDateRange;
     });
-  }, [searchQuery, statusFilter, gatewayFilter, merchantFilter, filterType, startDate, endDate]);
+  }, [transactions, searchQuery, statusFilter, typeFilter, startDate, endDate]);
 
-  const totalPages = Math.max(1, Math.ceil(filteredTransactions.length / PAGE_SIZE));
+  const totalPages = Math.ceil(filteredTransactions.length / PAGE_SIZE) || 1;
   const paginated = filteredTransactions.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   const totalRevenue = filteredTransactions.filter(t => t.status === 'completed').reduce((s, t) => s + t.amount, 0);
-  const totalFees = filteredTransactions.filter(t => t.status === 'completed').reduce((s, t) => s + t.fee, 0);
-  const hasActiveFilters = statusFilter || gatewayFilter || merchantFilter || filterType || startDate || endDate || searchQuery;
+  const totalCommission = totalRevenue * 0.10;
+  const hasActiveFilters = statusFilter || typeFilter || startDate || endDate || searchQuery;
 
   const clearFilters = () => {
-    setStatusFilter(''); setGatewayFilter(''); setMerchantFilter('');
-    setFilterType(''); setStartDate(''); setEndDate('');
+    setStatusFilter(''); setTypeFilter(''); setStartDate(''); setEndDate('');
     setSearchQuery(''); setPage(1);
   };
 
+  if (isLoading) return <div className="p-8 text-foreground flex items-center gap-2"><Loader2 className="w-4 h-4 animate-spin" /> Chargement des transactions...</div>;
+
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-foreground">Payment Transactions</h1>
@@ -120,13 +162,12 @@ export default function TransactionsPage() {
         </Button>
       </div>
 
-      {/* KPIs */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {[
-          { label: 'Total Transactions', value: filteredTransactions.length, sub: 'Matching filters', color: 'text-foreground' },
-          { label: 'Completed Revenue', value: `$${(totalRevenue / 1000).toFixed(1)}K`, sub: `${filteredTransactions.filter(t => t.status === 'completed').length} orders`, color: 'text-green-500' },
-          { label: 'Failed Transactions', value: filteredTransactions.filter(t => t.status === 'failed').length, sub: 'Needs review', color: 'text-red-500' },
-          { label: 'Total Fees', value: `$${(totalFees / 1000).toFixed(1)}K`, sub: 'Gateway fees', color: 'text-foreground' },
+          { label: 'Transactions', value: filteredTransactions.length, sub: 'Au total', color: 'text-foreground' },
+          { label: 'Revenu Réel', value: `${totalRevenue.toLocaleString()} DT`, sub: `${filteredTransactions.filter(t => t.status === 'completed').length} validées`, color: 'text-green-500' },
+          { label: 'En attente', value: filteredTransactions.filter(t => t.status === 'pending').length, sub: 'À traiter', color: 'text-yellow-500' },
+          { label: 'Commissions', value: `${totalCommission.toLocaleString()} DT`, sub: 'Frais Ro2ya 10%', color: 'text-foreground' },
         ].map(({ label, value, sub, color }) => (
           <Card key={label} className="p-4">
             <div className="text-xs text-muted-foreground">{label}</div>
@@ -136,56 +177,30 @@ export default function TransactionsPage() {
         ))}
       </div>
 
-      {/* Filters */}
       <Card className="p-5 space-y-4">
-        <div className="flex items-center justify-between">
-          <h3 className="font-semibold text-sm text-foreground">Filters</h3>
-          {hasActiveFilters && (
-            <button onClick={clearFilters} className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition">
-              <X className="w-3.5 h-3.5" /> Clear all
-            </button>
-          )}
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3">
-          <FilterSelect label="Merchant" value={merchantFilter} onChange={e => { setMerchantFilter(e.target.value); setPage(1); }}>
-            <option value="">All Merchants</option>
-            {Array.from(new Map(mockTransactions.map(t => [t.merchantId, t.merchantName]))).map(([id, name]) => (
-              <option key={id} value={id}>{name}</option>
-            ))}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+          <FilterSelect label="Type" value={typeFilter} onChange={e => { setTypeFilter(e.target.value); setPage(1); }}>
+            <option value="">Tous les types</option>
+            <option value="order">Commande (Produit)</option>
+            <option value="booking">Réservation (Service)</option>
           </FilterSelect>
-
-          <FilterSelect label="Type" value={filterType} onChange={e => { setFilterType(e.target.value); setPage(1); }}>
-            <option value="">All Types</option>
-            <option value="payment">Payment</option>
-            <option value="refund">Refund</option>
-            <option value="wallet_topup">Wallet Topup</option>
-          </FilterSelect>
-
-          <FilterSelect label="Status" value={statusFilter} onChange={e => { setStatusFilter(e.target.value); setPage(1); }}>
-            <option value="">All Statuses</option>
-            <option value="completed">Completed</option>
-            <option value="pending">Pending</option>
-            <option value="failed">Failed</option>
-          </FilterSelect>
-
-          <FilterSelect label="Gateway" value={gatewayFilter} onChange={e => { setGatewayFilter(e.target.value); setPage(1); }}>
-            <option value="">All Gateways</option>
-            <option value="stripe">Stripe</option>
-            <option value="paypal">PayPal</option>
-            <option value="razorpay">Razorpay</option>
-            <option value="cod">Cash on Delivery</option>
-            <option value="wallet">Wallet</option>
+          
+          <FilterSelect label="Statut" value={statusFilter} onChange={e => { setStatusFilter(e.target.value); setPage(1); }}>
+            <option value="">Tous les statuts</option>
+            <option value="pending">En attente</option>
+            <option value="completed">Complété</option>
+            <option value="shipped">Expédié</option>
+            <option value="cancelled">Annulé</option>
           </FilterSelect>
 
           <div className="flex flex-col gap-1">
-            <label className="text-xs font-medium text-muted-foreground px-0.5">From</label>
+            <label className="text-xs font-medium text-muted-foreground px-0.5">Du</label>
             <input type="date" value={startDate} onChange={e => { setStartDate(e.target.value); setPage(1); }}
               className="px-3 py-2 rounded-lg border border-border text-sm bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition" />
           </div>
 
           <div className="flex flex-col gap-1">
-            <label className="text-xs font-medium text-muted-foreground px-0.5">To</label>
+            <label className="text-xs font-medium text-muted-foreground px-0.5">Au</label>
             <input type="date" value={endDate} onChange={e => { setEndDate(e.target.value); setPage(1); }}
               className="px-3 py-2 rounded-lg border border-border text-sm bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition" />
           </div>
@@ -194,7 +209,7 @@ export default function TransactionsPage() {
         <div className="relative">
           <Search className="absolute left-3 top-2.5 w-4 h-4 text-muted-foreground" />
           <Input
-            placeholder="Search by order #, transaction ID, customer, merchant, driver, location..."
+            placeholder="Rechercher par référence ou client..."
             value={searchQuery}
             onChange={e => { setSearchQuery(e.target.value); setPage(1); }}
             className="pl-10"
@@ -202,19 +217,15 @@ export default function TransactionsPage() {
         </div>
       </Card>
 
-      {/* Table */}
       <Card className="overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-sm min-w-[1800px]">
+          <table className="w-full text-sm min-w-[1000px]">
             <thead className="bg-muted border-b border-border">
               <tr>
                 {[
-                  'Date', 'Order #', 'Merch #', 'Merchant Name', 'Customer Name',
-                  'Drop Location', 'Driver', 'Time Created', 'Time Accepted',
-                  'Collection Time', 'Wait', 'Pickup Time', 'Delivery Duration',
-                  'Time Delivered', 'KM', 'Amount', 'Status',
+                  'Date', 'Référence', 'Type', 'Client', 'Détails', 'Montant', 'Statut'
                 ].map(col => (
-                  <th key={col} className="px-3 py-3 text-left text-xs font-semibold text-muted-foreground whitespace-nowrap">
+                  <th key={col} className="px-6 py-3 text-left text-xs font-semibold text-muted-foreground whitespace-nowrap uppercase tracking-wider">
                     {col}
                   </th>
                 ))}
@@ -223,30 +234,43 @@ export default function TransactionsPage() {
             <tbody className="divide-y divide-border">
               {paginated.length === 0 ? (
                 <tr>
-                  <td colSpan={17} className="px-4 py-12 text-center text-muted-foreground text-sm">
-                    No transactions match your filters.
+                  <td colSpan={7} className="px-6 py-12 text-center text-muted-foreground text-sm">
+                    Aucune transaction trouvée pour ces filtres.
                   </td>
                 </tr>
               ) : paginated.map(txn => (
-                <tr key={txn.id} className="hover:bg-muted/40 transition-colors">
-                  <td className="px-3 py-3 whitespace-nowrap text-muted-foreground text-xs">{fmt(txn.date)}</td>
-                  <td className="px-3 py-3 whitespace-nowrap font-medium text-foreground text-xs">{txn.orderNumber}</td>
-                  <td className="px-3 py-3 whitespace-nowrap text-muted-foreground text-xs">{txn.merchantNumber}</td>
-                  <td className="px-3 py-3 whitespace-nowrap text-foreground text-xs">{txn.merchantName}</td>
-                  <td className="px-3 py-3 whitespace-nowrap text-foreground text-xs">{txn.customerName}</td>
-                  <td className="px-3 py-3 whitespace-nowrap text-muted-foreground text-xs">{txn.dropLocation}</td>
-                  <td className="px-3 py-3 whitespace-nowrap text-muted-foreground text-xs">{txn.driverName}</td>
-                  <td className="px-3 py-3 whitespace-nowrap text-muted-foreground text-xs">{fmtTime(txn.timeCreated)}</td>
-                  <td className="px-3 py-3 whitespace-nowrap text-muted-foreground text-xs">{fmtTime(txn.timeAccepted)}</td>
-                  <td className="px-3 py-3 whitespace-nowrap text-muted-foreground text-xs">{fmtTime(txn.collectionTime)}</td>
-                  <td className="px-3 py-3 whitespace-nowrap text-muted-foreground text-xs">{txn.waitDuration} min</td>
-                  <td className="px-3 py-3 whitespace-nowrap text-muted-foreground text-xs">{fmtTime(txn.pickupTime)}</td>
-                  <td className="px-3 py-3 whitespace-nowrap text-muted-foreground text-xs">{txn.deliveryDuration} min</td>
-                  <td className="px-3 py-3 whitespace-nowrap text-muted-foreground text-xs">{fmtTime(txn.timeDelivered)}</td>
-                  <td className="px-3 py-3 whitespace-nowrap text-muted-foreground text-xs">{txn.km} km</td>
-                  <td className="px-3 py-3 whitespace-nowrap font-semibold text-foreground text-xs">${txn.amount.toFixed(2)}</td>
-                  <td className="px-3 py-3 whitespace-nowrap">
-                    <Badge className={`text-xs border capitalize ${statusColors[txn.status] || ''}`}>
+                <tr 
+                  key={txn.id} 
+                  className={`transition-colors ${['confirmed', 'validated'].includes(txn.status) ? 'cursor-pointer hover:bg-muted/60' : 'hover:bg-muted/40'}`}
+                  onClick={() => {
+                    if (['confirmed', 'validated'].includes(txn.status)) {
+                      setSelectedTxn(txn);
+                      setIsScannerOpen(false);
+                    }
+                  }}
+                >
+                  <td className="px-6 py-4 whitespace-nowrap text-muted-foreground text-sm">
+                    {format(new Date(txn.created_at), 'dd MMM yyyy', { locale: fr })}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap font-bold text-foreground text-sm">
+                    {txn.reference}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <Badge variant="outline" className="text-[10px] uppercase font-bold">
+                      {txn.type === 'order' ? 'PRODUIT' : 'SERVICE'}
+                    </Badge>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-foreground text-sm">
+                    {txn.customer_name}
+                  </td>
+                  <td className="px-6 py-4 text-muted-foreground text-sm">
+                    {txn.details}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap font-extrabold text-foreground text-sm">
+                    {txn.amount.toLocaleString()} DT
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <Badge className={`text-[10px] font-bold uppercase border ${statusColors[txn.status] || ''}`}>
                       {txn.status}
                     </Badge>
                   </td>
@@ -256,10 +280,9 @@ export default function TransactionsPage() {
           </table>
         </div>
 
-        {/* Pagination */}
         <div className="flex items-center justify-between px-4 py-3 border-t border-border">
           <p className="text-xs text-muted-foreground">
-            Showing {filteredTransactions.length === 0 ? 0 : (page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, filteredTransactions.length)} of {filteredTransactions.length}
+            Affichage de {filteredTransactions.length === 0 ? 0 : (page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, filteredTransactions.length)} sur {filteredTransactions.length}
           </p>
           <div className="flex items-center gap-1">
             <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}
@@ -286,6 +309,83 @@ export default function TransactionsPage() {
           </div>
         </div>
       </Card>
+
+      <Dialog open={!!selectedTxn} onOpenChange={(open) => { if (!open) setSelectedTxn(null); }}>
+        <DialogContent className="sm:max-w-md border-border bg-card">
+          <DialogHeader>
+            <DialogTitle className="text-foreground">Mise à jour de la transaction</DialogTitle>
+            <DialogDescription className="text-muted-foreground">
+              {selectedTxn?.reference} - {selectedTxn?.customer_name}
+            </DialogDescription>
+          </DialogHeader>
+
+          {isScannerOpen ? (
+            <div className="space-y-4">
+              <div className="bg-black rounded-lg overflow-hidden relative flex justify-center items-center h-[350px] w-full">
+                {!navigator?.mediaDevices ? (
+                  <div className="text-red-500 text-center p-4 text-sm font-bold">
+                    Accès Caméra Bloqué.<br/>
+                    Vous devez utiliser "localhost" ou "https://" pour que le navigateur autorise la caméra.
+                  </div>
+                ) : (
+                  <Scanner 
+                    onScan={onScan} 
+                    onError={(error: any) => {
+                      console.error("Scanner Error:", error);
+                      const msg = error?.message || error?.name || String(error);
+                      if (msg.includes('NotFound') || msg.includes('DevicesNotFoundError')) {
+                        toast.error("Aucune caméra n'a été trouvée sur cet appareil.");
+                      } else {
+                        toast.error("Erreur Caméra: " + msg);
+                      }
+                    }}
+                    components={{
+                      finder: true,
+                    }}
+                  />
+                )}
+              </div>
+              <Button variant="outline" className="w-full" onClick={() => setIsScannerOpen(false)}>
+                Annuler le scan
+              </Button>
+            </div>
+          ) : (
+            <div className="space-y-4 py-4">
+              <div className="bg-muted p-4 rounded-lg flex flex-col gap-2 border border-border">
+                <p className="text-sm font-semibold text-foreground">Confirmer la prestation</p>
+                <p className="text-xs text-muted-foreground">Demandez au client de vous montrer son code QR pour valider la prestation et garantir votre paiement.</p>
+              </div>
+
+              <Button 
+                className="w-full font-bold" 
+                onClick={() => setIsScannerOpen(true)}
+                disabled={isUpdating}
+              >
+                Scanner le QR du Client
+              </Button>
+
+              <div className="relative my-4">
+                <div className="absolute inset-0 flex items-center"><span className="w-full border-t border-border" /></div>
+                <div className="relative flex justify-center text-xs uppercase"><span className="bg-background px-2 text-muted-foreground font-medium">Ou</span></div>
+              </div>
+
+              <div className="bg-red-500/10 p-4 rounded-lg flex flex-col gap-2 border border-red-500/20">
+                <p className="text-sm font-semibold text-red-500">Déclarer un No-Show</p>
+                <p className="text-xs text-red-400">Si le client ne s'est pas présenté, marquez la réservation comme échouée.</p>
+                <Button 
+                  variant="destructive" 
+                  onClick={() => handleStatusUpdate('failed')}
+                  disabled={isUpdating}
+                  className="mt-2 font-bold"
+                >
+                  {isUpdating ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+                  Déclarer comme échouée
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

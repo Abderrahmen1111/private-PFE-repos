@@ -39,7 +39,7 @@ export interface ServiceDetail {
     rating_average: number;
     total_reviews: number;
     opening_hours: Record<string, { open: string; close: string; closed: boolean }> | null;
-    kyc_verified_at: string | null;
+    verified_at: string | null;
   };
   schedules: {
     id: number;
@@ -67,10 +67,11 @@ export interface ServiceReview {
 
 // ── Fetch service by id ───────────────────────────────────────────────────────
 
-export async function getServiceById(id: number): Promise<ServiceDetail | null> {
+export async function getServiceById(id: any): Promise<ServiceDetail | null> {
   const supabase = createClient();
 
-  const { data, error } = await supabase
+  // 1. Try to find in 'items' table first
+  const { data: itemData, error: itemError } = await (supabase
     .from('items')
     .select(`
       id,
@@ -107,7 +108,7 @@ export async function getServiceById(id: number): Promise<ServiceDetail | null> 
         rating_average,
         total_reviews,
         opening_hours,
-        kyc_verified_at
+        verified_at
       ),
       service_schedules (
         id,
@@ -119,26 +120,116 @@ export async function getServiceById(id: number): Promise<ServiceDetail | null> 
     `)
     .eq('id', id)
     .eq('item_type', 'SERVICE')
-    .eq('status', 'AVAILABLE')
-    .single();
+    .single() as any);
 
-  if (error || !data) {
-    console.error('getServiceById error:', error);
-    return null;
+  if (itemData) {
+    // Increment view count (fire-and-forget)
+    (supabase.from('items') as any)
+      .update({ view_count: (itemData.view_count ?? 0) + 1 })
+      .eq('id', id)
+      .then(() => {});
+
+    const storeObj = Array.isArray(itemData.stores) ? itemData.stores[0] : itemData.stores;
+
+    return {
+      ...itemData,
+      store: storeObj || {
+          id: 0,
+          name: 'Prestataire',
+          slug: '',
+          description: null,
+          category: 'Service',
+          phone: '',
+          email: null,
+          website: null,
+          address: '',
+          city: '',
+          logo_url: null,
+          banner_url: null,
+          rating_average: 0,
+          total_reviews: 0,
+          opening_hours: null,
+          verified_at: null
+      },
+      schedules: itemData.service_schedules ?? [],
+    } as ServiceDetail;
   }
 
-  // Increment view count (fire-and-forget)
-  supabase
-    .from('items')
-    .update({ view_count: (data.view_count ?? 0) + 1 })
-    .eq('id', id)
-    .then(() => {});
+  // 2. If not found in items, try 'service_directory'
+  const { data: dirData, error: dirError } = await (supabase
+    .from('service_directory')
+    .select(`
+        *,
+        stores (
+            id,
+            name,
+            slug,
+            description,
+            category,
+            phone,
+            email,
+            website,
+            address,
+            city,
+            logo_url,
+            banner_url,
+            rating_average,
+            total_reviews,
+            opening_hours,
+            verified_at
+        )
+    `)
+    .eq('service_id', id)
+    .single() as any);
 
-  return {
-    ...data,
-    store: Array.isArray(data.stores) ? data.stores[0] : data.stores,
-    schedules: data.service_schedules ?? [],
-  } as ServiceDetail;
+  if (dirData) {
+    return {
+      id: dirData.service_id,
+      name: dirData.name,
+      slug: dirData.slug,
+      description: dirData.description,
+      price: 0, // Directory handles often don't have fixed prices in DB
+      price_unit: 'variable',
+      duration_minutes: 0,
+      is_bookable: !!dirData.owner_id,
+      available_days: null,
+      main_image: dirData.main_image || null,
+      image_2: null,
+      image_3: null,
+      status: dirData.status || 'ACTIVE',
+      view_count: 0,
+      booking_count: 0,
+      rating_average: dirData.rating_average || 0,
+      total_reviews: dirData.total_reviews || 0,
+      created_at: dirData.created_at,
+      store: dirData.stores || {
+          id: 0,
+          name: dirData.name,
+          slug: dirData.slug,
+          description: dirData.description,
+          category: dirData.category || 'Service',
+          phone: dirData.phone || '',
+          email: null,
+          website: null,
+          address: dirData.address || '',
+          city: dirData.city || '',
+          logo_url: null,
+          banner_url: null,
+          rating_average: dirData.rating_average || 0,
+          total_reviews: dirData.total_reviews || 0,
+          opening_hours: dirData.opening_hours || null,
+          verified_at: null
+      },
+      schedules: [],
+    } as ServiceDetail;
+  }
+
+  if (itemError && dirError) {
+      console.error('getServiceById error (Items):', itemError);
+      console.error('getServiceById error (Directory):', dirError);
+  }
+
+  return null;
 }
 
 // ── Fetch reviews for a service ───────────────────────────────────────────────
@@ -181,20 +272,19 @@ export async function getServiceReviews(itemId: number): Promise<ServiceReview[]
 
 // ── Fetch related services from same store ────────────────────────────────────
 
-export async function getRelatedServices(storeId: number, excludeId: number): Promise<Partial<ServiceDetail>[]> {
+export async function getRelatedItems(storeId: number, excludeId: number): Promise<any[]> {
   const supabase = createClient();
 
   const { data, error } = await supabase
     .from('items')
-    .select('id, name, price, price_unit, main_image, duration_minutes, rating_average')
+    .select('id, name, price, price_unit, main_image, duration_minutes, rating_average, item_type')
     .eq('store_id', storeId)
-    .eq('item_type', 'SERVICE')
     .eq('status', 'AVAILABLE')
     .neq('id', excludeId)
     .limit(4);
 
   if (error) {
-    console.error('getRelatedServices error:', error);
+    console.error('getRelatedItems error:', error);
     return [];
   }
 

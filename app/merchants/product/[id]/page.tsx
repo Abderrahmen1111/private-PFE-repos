@@ -1,13 +1,13 @@
 import { notFound } from 'next/navigation';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
-import { getProductById, getProductReviews, getRelatedProducts } from '@/lib/actions/product_detail';
+import { getProductById, getProductReviews, getRelatedItems } from '@/lib/actions/product_detail';
 import { getBusinessStories } from '@/lib/actions/stories';
 import { BusinessStories } from '@/components/BusinessStories';
 import ProductOrderCard from '@/components/ProductOrderCard';
 import {
   Star, MapPin, Phone, CheckCircle, Package,
-  Globe, BadgeCheck, ChevronRight, ShoppingBag,
+  Globe, BadgeCheck, ChevronRight, ShoppingBag, Clock, Wrench
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -63,11 +63,11 @@ export default async function ProductProfilePage({ params }: { params: { id: str
 
   const stories = await getBusinessStories(product.store.id);
 
-  const related    = await getRelatedProducts(product.store.id, id);
+  const related    = await getRelatedItems(product.store.id, id);
   const images     = [product.main_image, product.image_2, product.image_3].filter(Boolean) as string[];
   const heroImage  = images[0] ?? 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=1200&h=500&fit=crop';
   const catColor   = categoryColors[product.store.category] ?? categoryColors.OTHER;
-  const isVerified = !!product.store.kyc_verified_at;
+  const isVerified = !!product.store.verified_at;
   const statusInfo = statusConfig[product.status] ?? statusConfig.AVAILABLE;
 
   const avgRating = reviews.length
@@ -300,29 +300,33 @@ export default async function ProductProfilePage({ params }: { params: { id: str
               )}
             </div>
 
-            {/* Related products */}
-            {related.length > 0 && (
+            {product.store.id > 0 && related.length > 0 && (
               <div className="bg-white rounded-2xl shadow-sm border border-stone-100 p-5">
                 <div className="flex items-center justify-between mb-4">
-                  <h2 className="font-bold text-stone-900">Autres produits de cette boutique</h2>
+                  <h2 className="font-bold text-stone-900">Autres offres de cette boutique</h2>
                   <Link href={`/merchants/business/${product.store.slug}`} className="text-sm font-bold text-red-600 hover:text-red-700 flex items-center gap-1">
                     Voir tout <ChevronRight className="w-3.5 h-3.5" />
                   </Link>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  {related.map(p => (
-                    <Link key={p.id} href={`/merchants/product/${p.id}`} className="flex gap-3 p-3 rounded-xl border border-stone-100 hover:border-stone-300 hover:bg-stone-50 transition-all">
+                  {related.map((p: any) => (
+                    <Link key={p.id} href={`/merchants/${p.item_type === 'PRODUCT' ? 'product' : 'service'}/${p.id}`} className="flex gap-3 p-3 rounded-xl border border-stone-100 hover:border-stone-300 hover:bg-stone-50 transition-all">
                       {p.main_image ? (
                         <img src={p.main_image} alt={p.name} className="w-16 h-16 rounded-xl object-cover flex-shrink-0" />
                       ) : (
                         <div className="w-16 h-16 rounded-xl bg-stone-100 flex items-center justify-center flex-shrink-0">
-                          <Package className="w-6 h-6 text-stone-400" />
+                          {p.item_type === 'PRODUCT' ? <Package className="w-6 h-6 text-stone-400" /> : <Wrench className="w-6 h-6 text-stone-400" />}
                         </div>
                       )}
                       <div className="min-w-0">
                         <p className="text-sm font-bold text-stone-900 truncate">{p.name}</p>
-                        {p.stock_quantity !== undefined && p.stock_quantity > 0 && (
+                        {p.item_type === 'PRODUCT' && p.stock_quantity !== undefined && p.stock_quantity > 0 && (
                           <p className="text-xs text-green-600 mt-0.5">{p.stock_quantity} en stock</p>
+                        )}
+                        {p.item_type === 'SERVICE' && p.duration_minutes && (
+                          <p className="text-xs text-stone-500 flex items-center gap-1 mt-0.5">
+                            <Clock className="w-3 h-3" /> {p.duration_minutes} min
+                          </p>
                         )}
                         <p className="text-sm font-bold text-red-600 mt-1">
                           {Number(p.price) === 0 ? 'Gratuit' : `${p.price} TND`}
@@ -346,6 +350,7 @@ export default async function ProductProfilePage({ params }: { params: { id: str
               status={product.status}
               storePhone={product.store.phone}
               storeSlug={product.store.slug}
+              storeName={product.store.name}
               isVerified={isVerified}
             />
           </div>

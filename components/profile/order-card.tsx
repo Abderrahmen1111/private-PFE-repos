@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import QRCode from 'qrcode';
 import { QrCode, Clock, CheckCircle2, XCircle, Package, ChevronRight } from 'lucide-react';
@@ -10,7 +10,7 @@ interface OrderCardProps {
   id: string;
   order_number: string;
   businessName: string;
-  businessImage: string;
+  businessImage?: string | null;
   status: 'PENDING' | 'VALIDATED' | 'SHIPPED' | 'COMPLETED' | 'CANCELLED';
   total_price: number;
   date: string;
@@ -33,24 +33,28 @@ export default function OrderCard({
   date,
 }: OrderCardProps) {
   const [showQr, setShowQr] = useState(false);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [qrDataUrl, setQrDataUrl] = useState<string>('');
   const config = statusConfig[status] || statusConfig.PENDING;
   const StatusIcon = config.icon;
 
   const qrValue = `order_completion:${order_number}`;
 
   useEffect(() => {
-    if (showQr && canvasRef.current) {
-      QRCode.toCanvas(canvasRef.current, qrValue, {
-        width: 180,
+    if (showQr && qrValue) {
+      QRCode.toDataURL(qrValue, {
+        width: 200,
         margin: 2,
         color: {
           dark: '#111827',
           light: '#ffffff',
         },
-      }, (error) => {
-        if (error) console.error('QR Code generation error:', error);
-      });
+      })
+        .then((url) => {
+          setQrDataUrl(url);
+        })
+        .catch((error) => {
+          console.error('QR Code generation error:', error);
+        });
     }
   }, [showQr, qrValue]);
 
@@ -62,13 +66,30 @@ export default function OrderCard({
       <div className="p-6">
         <div className="flex items-start justify-between mb-6">
           <div className="flex items-center gap-4">
-            <div className="relative w-14 h-14 rounded-2xl overflow-hidden border border-gray-50 shadow-sm transition-transform group-hover:scale-105 duration-300">
-              <Image
-                src={businessImage || '/placeholder-business.png'}
-                alt={businessName}
-                fill
-                className="object-cover"
-              />
+            <div className="relative w-14 h-14 rounded-2xl overflow-hidden border border-gray-50 shadow-sm transition-transform group-hover:scale-105 duration-300 flex-shrink-0">
+              {businessImage ? (
+                <Image
+                  src={businessImage}
+                  alt={businessName}
+                  fill
+                  className="object-cover"
+                  onError={(e) => {
+                    // Fallback if image fails to load
+                    const parent = e.currentTarget.parentElement;
+                    if (parent) {
+                      parent.innerHTML = `
+                        <div class="w-full h-full bg-gradient-to-br from-indigo-400 to-indigo-600 flex items-center justify-center">
+                          <span class="text-white font-black text-sm">${businessName.charAt(0).toUpperCase()}</span>
+                        </div>
+                      `;
+                    }
+                  }}
+                />
+              ) : (
+                <div className="w-full h-full bg-gradient-to-br from-indigo-400 to-indigo-600 flex items-center justify-center">
+                  <span className="text-white font-black text-sm">{businessName.charAt(0).toUpperCase()}</span>
+                </div>
+              )}
             </div>
             <div>
               <h4 className="text-lg font-black text-gray-900 line-clamp-1 tracking-tight">{businessName}</h4>
@@ -118,8 +139,14 @@ export default function OrderCard({
                   className="flex flex-col items-center pt-2"
                 >
                   <div className="bg-indigo-50 border border-indigo-100 rounded-3xl p-6 flex flex-col items-center w-full">
-                    <div className="bg-white p-4 rounded-[2rem] shadow-2xl shadow-indigo-200/50 mb-5">
-                      <canvas ref={canvasRef} className="max-w-full h-auto rounded-xl" />
+                  <div className="bg-white p-4 rounded-[2rem] shadow-2xl shadow-indigo-200/50 mb-5 flex items-center justify-center">
+                    {qrDataUrl ? (
+                      <img src={qrDataUrl} alt="QR Code" className="w-48 h-48 rounded-xl" />
+                    ) : (
+                      <div className="w-48 h-48 bg-gray-100 rounded-xl flex items-center justify-center">
+                        <span className="text-sm text-gray-400">Generating QR...</span>
+                      </div>
+                    )}
                     </div>
                     <p className="text-xs text-center font-bold text-indigo-400 max-w-[200px] leading-relaxed mb-4">
                       Present this QR to the owner to confirm your order completion.

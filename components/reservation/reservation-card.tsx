@@ -1,21 +1,28 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { Star, Zap, Flame, ChevronDown, ChevronUp, MessageSquare } from 'lucide-react';
+import { useState } from 'react';
+import { Star, Zap, Flame, ChevronDown, ChevronUp, MessageSquare, User, Phone as PhoneIcon } from 'lucide-react';
 import { DatePicker } from './date-picker';
 import { TimeSlotGrid, generateTimeSlots } from './time-slot-grid';
 import { GuestSelector } from './guest-selector';
 import { ReservationSummary } from './reservation-summary';
 import { ReservationConfirmationModal } from './reservation-confirmation-modal';
 import { ReservationData, ReservationCardProps } from './types';
+import { createBooking, getStoreBookingsByDate } from '@/lib/actions/reservation';
+import { format, addMinutes, parse } from 'date-fns';
+import { useEffect } from 'react';
+import { createClient } from '@/lib/supabase/client';
 
 export function ReservationCard({
   businessId,
   businessName,
   rating,
   reviewCount,
-  reservationFee = 5,
+  reservationFee = 0,
   currency = 'TND ',
+  service,
+  storeId,
+  workingHours,
   onConfirm,
 }: ReservationCardProps) {
   const [data, setData] = useState<ReservationData>({
@@ -23,32 +30,146 @@ export function ReservationCard({
     businessName,
     date: null,
     time: null,
-    guests: 2,
+    guests: 1,
     specialRequest: '',
+    customerName: '',
+    customerPhone: '',
   });
 
-  const [showRequest,  setShowRequest]  = useState(false);
-  const [isLoading,    setIsLoading]    = useState(false);
-  const [confirmed,    setConfirmed]    = useState(false);
-  const [viewersCount, setViewersCount] = useState(0);
+  const [showRequest,     setShowRequest]     = useState(false);
+  const [isLoading,       setIsLoading]       = useState(false);
+  const [confirmed,       setConfirmed]       = useState(false);
+  const [error,           setError]           = useState<string | null>(null);
+  const [existingBookings, setExistingBookings] = useState<any[]>([]);
+  const supabase = createClient();
 
+  // Auto-fill user profile data if logged in
   useEffect(() => {
-    setViewersCount(Math.floor(Math.random() * 18) + 5);
+    const fetchUserProfile = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data: profile } = await supabase
+          .from('users')
+          .select('full_name, phone')
+          .eq('id', user.id)
+          .single();
+        
+        if (profile) {
+          setData(prev => ({
+            ...prev,
+            customerName: prev.customerName || profile.full_name || '',
+            customerPhone: prev.customerPhone || profile.phone || '',
+          }));
+        }
+      }
+    };
+    fetchUserProfile();
   }, []);
 
-  const slots      = data.date ? generateTimeSlots() : [];
-  const canReserve = !!data.date && !!data.time;
+  // Fetch bookings for the selected date to mark unavailable slots
+  useEffect(() => {
+    if (data.date && storeId) {
+      const fetchBookings = async () => {
+        try {
+          const bookings = await getStoreBookingsByDate(storeId, format(data.date!, 'yyyy-MM-dd'));
+          setExistingBookings(bookings);
+        } catch (err) {
+          console.error('Error fetching bookings:', err);
+        }
+      };
+      fetchBookings();
+    }
+  }, [data.date, storeId]);
+
+  const getDaySchedule = () => {
+    // Fallback schedule if data is missing
+    const defaultSchedule = { open: '08:00', close: '18:00', closed: false };
+    
+    if (!data.date) return null;
+    if (!workingHours) return defaultSchedule;
+    
+    // Normalize keys to lowercase for robust lookup
+    const normalizedHours: Record<string, any> = {};
+    Object.entries(workingHours).forEach(([key, value]) => {
+      normalizedHours[key.toLowerCase()] = value;
+    });
+
+    const enDay = format(data.date, 'eeee').toLowerCase();
+    const frDays: Record<string, string> = {
+      'monday': 'lundi', 'tuesday': 'mardi', 'wednesday': 'mercredi',
+      'thursday': 'jeudi', 'friday': 'vendredi', 'saturday': 'samedi', 'sunday': 'dimanche'
+    };
+    const frDay = frDays[enDay];
+
+    const foundSchedule = normalizedHours[enDay] || normalizedHours[frDay];
+    
+    // Return found schedule, or fallback to default if this specific day is missing in the object
+    return foundSchedule || defaultSchedule;
+  };
+
+  const schedule = getDaySchedule();
+  
+  // Generate slots and mark as unavailable if already booked
+  const rawSlots = (data.date && schedule && !schedule.closed) 
+    ? generateTimeSlots(schedule.open, schedule.close, 60) 
+    : [];
+
+  const slots = rawSlots.map(slot => {
+    const isBooked = existingBookings.some(b => b.start_time === slot.time);
+    return {
+      ...slot,
+      available: slot.available && !isBooked
+    };
+  });
+
+  const canReserve = !!data.date && !!data.time && !!data.customerName.trim() && !!data.customerPhone.trim();
+
+  // Use service data if available, otherwise fallback to business data
+  const displayRating = service?.rating_average ?? rating;
+  const displayReviewCount = service?.total_reviews ?? reviewCount;
+  const displayPrice = service?.price ?? 0;
 
   const handleReserve = async () => {
     if (!canReserve) return;
     setIsLoading(true);
-    // TODO: replace with real Supabase insert into bookings table
-    await new Promise(r => setTimeout(r, 1400));
-    setIsLoading(false);
-    if (onConfirm) {
-      onConfirm(data);
-    } else {
-      setConfirmed(true);
+    setError(null);
+
+    try {
+      if (!storeId || !service) {
+        throw new Error("Informations sur l'établissement ou le service manquantes.");
+      }
+
+      // Calculate end_time based on start_time and service duration
+      const startTimeDate = parse(data.time!, 'HH:mm', new Date());
+      const endTimeDate = addMinutes(startTimeDate, service.duration_minutes ?? 30);
+      const endTime = format(endTimeDate, 'HH:mm');
+
+      const result = await createBooking({
+        store_id: storeId,
+        item_id: service.id,
+        booking_date: format(data.date!, 'yyyy-MM-dd'),
+        start_time: data.time!,
+        end_time: endTime,
+        duration_minutes: service.duration_minutes ?? 30,
+        price: displayPrice,
+        customer_name: data.customerName,
+        customer_phone: data.customerPhone,
+        notes: data.specialRequest || null,
+        customer_email: null, // Optional for now
+      });
+
+      if (result.success) {
+        if (onConfirm) {
+          onConfirm(data);
+        } else {
+          setConfirmed(true);
+        }
+      }
+    } catch (err: any) {
+      console.error(err);
+      setError(err.message || "Une erreur est survenue lors de la réservation.");
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -61,8 +182,8 @@ export function ReservationCard({
           <div className="flex items-center gap-2 flex-wrap mb-3">
             <div className="flex items-center gap-1 text-xs font-semibold text-slate-600">
               <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
-              {rating.toFixed(1)}
-              <span className="text-slate-400 font-normal ml-0.5">({reviewCount} avis)</span>
+              {displayRating.toFixed(1)}
+              <span className="text-slate-400 font-normal ml-0.5">({displayReviewCount} avis)</span>
             </div>
             <div className="flex items-center gap-1 text-xs font-semibold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">
               <Zap className="w-3 h-3" /> Confirmation instantanée
@@ -71,15 +192,42 @@ export function ReservationCard({
               <Flame className="w-3 h-3" /> Populaire aujourd'hui
             </div>
           </div>
-          {viewersCount > 0 && (
-            <p className="text-xs text-slate-400 flex items-center gap-1.5">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse inline-block" />
-              <span className="font-semibold text-slate-600">{viewersCount} personnes</span> consultent cette page
-            </p>
-          )}
+          <p className="text-xs text-slate-400 flex items-center gap-1.5">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse inline-block" />
+            <span className="font-semibold text-slate-600">Disponibilité garantie</span> pour la date choisie
+          </p>
         </div>
 
         <div className="px-5 py-4 space-y-5">
+          {/* Customer Info (Mandatory) */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pb-2">
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Nom complet</label>
+              <div className="relative">
+                <User className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
+                <input 
+                  type="text" 
+                  placeholder="Votre nom"
+                  value={data.customerName}
+                  onChange={(e) => setData(prev => ({ ...prev, customerName: e.target.value }))}
+                  className="w-full pl-9 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm placeholder-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition-all font-medium"
+                />
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Téléphone</label>
+              <div className="relative">
+                <PhoneIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
+                <input 
+                  type="tel" 
+                  placeholder="Votre numéro"
+                  value={data.customerPhone}
+                  onChange={(e) => setData(prev => ({ ...prev, customerPhone: e.target.value }))}
+                  className="w-full pl-9 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm placeholder-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition-all font-medium"
+                />
+              </div>
+            </div>
+          </div>
 
           {/* Date */}
           <div>
@@ -99,10 +247,9 @@ export function ReservationCard({
                 selected={data.time}
                 onSelect={(time) => setData(prev => ({ ...prev, time }))}
               />
-              {slots.some(s => s.spotsLeft !== undefined && s.spotsLeft > 0 && s.spotsLeft <= 3) && (
-                <p className="mt-2 text-xs text-amber-600 font-medium flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-amber-400 inline-block" />
-                  Quelques créneaux limités — réservez vite !
+              {slots.length === 0 && (
+                <p className="text-center text-[10px] text-slate-400 italic bg-slate-50 py-3 rounded-xl border border-dashed border-slate-200">
+                  Aucun créneau disponible pour ce jour.
                 </p>
               )}
             </div>
@@ -144,7 +291,11 @@ export function ReservationCard({
 
           {/* Summary */}
           {(data.date || data.time) && (
-            <ReservationSummary data={data} fee={reservationFee} currency={currency} />
+            <ReservationSummary data={{...data, businessId, businessName}} fee={reservationFee} currency={currency} price={displayPrice} />
+          )}
+
+          {error && (
+            <p className="text-xs text-rose-500 font-bold text-center bg-rose-50 py-2 rounded-lg border border-rose-100">{error}</p>
           )}
 
           {/* Reserve button */}
@@ -168,7 +319,9 @@ export function ReservationCard({
               </>
             ) : canReserve
               ? 'Réserver maintenant'
-              : 'Choisissez une date et une heure'
+              : !data.customerName.trim() || !data.customerPhone.trim()
+                ? 'Complétez vos informations'
+                : 'Choisissez une date et une heure'
             }
           </button>
 
@@ -176,7 +329,7 @@ export function ReservationCard({
         </div>
       </div>
 
-      {/* Inline confirmation modal (when no onConfirm prop) */}
+      {/* Confirmation modal */}
       {confirmed && (
         <ReservationConfirmationModal
           data={data}

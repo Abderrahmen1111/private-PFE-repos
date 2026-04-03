@@ -8,14 +8,15 @@ import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import BusinessImageGallery from '@/components/BusinessImageGallery';
 import { BusinessStories } from '@/components/BusinessStories';
-import { ProductCard } from '@/components/ProductCard';
-import { ServiceCard } from '@/components/ServiceCard';
+import { BusinessItemsList } from '@/components/BusinessItemsList';
 import PromotionBanner from '@/components/PromotionBanner';
 import { notFound } from 'next/navigation';
 import { WriteReviewButton } from '@/components/WriteReviewButton';
 import { ShareBusinessButton } from '@/components/ShareBusinessButton';
 import { Item } from '@/lib/actions/items';
 import BusinessReservationSidebar from '@/components/BusinessReservationSidebar';
+import BusinessCommandSidebar from '@/components/BusinessCommandSidebar';
+import FavoriteButton from '@/components/FavoriteButton';
 
 interface Promotion {
   id: number;
@@ -41,17 +42,19 @@ export default async function BusinessDetailPage({ params }: { params: { id: str
     notFound();
   }
 
-  const storeId = business.store_id || parseInt(businessId);
-  const items = await getPublicItemsByStoreId(storeId);
-  const reviews = business.store_id ? await getReviewsByStoreId(business.store_id) : [];
-  const stories = business.store_id ? await getBusinessStories(business.store_id) : [];
-  const allPromotions = business.store_id ? await getPromotions(business.store_id) : [] as Promotion[];
+  const storeId = business.store_id;
+  const items = storeId ? await getPublicItemsByStoreId(storeId) : [];
+  const reviews = storeId ? await getReviewsByStoreId(storeId) : [];
+  const stories = storeId ? await getBusinessStories(storeId) : [];
+  const allPromotions = storeId ? await getPromotions(storeId) : [] as Promotion[];
 
   // Only active and current promotions
   const activePromos = allPromotions.filter((p: Promotion) => {
     const now = new Date();
     return p.active && new Date(p.valid_from) <= now && new Date(p.valid_until) >= now;
   });
+
+  const hasProducts = items.some((i: Item) => i.item_type === 'PRODUCT');
 
   const isVerified = business.id_business !== null || business.status === 'PUBLISHED';
 
@@ -61,9 +64,16 @@ export default async function BusinessDetailPage({ params }: { params: { id: str
     ...(business.gallery || [])
   ];
 
+  // Pick a default hero image based on whether this is a service provider
+  const defaultHero = business.category?.toLowerCase().includes('plomb')
+    ? 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=800&h=600&fit=crop'
+    : business.category?.toLowerCase().includes('electr')
+    ? 'https://images.unsplash.com/photo-1621905251918-48416bd8575a?w=800&h=600&fit=crop'
+    : 'https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=800&h=600&fit=crop';
+
   const images = allMedia.length > 0
     ? allMedia
-    : ['https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=800&h=600&fit=crop'];
+    : [defaultHero];
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -181,10 +191,9 @@ export default async function BusinessDetailPage({ params }: { params: { id: str
                 businessUrl={`${process.env.NEXT_PUBLIC_SITE_URL}/business/${businessId}`}
               />
 
-            <button className="bg-white border-2 px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-gray-50 font-semibold transition-all active:scale-95">
-              <Bookmark className="w-4 h-4" />
-              Enregistrer
-            </button>
+            {business.store_id && (
+              <FavoriteButton storeId={business.store_id} />
+            )}
           </div>
         </div>
       </div>
@@ -209,65 +218,26 @@ export default async function BusinessDetailPage({ params }: { params: { id: str
               </div>
             </div>
 
-            {/* Products/Services Section */}
-            <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-                  <Package className="w-6 h-6 text-red-500" />
-                  Produits et Services
-                </h2>
-                <span className="text-sm font-medium text-gray-500">{items.length} publiés</span>
+            {/* Products/Services Section - Only show if business is linked to a store */}
+            {business.store_id && (
+              <div id="items-section" className="bg-white rounded-xl shadow-sm p-6 border border-gray-100 scroll-mt-24">
+                <div className="flex items-center justify-between mb-6">
+                  <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+                    <Package className="w-6 h-6 text-red-500" />
+                    Produits et Services
+                  </h2>
+                  <span className="text-sm font-medium text-gray-500">{items.length} publiés</span>
+                </div>
+
+                <BusinessItemsList 
+                  items={items} 
+                  businessName={business.name} 
+                  businessId={businessId}
+                  activePromos={activePromos}
+                  isLinkedToStore={!!business.store_id}
+                />
               </div>
-
-              {items.length > 0 ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                  {items.map((item: Item) => {
-                    // Find if there's a specific promotion for this item or a store-wide one
-                    const itemPromo = activePromos.find((p: Promotion) =>
-                      p.apply_to_all || (p.promotion_items && p.promotion_items.some((pi: { item_id: number }) => pi.item_id === item.id))
-                    );
-
-                    return item.item_type === 'SERVICE' ? (
-                      <ServiceCard
-                        key={item.id}
-                        item={item}
-                        businessName={business.name}
-                        promotion={itemPromo}
-                      />
-                    ) : (
-                      <ProductCard
-                        key={item.id}
-                        item={item}
-                        businessName={business.name}
-                        promotion={itemPromo}
-                      />
-                    );
-                  })}
-                </div>
-              ) : (
-                <div className="py-12 text-center bg-gray-50 rounded-xl border-2 border-dashed border-gray-200">
-                  <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <Package className="w-8 h-8 text-gray-400" />
-                  </div>
-                  {business.id_business ? (
-                    <>
-                      <h3 className="text-lg font-bold text-gray-900">Aucun produit publié</h3>
-                      <p className="text-gray-500 mt-1">Cet établissement n'a pas encore ajouté de produits.</p>
-                    </>
-                  ) : (
-                    <>
-                      <div className="flex items-center justify-center gap-2 text-amber-600 mb-2">
-                        <AlertCircle className="w-5 h-5" />
-                        <h3 className="text-lg font-bold">Catalogue non disponible</h3>
-                      </div>
-                      <p className="text-gray-500 mt-1 max-w-sm mx-auto px-4">
-                        Les produits seront visibles dès que l'établissement sera vérifié par notre équipe.
-                      </p>
-                    </>
-                  )}
-                </div>
-              )}
-            </div>
+            )}
 
             {/* Photos Section (if many) */}
             {business.photos && business.photos.length > 1 && (
@@ -362,6 +332,9 @@ export default async function BusinessDetailPage({ params }: { params: { id: str
               website={business.website}
               address={business.location.address}
               workingHours={business.workingHours as Record<string, any> | null}
+              isLinkedToStore={!!business.store_id}
+              hasProducts={hasProducts}
+              items={items}
             />
           </div>
         </div>

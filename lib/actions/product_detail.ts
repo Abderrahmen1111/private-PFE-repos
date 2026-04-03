@@ -37,7 +37,7 @@ export interface ProductDetail {
     rating_average: number;
     total_reviews: number;
     opening_hours: Record<string, { open: string; close: string; closed: boolean }> | null;
-    kyc_verified_at: string | null;
+    verified_at: string | null;
   };
 }
 
@@ -96,13 +96,13 @@ export async function getProductById(id: number): Promise<ProductDetail | null> 
         rating_average,
         total_reviews,
         opening_hours,
-        kyc_verified_at
+        verified_at
       )
     `)
     .eq('id', id)
     .eq('item_type', 'PRODUCT')
     .neq('status', 'UNAVAILABLE')
-    .single();
+    .single() as any;
 
   if (error || !data) {
     console.error('getProductById error:', error);
@@ -110,15 +110,33 @@ export async function getProductById(id: number): Promise<ProductDetail | null> 
   }
 
   // Fire-and-forget view count increment
-  supabase
-    .from('items')
+  (supabase.from('items') as any)
     .update({ view_count: (data.view_count ?? 0) + 1 })
     .eq('id', id)
     .then(() => {});
 
+  const storeObj = Array.isArray(data.stores) ? data.stores[0] : data.stores;
+
   return {
     ...data,
-    store: Array.isArray(data.stores) ? data.stores[0] : data.stores,
+    store: storeObj || {
+        id: 0,
+        name: 'Vendeur',
+        slug: '',
+        description: null,
+        category: 'Produit',
+        phone: '',
+        email: null,
+        website: null,
+        address: '',
+        city: '',
+        logo_url: null,
+        banner_url: null,
+        rating_average: 0,
+        total_reviews: 0,
+        opening_hours: null,
+        verified_at: null
+    },
   } as ProductDetail;
 }
 
@@ -162,20 +180,20 @@ export async function getProductReviews(itemId: number): Promise<ProductReview[]
 
 // ── Fetch related products from same store ────────────────────────────────────
 
-export async function getRelatedProducts(storeId: number, excludeId: number): Promise<Partial<ProductDetail>[]> {
+export async function getRelatedItems(storeId: number, excludeId: number): Promise<any[]> {
   const supabase = createClient();
 
   const { data, error } = await supabase
     .from('items')
-    .select('id, name, price, price_unit, main_image, stock_quantity, rating_average')
+    .select('id, name, price, price_unit, main_image, stock_quantity, rating_average, item_type, duration_minutes')
     .eq('store_id', storeId)
-    .eq('item_type', 'PRODUCT')
     .neq('status', 'UNAVAILABLE')
     .neq('id', excludeId)
     .limit(4);
 
+
   if (error) {
-    console.error('getRelatedProducts error:', error);
+    console.error('getRelatedItems error:', error);
     return [];
   }
 

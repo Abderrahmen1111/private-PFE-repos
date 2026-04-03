@@ -223,7 +223,50 @@ export async function getUserProfileData() {
         console.error("Error fetching user reviews:", reviewsError)
     }
 
-    // 6. Fetch Activity (Latest 10 items from Reviews, Bookings, Orders)
+    // Fetch all bookings for the reservations tab
+    const { data: userBookings, error: bookingsError } = await supabase
+        .from('bookings' as any)
+        .select(`
+            *,
+            stores!store_id (
+                name,
+                logo_url,
+                category
+            ),
+            items!item_id (
+                name,
+                main_image
+            )
+        `)
+        .eq('customer_id', user.id)
+        .order('booking_date', { ascending: false });
+
+    if (bookingsError) {
+        console.error("Error fetching user bookings:", bookingsError)
+    }
+
+    // 6. Fetch User's Saved Places
+    const { data: userSavedPlaces, error: savedError } = await supabase
+        .from('saved_places' as any)
+        .select(`
+            *,
+            stores!store_id (
+                id,
+                name,
+                logo_url,
+                category,
+                address,
+                rating_average
+            )
+        `)
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
+
+    if (savedError) {
+        console.error("Error fetching user saved places:", savedError)
+    }
+
+    // 7. Fetch Activity (Latest 10 items from Reviews, Bookings, Orders)
     // Combine and sort by date for a unified feed
     const activityItems: any[] = [];
     
@@ -254,15 +297,8 @@ export async function getUserProfileData() {
     }
 
     // Fetch latest bookings for activity
-    const { data: lastBookings } = await supabase
-        .from('bookings' as any)
-        .select('*, stores!store_id(name)')
-        .eq('customer_id', user.id)
-        .order('created_at', { ascending: false })
-        .limit(3);
-
-    if (lastBookings) {
-        lastBookings.forEach((b: any) => {
+    if (userBookings) {
+        userBookings.slice(0, 3).forEach((b: any) => {
             activityItems.push({
                 id: `book-${b.id}`,
                 type: 'visited',
@@ -303,6 +339,16 @@ export async function getUserProfileData() {
             citiesCount: 1, 
             helpfulVotes: 0,
         },
+        savedPlaces: (userSavedPlaces || []).map((s: any) => ({
+            id: s.id.toString(),
+            storeId: s.stores?.id,
+            businessName: s.stores?.name || 'Unknown Business',
+            businessImage: s.stores?.logo_url || '/placeholder-business.png',
+            businessCategory: s.stores?.category || 'General',
+            address: s.stores?.address || '',
+            rating: s.stores?.rating_average || 0,
+            date: new Date(s.created_at).toLocaleDateString('en-US', { month: 'long', year: 'numeric' }),
+        })),
         reviews: (userReviews || []).map((r: any) => ({
             id: r.id.toString(),
             businessName: r.stores?.name || 'Unknown Business',
@@ -317,11 +363,12 @@ export async function getUserProfileData() {
             id: o.id.toString(),
             order_number: o.order_number,
             businessName: o.stores?.name || 'Unknown Business',
-            businessImage: o.stores?.logo_url || '/placeholder-business.png',
+            businessImage: o.stores?.logo_url || o.stores?.banner_url || null,
             status: o.status,
             total_price: o.total_price,
             date: new Date(o.created_at).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }),
         })),
+        bookings: userBookings || [],
         activity: sortedActivity,
     }
 }

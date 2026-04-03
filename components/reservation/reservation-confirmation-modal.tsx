@@ -3,6 +3,7 @@
 import { useEffect } from 'react';
 import { X, CalendarDays, Clock, Users, CheckCircle2, CalendarPlus, ArrowRight } from 'lucide-react';
 import { ReservationData } from './types';
+import { useRouter } from 'next/navigation';
 
 interface ConfirmationModalProps {
   data: ReservationData;
@@ -12,6 +13,7 @@ interface ConfirmationModalProps {
 const MONTH_SHORT = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
 export function ReservationConfirmationModal({ data, onClose }: ConfirmationModalProps) {
+  const router = useRouter();
   // Close on Escape
   useEffect(() => {
     const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
@@ -124,6 +126,7 @@ export function ReservationConfirmationModal({ data, onClose }: ConfirmationModa
             Add to Google Calendar
           </button>
           <button
+            onClick={() => router.push('/profile/user?tab=reservations')}
             className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border-2 border-slate-200 hover:bg-slate-50 text-slate-700 text-sm font-semibold transition-all active:scale-[0.98]"
           >
             View Reservation

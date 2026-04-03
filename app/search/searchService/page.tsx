@@ -5,7 +5,7 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import { Search, Loader2, SlidersHorizontal, Star, MapPin, Clock, ChevronDown, X, Package, Wrench, Stethoscope, GraduationCap, Car, Scissors, Dumbbell, Laptop, Home, ShoppingBag } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
-import { searchItems, SearchResultItem } from '@/lib/actions/search_prod_serv';
+import { searchServicesDirectory } from '@/lib/actions/search_service';
 import { ServiceCard } from '@/components/ServiceCard';
 
 // ── Category chips ────────────────────────────────────────────────────────────
@@ -36,7 +36,7 @@ function ServiceSearchContent() {
   const query    = searchParams.get('query') || searchParams.get('q') || '';
   const location = searchParams.get('location') || '';
 
-  const [services,       setServices]       = useState<SearchResultItem[]>([]);
+  const [services,       setServices]       = useState<any[]>([]);
   const [isLoading,      setIsLoading]      = useState(true);
   const [activeCategory, setActiveCategory] = useState('all');
   const [sortBy,         setSortBy]         = useState('pertinence');
@@ -46,38 +46,37 @@ function ServiceSearchContent() {
   const [minRating,      setMinRating]      = useState(0);
   const [showSortMenu,   setShowSortMenu]   = useState(false);
 
-  // ── Fetch ──────────────────────────────────────────────────────────────────
+  // ── Fetch from service_directory ───────────────────────────────────────────
   useEffect(() => {
-    const fetch = async () => {
+    const fetchDir = async () => {
       setIsLoading(true);
       try {
-        const result = await searchItems(query);
-        const onlyServices = (result.data || []).filter(
-          (item: SearchResultItem) => item.item_type === 'SERVICE'
-        );
-        setServices(onlyServices);
+        const result = await searchServicesDirectory(query, location || undefined);
+        setServices(result.data || []);
       } catch (err) {
         console.error('Fetch error:', err);
       } finally {
         setIsLoading(false);
       }
     };
-    fetch();
+    fetchDir();
   }, [query, location]);
 
   // ── Filter + sort ──────────────────────────────────────────────────────────
   const filtered = services
     .filter(s => {
-      const matchCat    = activeCategory === 'all' || (s.category?.toLowerCase() ?? '').includes(activeCategory);
+      const matchCat    = activeCategory === 'all' || 
+                          (s.name?.toLowerCase() || '').includes(activeCategory) || 
+                          (s.description?.toLowerCase() || '').includes(activeCategory);
       const matchMin    = !priceMin  || (s.price ?? 0) >= Number(priceMin);
       const matchMax    = !priceMax  || (s.price ?? 0) <= Number(priceMax);
-      const matchRating = !minRating || (s.rating ?? 0) >= minRating;
+      const matchRating = !minRating || (s.rating_average ?? 0) >= minRating;
       return matchCat && matchMin && matchMax && matchRating;
     })
     .sort((a, b) => {
       if (sortBy === 'price_asc')  return (a.price ?? 0) - (b.price ?? 0);
       if (sortBy === 'price_desc') return (b.price ?? 0) - (a.price ?? 0);
-      if (sortBy === 'rating')     return (b.rating ?? 0) - (a.rating ?? 0);
+      if (sortBy === 'rating')     return (b.rating_average ?? 0) - (a.rating_average ?? 0);
       if (sortBy === 'newest')     return new Date(b.created_at ?? 0).getTime() - new Date(a.created_at ?? 0).getTime();
       return 0;
     });
@@ -275,12 +274,21 @@ function ServiceSearchContent() {
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-            {filtered.map((item: SearchResultItem) => (
+            {filtered.map((item: any) => (
               <ServiceCard
-                key={item.id}
-                item={item}
-                businessName={item.stores?.name}
-                onViewDetails={() => router.push(`/merchants/business/${item.store_id}`)}
+                key={item.service_id || item.id}
+                item={{
+                  ...item,
+                  id: item.service_id || item.id,
+                  price: item.price ?? 0,
+                  price_unit: item.price_unit ?? 'TND',
+                  status: item.status ?? 'AVAILABLE',
+                  item_type: 'SERVICE',
+                  main_image: item.main_image,
+                }}
+                businessName={item.stores?.name || item.name}
+                hidePricing={true}
+                hideBooking={false}
               />
             ))}
           </div>

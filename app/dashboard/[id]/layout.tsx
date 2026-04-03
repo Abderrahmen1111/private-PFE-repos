@@ -32,6 +32,14 @@ import { cn } from '@/lib/utils';
 import { Toaster, toast } from 'sonner';
 import AIAgent from '@/components/ai-agent/AIAgent';
 import { getSidebarStats } from '@/lib/actions/overviews';
+import { createClient } from '@/lib/supabase/client';
+import { getUserProfile } from '@/lib/actions/users';
+import { getUserStores } from '@/lib/actions/stores';
+
+type Business = {
+  id: number;
+  name: string;
+};
 
 export default function DashboardLayout({
   children,
@@ -45,9 +53,10 @@ export default function DashboardLayout({
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const router = useRouter();
 
-  // business switcher state
-  const businesses = ['Elegance Boutique', 'Modern Salon'];
-  const [currentBusiness, setCurrentBusiness] = useState(businesses[0]);
+  // Dynamic user and businesses state
+  const [user, setUser] = useState<{ id: string; name: string; username: string; initials: string } | null>(null);
+  const [businesses, setBusinesses] = useState<Business[]>([]);
+  const [currentBusiness, setCurrentBusiness] = useState<Business | null>(null);
 
   const [stats, setStats] = useState({ reviews: 0, leads: 0 });
   const [lastSeenCounts, setLastSeenCounts] = useState<Record<string, number>>({});
@@ -65,12 +74,42 @@ export default function DashboardLayout({
   }, [id]);
 
   useEffect(() => {
+    async function initLayout() {
+      const supabase = createClient();
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+      
+      if (authUser) {
+        // 1. Fetch Profile
+        const { data: profile } = await getUserProfile(authUser.id);
+        if (profile) {
+          setUser({
+            id: authUser.id,
+            name: profile.full_name || 'Commerçant',
+            username: profile.email || '',
+            initials: (profile.full_name || 'C').split(' ').map((n: string) => n[0]).join('').toUpperCase()
+          });
+        }
+
+        // 2. Fetch Stores
+        const { data: stores } = await getUserStores(authUser.id);
+        if (stores) {
+          const bizList = stores.map((s: any) => ({ id: s.id, name: s.name }));
+          setBusinesses(bizList);
+          
+          const active = bizList.find(b => b.id === Number(id));
+          if (active) setCurrentBusiness(active);
+        }
+      }
+    }
+
     async function fetchStats() {
       if (id) {
         const res = await getSidebarStats(Number(id));
         setStats(res);
       }
     }
+    
+    initLayout();
     fetchStats();
   }, [id]);
 
@@ -132,12 +171,9 @@ export default function DashboardLayout({
       >
         <div className="flex items-center justify-center p-6 border-b border-white/10">
           {currentBusiness ? (
-            <img
-              src={`/logos/${currentBusiness.replace(/\s+/g, '-').toLowerCase()}.png`}
-              alt="Logo"
-              className="w-12 h-12 rounded-2xl object-cover"
-              onError={(e) => {(e.target as HTMLImageElement).src = '/coming-soon.webp';}}
-            />
+            <div className="w-12 h-12 bg-gradient-to-br from-cyan-500 via-blue-600 to-purple-600 rounded-2xl flex items-center justify-center text-white font-black text-xl shadow-lg shadow-blue-500/20 ring-1 ring-white/20">
+              {currentBusiness.name.substring(0, 2).toUpperCase()}
+            </div>
           ) : (
             <div className="w-12 h-12 bg-gradient-to-br from-cyan-500 via-blue-600 to-purple-600 rounded-2xl flex items-center justify-center text-white font-black text-xl shadow-lg shadow-blue-500/20 ring-1 ring-white/20">
               RO
@@ -216,17 +252,18 @@ export default function DashboardLayout({
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <button className="flex items-center gap-1 px-3 py-1 rounded-md bg-white/10 hover:bg-white/20 text-white text-sm">
-                  {currentBusiness} <ChevronDown className="w-4 h-4" />
+                  {currentBusiness?.name || 'Sélectionnez...'} <ChevronDown className="w-4 h-4" />
                 </button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent className="bg-card border border-border rounded-md p-1">
+              <DropdownMenuContent className="bg-card border border-border rounded-md p-1 min-w-[200px]">
                 {businesses.map(b => (
                   <DropdownMenuItem
-                    key={b}
-                    onClick={() => setCurrentBusiness(b)}
-                    className="cursor-pointer"
+                    key={b.id}
+                    onClick={() => router.push(`/dashboard/${b.id}`)}
+                    className="cursor-pointer flex items-center justify-between"
                   >
-                    {b}
+                    {b.name}
+                    {b.id === Number(id) && <div className="w-2 h-2 rounded-full bg-primary" />}
                   </DropdownMenuItem>
                 ))}
               </DropdownMenuContent>
@@ -258,9 +295,12 @@ export default function DashboardLayout({
             </button>
 
             <UserDropdown
-              user={{ name: 'John Doe', username: '@jdoe', initials: 'JD' }}
+              user={user || { name: 'Commerçant', username: '', initials: 'C' }}
               onAction={(action) => {
-                console.log('profile action', action);
+                if (action === 'logout') {
+                  const supabase = createClient();
+                  supabase.auth.signOut().then(() => router.push('/login'));
+                }
               }}
             />
           </div> 

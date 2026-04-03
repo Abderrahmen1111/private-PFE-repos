@@ -467,6 +467,7 @@ export interface Database {
                     id_business: number | null
                     opening_hours: Json | null
                     gallery: Json | null
+                    service_id: number | null
                 }
                 Insert: {
                     id?: number
@@ -537,42 +538,201 @@ export interface Database {
                     opening_hours?: Json | null
                 }
             }
-            subscriptions: {
+            stories: {
                 Row: {
                     id: number
-                    user_id: string
-                    plan_name: string
-                    price: number | null
-                    current_period_start: string
-                    current_period_end: string
-                    status: string
-                    auto_renew: boolean | null
-                    created_at: string | null
-                    updated_at: string | null
+                    store_id: number
+                    author_id: string | null
+                    media_url: string
+                    media_type: 'image' | 'video'
+                    caption: string | null
+                    views_count: number
+                    is_approved: boolean
+                    expires_at: string
+                    created_at: string
                 }
                 Insert: {
                     id?: number
-                    user_id: string
-                    plan_name: string
-                    price?: number | null
-                    current_period_start: string
-                    current_period_end: string
-                    status?: string
-                    auto_renew?: boolean | null
-                    created_at?: string | null
-                    updated_at?: string | null
+                    store_id: number
+                    author_id?: string | null
+                    media_url: string
+                    media_type?: 'image' | 'video'
+                    caption?: string | null
+                    views_count?: number
+                    is_approved?: boolean
+                    expires_at?: string
+                    created_at?: string
                 }
                 Update: {
                     id?: number
-                    user_id?: string
-                    plan_name?: string
-                    price?: number | null
-                    current_period_start?: string
-                    current_period_end?: string
-                    status?: string
-                    auto_renew?: boolean | null
-                    created_at?: string | null
-                    updated_at?: string | null
+                    store_id?: number
+                    author_id?: string | null
+                    media_url?: string
+                    media_type?: 'image' | 'video'
+                    caption?: string | null
+                    views_count?: number
+                    is_approved?: boolean
+                    expires_at?: string
+                    created_at?: string
+                }
+            }
+            support_tickets: {
+                Row: {
+                    id: string
+                    ticket_number: number
+                    store_id: number
+                    customer_id: string | null
+                    customer_name: string | null
+                    subject: string
+                    priority: 'low' | 'medium' | 'high' | 'critical'
+                    status: 'open' | 'in_progress' | 'waiting_customer' | 'resolved' | 'closed'
+                    channel: 'chat' | 'email' | 'phone'
+                    assigned_to: string | null
+                    created_at: string
+                    updated_at: string
+                    last_reply_at: string
+                }
+                Insert: {
+                    id?: string
+                    ticket_number?: number
+                    store_id: number
+                    customer_id?: string | null
+                    customer_name?: string | null
+                    subject: string
+                    priority?: 'low' | 'medium' | 'high' | 'critical'
+                    status?: 'open' | 'in_progress' | 'waiting_customer' | 'resolved' | 'closed'
+                    channel?: 'chat' | 'email' | 'phone'
+                    assigned_to?: string | null
+                    created_at?: string
+                    updated_at?: string
+                    last_reply_at?: string
+                }
+                Update: {
+                    id?: string
+                    ticket_number?: number
+                    store_id?: number
+                    customer_id?: string | null
+                    customer_name?: string | null
+                    subject?: string
+                    priority?: 'low' | 'medium' | 'high' | 'critical'
+                    status?: 'open' | 'in_progress' | 'waiting_customer' | 'resolved' | 'closed'
+                    channel?: 'chat' | 'email' | 'phone'
+                    assigned_to?: string | null
+                    created_at?: string
+                    updated_at?: string
+                    last_reply_at?: string
+                }
+            }
+            support_messages: {
+                Row: {
+                    id: string
+                    ticket_id: string
+                    sender_id: string | null
+                    sender_type: 'customer' | 'support'
+                    content: string
+                    is_read: boolean
+                    created_at: string
+                }
+                Insert: {
+                    id?: string
+                    ticket_id: string
+                    sender_id?: string | null
+                    sender_type: 'customer' | 'support'
+                    content: string
+                    is_read?: boolean
+                    created_at?: string
+                }
+                Update: {
+                    id?: string
+                    ticket_id?: string
+                    sender_id?: string | null
+                    sender_type?: 'customer' | 'support'
+                    content?: string
+                    is_read?: boolean
+                    created_at?: string
+                }
+            }
+            transactions: {
+                Row: {
+                    id: string
+                    transaction_code: string
+                    order_number: string
+                    booking_id: number | null
+                    customer_id: string | null
+                    customer_name: string | null
+                    merchant_id: number | null
+                    merchant_number: string | null
+                    merchant_name: string | null
+                    driver_name: string | null
+                    drop_location: string | null
+                    amount: number
+                    fee: number | null
+                    status: 'pending' | 'completed' | 'cancelled' | 'refunded'
+                    type: 'payment' | 'payout' | 'refund'
+                    date: string | null
+                    time_created: string | null
+                    time_accepted: string | null
+                    collection_time: string | null
+                    pickup_time: string | null
+                    time_delivered: string | null
+                    wait_duration_minutes: number | null
+                    delivery_duration_minutes: number | null
+                    km: number | null
+                    qr_code_token: string | null
+                }
+                Insert: {
+                    id?: string
+                    transaction_code: string
+                    order_number: string
+                    booking_id?: number | null
+                    customer_id?: string | null
+                    customer_name?: string | null
+                    merchant_id?: number | null
+                    merchant_number?: string | null
+                    merchant_name?: string | null
+                    driver_name?: string | null
+                    drop_location?: string | null
+                    amount: number
+                    fee?: number | null
+                    status?: 'pending' | 'completed' | 'cancelled' | 'refunded'
+                    type?: 'payment' | 'payout' | 'refund'
+                    date?: string | null
+                    time_created?: string | null
+                    time_accepted?: string | null
+                    collection_time?: string | null
+                    pickup_time?: string | null
+                    time_delivered?: string | null
+                    wait_duration_minutes?: number | null
+                    delivery_duration_minutes?: number | null
+                    km?: number | null
+                    qr_code_token?: string | null
+                }
+                Update: {
+                    id?: string
+                    transaction_code?: string
+                    order_number?: string
+                    booking_id?: number | null
+                    customer_id?: string | null
+                    customer_name?: string | null
+                    merchant_id?: number | null
+                    merchant_number?: string | null
+                    merchant_name?: string | null
+                    driver_name?: string | null
+                    drop_location?: string | null
+                    amount?: number
+                    fee?: number | null
+                    status?: 'pending' | 'completed' | 'cancelled' | 'refunded'
+                    type?: 'payment' | 'payout' | 'refund'
+                    date?: string | null
+                    time_created?: string | null
+                    time_accepted?: string | null
+                    collection_time?: string | null
+                    pickup_time?: string | null
+                    time_delivered?: string | null
+                    wait_duration_minutes?: number | null
+                    delivery_duration_minutes?: number | null
+                    km?: number | null
+                    qr_code_token?: string | null
                 }
             }
             users: {
@@ -589,6 +749,7 @@ export interface Database {
                     created_at: string | null
                     updated_at: string | null
                     email: string | null
+                    status: string | null
                 }
                 Insert: {
                     id: string
@@ -603,6 +764,7 @@ export interface Database {
                     created_at?: string | null
                     updated_at?: string | null
                     email?: string | null
+                    status?: string | null
                 }
                 Update: {
                     id?: string
@@ -617,6 +779,7 @@ export interface Database {
                     created_at?: string | null
                     updated_at?: string | null
                     email?: string | null
+                    status?: string | null
                 }
             }
         }
@@ -635,6 +798,11 @@ export interface Database {
             store_category: 'RESTAURANT' | 'PHARMACY' | 'BOUTIQUE' | 'SERVICE' | 'OTHER'
             store_status: 'PENDING' | 'REVIEW' | 'APPROVED' | 'REJECTED' | 'PUBLISHED'
             user_role: 'CLIENT' | 'PRO' | 'ADMIN'
+            support_ticket_priority: 'low' | 'medium' | 'high' | 'critical'
+            support_ticket_status: 'open' | 'in_progress' | 'waiting_customer' | 'resolved' | 'closed'
+            support_ticket_channel: 'chat' | 'email' | 'phone'
+            transaction_status: 'pending' | 'completed' | 'cancelled' | 'refunded'
+            transaction_type: 'payment' | 'payout' | 'refund'
         }
         CompositeTypes: {
             [_ in never]: never

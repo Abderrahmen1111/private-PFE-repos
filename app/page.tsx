@@ -12,6 +12,7 @@ import { CommerceHero } from '@/components/commerce-hero';
 import { LogoCarouselDemo } from "@/components/ui/testimonials"
 import { FloatingAiAssistant } from "@/components/ui/glowing-ai-chat-assistant"
 import ShortAdsSection from '@/components/ShortAdsSection';
+import SnapchatReels from '@/components/SnapchatReels';
 const BackgroundScene = dynamic(
   () => import('@/components/BackgroundScene'),
   { ssr: false }
@@ -26,8 +27,8 @@ export default function Home() {
       {/* Content Layers - In front */}
       <div className="relative" style={{ zIndex: 10 }}>
         <Navbar />
+        <SnapchatReels />
         <Hero />
-        <ShortAdsSection />
         <Offers />
         <OffersCarouselDemo />
         <Sponsors />

@@ -44,20 +44,35 @@ export function TimeSlotGrid({ slots, selected, onSelect }: TimeSlotGridProps) {
   );
 }
 
-// Generates time slots for a given date (mock — replace with real Supabase query)
-export function generateTimeSlots(): TimeSlot[] {
-  return [
-    { time: '12:00', available: true },
-    { time: '12:30', available: true },
-    { time: '13:00', available: true, spotsLeft: 2 },
-    { time: '13:30', available: true },
-    { time: '14:00', available: false, spotsLeft: 0 },
-    { time: '14:30', available: true },
-    { time: '18:00', available: true },
-    { time: '18:30', available: true, spotsLeft: 1 },
-    { time: '19:00', available: true },
-    { time: '19:30', available: false, spotsLeft: 0 },
-    { time: '20:00', available: true },
-    { time: '20:30', available: true },
-  ];
+import { format, parse, addMinutes, isBefore, isEqual } from 'date-fns';
+
+// Generates time slots for a given day based on business hours
+export function generateTimeSlots(
+  openTime: string = '09:00',
+  closeTime: string = '18:00',
+  intervalMinutes: number = 30
+): TimeSlot[] {
+  const slots: TimeSlot[] = [];
+  
+  try {
+    let current = parse(openTime, 'HH:mm', new Date());
+    const end = parse(closeTime, 'HH:mm', new Date());
+
+    while (isBefore(current, end) || isEqual(current, end)) {
+      slots.push({
+        time: format(current, 'HH:mm'),
+        available: true,
+      });
+      current = addMinutes(current, intervalMinutes);
+    }
+  } catch (e) {
+    console.error('Error generating time slots:', e);
+    return [
+      { time: '09:00', available: true },
+      { time: '10:00', available: true },
+      { time: '11:00', available: true },
+    ];
+  }
+
+  return slots;
 }

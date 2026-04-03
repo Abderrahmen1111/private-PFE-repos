@@ -6,6 +6,12 @@ export const metadata: Metadata = {
   description: "A modern marketplace with immersive 3D background",
 };
 
+import dynamic from 'next/dynamic';
+
+const GlobalActionDrawer = dynamic(() => import('@/components/GlobalActionDrawer'), {
+  ssr: false,
+});
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -13,7 +19,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body className="antialiased">
+        {children}
+        <GlobalActionDrawer />
+      </body>
     </html>
   );
 }

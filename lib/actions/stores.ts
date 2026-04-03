@@ -24,6 +24,22 @@ export async function getStoreById(id: number) {
     return { data: data as Store }
 }
 
+export async function getUserStores(userId: string): Promise<{ data?: any[]; error?: string }> {
+    const supabase = createClient() as any
+
+    const { data, error } = await supabase
+        .from('stores')
+        .select('*')
+        .eq('owner_id', userId)
+
+    if (error) {
+        console.error('Error fetching user stores:', error)
+        return { error: error.message }
+    }
+
+    return { data: data || [] }
+}
+
 export async function getStoreByBusinessId(businessId: number) {
     const supabase = createClient() as any
 
@@ -39,6 +55,25 @@ export async function getStoreByBusinessId(businessId: number) {
     }
 
     return { data: data as Store }
+}
+
+// Universal resolver for Dashboard to find store by any possible ID
+export async function getStoreByAnyId(id: number) {
+    const supabase = createClient() as any
+
+    // 1. Try Primary ID
+    const { data: byId } = await supabase.from('stores').select('*').eq('id', id).maybeSingle()
+    if (byId) return { data: byId as Store }
+
+    // 2. Try Business ID
+    const { data: byBiz } = await supabase.from('stores').select('*').eq('id_business', id).maybeSingle()
+    if (byBiz) return { data: byBiz as Store }
+
+    // 3. Try Service ID
+    const { data: byService } = await supabase.from('stores').select('*').eq('service_id', id).maybeSingle()
+    if (byService) return { data: byService as Store }
+
+    return { error: "Boutique introuvable" }
 }
 
 export async function updateStoreProfile(id: number, data: any) {

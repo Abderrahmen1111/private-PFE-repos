@@ -1,3 +1,5 @@
+import { Item } from '@/lib/actions/items';
+
 export interface TimeSlot {
   time: string;
   available: boolean;
@@ -11,6 +13,14 @@ export interface ReservationData {
   time: string | null;
   guests: number;
   specialRequest: string;
+  customerName: string;
+  customerPhone: string;
+}
+
+export interface WorkingHours {
+  open: string;
+  close: string;
+  closed: boolean;
 }
 
 export interface ReservationCardProps {
@@ -21,4 +31,7 @@ export interface ReservationCardProps {
   reviewCount: number;
   reservationFee?: number;
   currency?: string;
+  service?: Item;
+  storeId?: number;
+  workingHours?: Record<string, WorkingHours> | null;
 }

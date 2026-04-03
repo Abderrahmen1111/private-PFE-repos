@@ -1,22 +1,23 @@
 'use client';
 
-import { Star, Heart, Activity, Settings, ShoppingBag } from 'lucide-react';
+import { Star, Heart, Activity, Settings, ShoppingBag, CalendarDays } from 'lucide-react';
 import { motion } from 'framer-motion';
 
-export type TabId = 'reviews' | 'saved' | 'activity' | 'settings' | 'orders';
+export type TabId = 'reviews' | 'saved' | 'activity' | 'settings' | 'orders' | 'reservations';
 
 interface ProfileTabsProps {
   activeTab: TabId;
   onTabChange: (tab: TabId) => void;
-  counts: { reviews: number; saved: number; activity: number; orders: number };
+  counts: { reviews: number; saved: number; activity: number; orders: number; reservations: number };
 }
 
 const tabs: { id: TabId; label: string; icon: any; count?: keyof ProfileTabsProps['counts'] }[] = [
-  { id: 'orders', label: 'Orders', icon: ShoppingBag, count: 'orders' },
-  { id: 'reviews', label: 'Reviews', icon: Star, count: 'reviews' },
-  { id: 'saved', label: 'Saved Places', icon: Heart, count: 'saved' },
-  { id: 'activity', label: 'Activity', icon: Activity, count: 'activity' },
-  { id: 'settings', label: 'Settings', icon: Settings },
+  { id: 'orders', label: 'Commandes', icon: ShoppingBag, count: 'orders' },
+  { id: 'reservations', label: 'Réservations', icon: CalendarDays, count: 'reservations' },
+  { id: 'reviews', label: 'Avis', icon: Star, count: 'reviews' },
+  { id: 'saved', label: 'Favoris', icon: Heart, count: 'saved' },
+  { id: 'activity', label: 'Activité', icon: Activity, count: 'activity' },
+  { id: 'settings', label: 'Paramètres', icon: Settings },
 ];
 
 export default function ProfileTabs({ activeTab, onTabChange, counts }: ProfileTabsProps) {

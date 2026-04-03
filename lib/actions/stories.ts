@@ -9,21 +9,17 @@ export async function getBusinessStories(storeId: number) {
     const { data, error } = await (supabase as any)
         .from('stories')
         .select(`
-      id,
-      media_url,
-      media_type,
-      caption,
-      views_count,
-      created_at,
-      author:users!author_id (
-        full_name,
-        avatar_url
-      ),
-      stores:store_id (
-        name,
-        logo_url
-      )
-    `)
+            id,
+            media_url,
+            media_type,
+            caption,
+            views_count,
+            created_at,
+            stores:store_id (
+                name,
+                logo_url
+            )
+        `)
         .eq('store_id', storeId)
         .eq('is_approved', true)
         .gt('expires_at', new Date().toISOString())
@@ -53,10 +49,6 @@ export async function getDiscoverStories(limit: number = 20) {
             stores:store_id (
               name,
               logo_url
-            ),
-            author:users!author_id (
-                full_name,
-                avatar_url
             )
         `)
         .eq('is_approved', true)

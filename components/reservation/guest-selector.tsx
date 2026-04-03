@@ -15,8 +15,8 @@ export function GuestSelector({ value, onChange, min = 1, max = 10 }: GuestSelec
       <div className="flex items-center gap-2">
         <Users className="w-4 h-4 text-slate-400" />
         <div>
-          <p className="text-sm font-semibold text-slate-800">Guests</p>
-          <p className="text-xs text-slate-400">Max {max} people</p>
+          <p className="text-sm font-semibold text-slate-800">Invités</p>
+          <p className="text-xs text-slate-400">Max {max} personnes</p>
         </div>
       </div>
 

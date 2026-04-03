@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { StoriesCarousel } from '@/components/ui/stories-carousel';
 import { getDiscoverStories } from '@/lib/actions/stories';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 
 interface Story {
   id: string;
@@ -22,7 +23,41 @@ interface Story {
   };
 }
 
+const MOCK_STORIES: Story[] = [
+  {
+    id: 'mock-1',
+    media_url: '/mock-reels/coffee.png',
+    media_type: 'image',
+    caption: 'L\'art du café parfait chez Morning Brew ☕',
+    store_id: '1',
+    author_id: '1',
+    created_at: new Date().toISOString(),
+    stores: { name: 'Morning Brew', logo_url: null }
+  },
+  {
+    id: 'mock-2',
+    media_url: '/mock-reels/tech.png',
+    media_type: 'image',
+    caption: 'Nouvelle arrivage Tech : Performance & Design 🚀',
+    store_id: '2',
+    author_id: '2',
+    created_at: new Date().toISOString(),
+    stores: { name: 'Tech Horizon', logo_url: null }
+  },
+  {
+    id: 'mock-3',
+    media_url: '/mock-reels/fashion.png',
+    media_type: 'image',
+    caption: 'Découvrez la collection Printemps dans notre boutique ✨',
+    store_id: '3',
+    author_id: '3',
+    created_at: new Date().toISOString(),
+    stores: { name: 'Elegance Mode', logo_url: null }
+  }
+];
+
 export default function ShortAdsSection() {
+  const router = useRouter();
   const [stories, setStories] = useState<Story[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -31,10 +66,13 @@ export default function ShortAdsSection() {
     async function loadStories() {
       try {
         const data = await getDiscoverStories();
-        setStories(data as Story[]);
+        // Use real stories if they exist, otherwise use mock stories
+        const finalStories = (data && data.length > 0) ? (data as Story[]) : MOCK_STORIES;
+        setStories(finalStories);
       } catch (err) {
         console.error('Failed to load stories:', err);
         setError('Impossible de charger les Reels communautaires.');
+        setStories(MOCK_STORIES); // Fallback to mock on error
       } finally {
         setIsLoading(false);
       }
@@ -42,8 +80,12 @@ export default function ShortAdsSection() {
     loadStories();
   }, []);
 
-  if (isLoading || error || stories.length === 0) {
-    return null;
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <Loader2 className="w-8 h-8 text-primary animate-spin" />
+      </div>
+    );
   }
 
   return (
@@ -79,8 +121,16 @@ export default function ShortAdsSection() {
                 name: s.stores.name,
                 avatar: s.stores.logo_url || undefined,
               },
-              caption: s.caption || undefined
+              caption: s.caption || undefined,
+              store_id: s.store_id // Crucial to keep for navigation
             }))} 
+            onStoryClick={(s: any) => {
+              if (s.store_id) {
+                router.push(`/merchants/business/${s.store_id}`);
+              } else {
+                router.push('/discover');
+              }
+            }}
           />
         </div>
       </div>

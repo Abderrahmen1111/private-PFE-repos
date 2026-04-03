@@ -1,13 +1,13 @@
 import { notFound } from 'next/navigation';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
-import { getServiceById, getServiceReviews, getRelatedServices } from '@/lib/actions/service_detail';
+import { getServiceById, getServiceReviews, getRelatedItems } from '@/lib/actions/service_detail';
 import { getBusinessStories } from '@/lib/actions/stories';
 import { BusinessStories } from '@/components/BusinessStories';
 import ServiceBookingCard from '@/components/ServiceBookingCard';
 import {
   Star, MapPin, Phone, Clock, CheckCircle, Wrench,
-  Shield, Calendar, ChevronRight, Globe, BadgeCheck,
+  Shield, Calendar, ChevronRight, Globe, BadgeCheck, Package,
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -68,11 +68,11 @@ export default async function ServiceProfilePage({ params }: { params: { id: str
 
   const stories = await getBusinessStories(service.store.id);
 
-  const related    = await getRelatedServices(service.store.id, id);
+  const related    = await getRelatedItems(service.store.id, id);
   const images     = [service.main_image, service.image_2, service.image_3].filter(Boolean) as string[];
   const heroImage  = images[0] ?? 'https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=1200&h=500&fit=crop';
   const catColor   = categoryColors[service.store.category] ?? categoryColors.OTHER;
-  const isVerified = !!service.store.kyc_verified_at;
+  const isVerified = !!service.store.verified_at;
   const avgRating  = reviews.length
     ? reviews.reduce((s, r) => s + r.rating, 0) / reviews.length
     : service.rating_average;
@@ -312,28 +312,31 @@ export default async function ServiceProfilePage({ params }: { params: { id: str
               )}
             </div>
 
-            {/* Related services */}
-            {related.length > 0 && (
+            {service.store.id > 0 && related.length > 0 && (
               <div className="bg-white rounded-2xl shadow-sm border border-stone-100 p-5">
                 <div className="flex items-center justify-between mb-4">
-                  <h2 className="font-bold text-stone-900">Autres services de cette boutique</h2>
+                  <h2 className="font-bold text-stone-900">Autres offres de cette boutique</h2>
                   <Link href={`/merchants/business/${service.store.slug}`} className="text-sm font-bold text-red-600 hover:text-red-700 flex items-center gap-1">
                     Voir tout <ChevronRight className="w-3.5 h-3.5" />
                   </Link>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   {related.map(s => (
-                    <Link key={s.id} href={`/merchants/service/${s.id}`} className="flex gap-3 p-3 rounded-xl border border-stone-100 hover:border-stone-300 hover:bg-stone-50 transition-all">
+                    <Link 
+                      key={s.id} 
+                      href={`/merchants/${s.item_type === 'PRODUCT' ? 'product' : 'service'}/${s.id}`} 
+                      className="flex gap-3 p-3 rounded-xl border border-stone-100 hover:border-stone-300 hover:bg-stone-50 transition-all"
+                    >
                       {s.main_image ? (
                         <img src={s.main_image} alt={s.name} className="w-16 h-16 rounded-xl object-cover flex-shrink-0" />
                       ) : (
                         <div className="w-16 h-16 rounded-xl bg-stone-100 flex items-center justify-center flex-shrink-0">
-                          <Wrench className="w-6 h-6 text-stone-400" />
+                          {s.item_type === 'PRODUCT' ? <Package className="w-6 h-6 text-stone-400" /> : <Wrench className="w-6 h-6 text-stone-400" />}
                         </div>
                       )}
                       <div className="min-w-0">
                         <p className="text-sm font-bold text-stone-900 truncate">{s.name}</p>
-                        {s.duration_minutes && (
+                        {s.duration_minutes && s.item_type !== 'PRODUCT' && (
                           <p className="text-xs text-stone-500 flex items-center gap-1 mt-0.5">
                             <Clock className="w-3 h-3" /> {formatDuration(s.duration_minutes)}
                           </p>
@@ -359,7 +362,11 @@ export default async function ServiceProfilePage({ params }: { params: { id: str
               duration={formatDuration(service.duration_minutes)}
               storePhone={service.store.phone}
               storeSlug={service.store.slug}
+              storeName={service.store.name}
+              businessRating={service.store.rating_average}
+              businessReviews={service.store.total_reviews}
               isVerified={isVerified}
+              isLinkedToStore={service.store.id > 0 || !!service.store.verified_at}
             />
           </div>
 

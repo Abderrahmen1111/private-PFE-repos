@@ -23,6 +23,23 @@ export async function getDashboardOverview(storeId: number) {
         .select('*', { count: 'exact', head: true })
         .eq('store_id', storeId)
 
+    // 2.1 Fetch Real Revenue (Completed only)
+    const { data: ordersRev } = await supabase
+        .from('orders')
+        .select('total_price')
+        .eq('store_id', storeId)
+        .eq('status', 'COMPLETED') as { data: { total_price: number }[] | null }
+
+    const { data: bookingsRev } = await supabase
+        .from('bookings')
+        .select('price')
+        .eq('store_id', storeId)
+        .eq('status', 'COMPLETED') as { data: { price: number }[] | null }
+
+    const totalRevenue = 
+        (ordersRev || []).reduce((sum: number, o) => sum + (o.total_price || 0), 0) +
+        (bookingsRev || []).reduce((sum: number, b) => sum + (b.price || 0), 0)
+
     // 3. Fetch Ratings for Distribution
     const { data: reviews } = await supabase
         .from('reviews')
@@ -111,24 +128,24 @@ export async function getDashboardOverview(storeId: number) {
         });
     };
 
-    aggregate(weeklyOrders || [], 'actions');
-    aggregate(weeklyBookings || [], 'actions');
-    aggregate(weeklyReviews || [], 'actions');
+    aggregate(weeklyOrders || ([] as any[]), 'actions');
+    aggregate(weeklyBookings || ([] as any[]), 'actions');
+    aggregate(weeklyReviews || ([] as any[]), 'actions');
 
     const allActions = [
-        ...(recentReviews || []).map((r: any) => ({
+        ...(recentReviews || ([] as any[])).map((r: any) => ({
             id: `review-${r.id}`,
             type: 'review',
             details: `${r.author?.full_name || 'Un client'} a laissé un avis de ${r.rating} étoiles`,
             timestamp: new Date(r.created_at)
         })),
-        ...(recentOrders || []).map((o: any) => ({
+        ...(recentOrders || ([] as any[])).map((o: any) => ({
             id: `order-${o.id}`,
             type: 'order',
             details: `${o.customer_name} a passé une commande (${o.total_price} DT)`,
             timestamp: new Date(o.created_at)
         })),
-        ...(recentBookings || []).map((b: any) => ({
+        ...(recentBookings || ([] as any[])).map((b: any) => ({
             id: `booking-${b.id}`,
             type: 'booking',
             details: `${b.customer_name} a effectué une réservation`,
@@ -151,6 +168,7 @@ export async function getDashboardOverview(storeId: number) {
         ],
         recentActions: allActions,
         weeklyStats: last7Days,
+        totalRevenue,
         status: (store as any)?.status || 'PENDING'
     }
 }
@@ -194,21 +212,10 @@ export async function getAccountDetails(storeId: number) {
     return { store, user, subscription }
 }
 
+import { getLeadActions as getLeadActionsFromLeads } from './leads'
+
 export async function getLeadActions(storeId: number) {
-    const supabase = createClient()
-    const { data: orders } = await supabase
-        .from('orders')
-        .select('id, customer_name, customer_phone, created_at, total_price, status')
-        .eq('store_id', storeId)
-        .order('created_at', { ascending: false })
-        .limit(50)
-    const { data: bookings } = await supabase
-        .from('bookings')
-        .select('id, customer_name, customer_phone, created_at, price, status')
-        .eq('store_id', storeId)
-        .order('created_at', { ascending: false })
-        .limit(50)
-    return { orders: orders || [], bookings: bookings || [] }
+    return getLeadActionsFromLeads(storeId)
 }
 
 

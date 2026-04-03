@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { Phone, ShoppingCart, CheckCircle, Shield, AlertCircle, Package, Minus, Plus, BadgeCheck } from 'lucide-react';
+import { useActionDrawer } from '@/hooks/useActionDrawer';
 import Link from 'next/link';
 
 interface Props {
@@ -14,6 +15,7 @@ interface Props {
   storePhone: string;
   storeSlug: string;
   isVerified: boolean;
+  storeName?: string;
 }
 
 const UNIT_LABELS: Record<string, string> = {
@@ -31,16 +33,32 @@ const STATUS_LABELS: Record<string, { label: string; color: string }> = {
 
 export default function ProductOrderCard({
   productId, productName, price, priceUnit,
-  stockQuantity, status, storePhone, storeSlug, isVerified,
+  stockQuantity, status, storePhone, storeSlug, isVerified, storeName = 'Boutique',
 }: Props) {
+  const { openDrawer } = useActionDrawer();
   const [quantity,  setQuantity]  = useState(1);
-  const [ordered,   setOrdered]   = useState(false);
 
   const isAvailable    = status === 'AVAILABLE';
   const isOnDemand     = status === 'ON_DEMAND';
   const canOrder       = isAvailable || isOnDemand;
   const statusInfo     = STATUS_LABELS[status] ?? STATUS_LABELS.AVAILABLE;
   const totalPrice     = (price * quantity).toFixed(3);
+
+  const handleCommandClick = () => {
+    // Open checkout drawer with product details
+    const item = {
+      id: productId,
+      name: productName,
+      price: price,
+      price_unit: priceUnit,
+      stock_quantity: stockQuantity,
+      main_image: null,
+    };
+    openDrawer('checkout', { 
+      item, 
+      businessName: storeName,
+    });
+  };
 
   return (
     <div className="sticky top-24 space-y-4">
@@ -96,19 +114,10 @@ export default function ProductOrderCard({
         {/* CTA */}
         {canOrder ? (
           <button
-            onClick={() => setOrdered(true)}
-            disabled={ordered}
-            className={`w-full py-3 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 ${
-              ordered
-                ? 'bg-green-500 text-white cursor-default'
-                : 'bg-red-600 hover:bg-red-700 text-white'
-            }`}
+            onClick={handleCommandClick}
+            className="w-full py-3 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 bg-red-600 hover:bg-red-700 text-white"
           >
-            {ordered ? (
-              <><CheckCircle className="w-4 h-4" /> Commande envoyée !</>
-            ) : (
-              <><ShoppingCart className="w-4 h-4" /> Commander</>
-            )}
+            <ShoppingCart className="w-4 h-4" /> Commander
           </button>
         ) : (
           <div className="w-full py-3 rounded-xl bg-stone-100 text-stone-400 text-sm font-bold text-center cursor-not-allowed">

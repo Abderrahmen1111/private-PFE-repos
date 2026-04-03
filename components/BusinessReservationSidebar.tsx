@@ -1,10 +1,12 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Phone, Globe, MapPin, Clock, MessageCircle, X } from 'lucide-react';
 import { ReservationCard } from '@/components/reservation/reservation-card';
 import { ReservationConfirmationModal } from '@/components/reservation/reservation-confirmation-modal';
 import { ReservationData } from '@/components/reservation/types';
+import { Item } from '@/lib/actions/items';
+import BusinessCommandSidebar from './BusinessCommandSidebar';
 
 interface WorkingHours {
   open: string;
@@ -21,6 +23,9 @@ interface Props {
   website?: string | null;
   address: string;
   workingHours: Record<string, WorkingHours> | null;
+  isLinkedToStore?: boolean;
+  hasProducts?: boolean;
+  items?: Item[];
 }
 
 export default function BusinessReservationSidebar({
@@ -32,20 +37,50 @@ export default function BusinessReservationSidebar({
   website,
   address,
   workingHours,
+  isLinkedToStore = true,
+  hasProducts = false,
+  items = [],
 }: Props) {
   const [showReservation, setShowReservation] = useState(false);
   const [confirmedData,   setConfirmedData]   = useState<ReservationData | null>(null);
 
+  useEffect(() => {
+    const handleHashChange = () => {
+      if (window.location.hash === '#reservation') {
+        setShowReservation(true);
+        setTimeout(() => {
+          document.getElementById('reservation-sidebar')?.scrollIntoView({ behavior: 'smooth' });
+        }, 100);
+      }
+    };
+
+    handleHashChange();
+    window.addEventListener('hashchange', handleHashChange);
+    return () => window.removeEventListener('hashchange', handleHashChange);
+  }, []);
+
+  // Listen for event to open sidebar from ServiceCard
+  useEffect(() => {
+    const handleOpenReservation = () => {
+      setShowReservation(true);
+      setTimeout(() => {
+        document.getElementById('reservation-sidebar')?.scrollIntoView({ behavior: 'smooth' });
+      }, 100);
+    };
+
+    window.addEventListener('openReservationSidebar', handleOpenReservation);
+    return () => window.removeEventListener('openReservationSidebar', handleOpenReservation);
+  }, []);
+
   return (
     <>
-      <div className="sticky top-24 space-y-4">
+      <div id="reservation-sidebar" className="sticky top-24 space-y-4 scroll-mt-24">
 
         {/* ── Info card ──────────────────────────────────────────────────── */}
         <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
           <h3 className="text-gray-900 font-bold text-xl mb-6">Informations</h3>
 
           <div className="space-y-5">
-
             {/* Phone */}
             {phone && (
               <div className="flex items-start gap-3">
@@ -63,12 +98,7 @@ export default function BusinessReservationSidebar({
                 <Globe className="w-5 h-5 text-gray-400 mt-0.5 flex-shrink-0" />
                 <div>
                   <p className="text-sm font-semibold text-gray-900">Site Web</p>
-                  <a
-                    href={website}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-blue-600 hover:underline break-all text-sm"
-                  >
+                  <a href={website} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline break-all text-sm">
                     {website.replace(/^https?:\/\/(www\.)?/, '')}
                   </a>
                 </div>
@@ -81,12 +111,7 @@ export default function BusinessReservationSidebar({
               <div>
                 <p className="text-sm font-semibold text-gray-900">Adresse</p>
                 <p className="text-gray-700 text-sm">{address}</p>
-                <a
-                  href={`https://maps.google.com/?q=${encodeURIComponent(address)}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="mt-1 text-blue-600 text-sm font-semibold hover:underline inline-block"
-                >
+                <a href={`https://maps.google.com/?q=${encodeURIComponent(address)}`} target="_blank" rel="noopener noreferrer" className="mt-1 text-blue-600 text-sm font-semibold hover:underline inline-block">
                   Itinéraire
                 </a>
               </div>
@@ -100,16 +125,9 @@ export default function BusinessReservationSidebar({
                   <p className="text-sm font-semibold text-gray-900 mb-2">Horaires d'ouverture</p>
                   <div className="space-y-1.5">
                     {Object.entries(workingHours).map(([day, hours]) => {
-                      const isToday = new Date()
-                        .toLocaleDateString('en-US', { weekday: 'long' })
-                        .toLowerCase() === day;
+                      const isToday = new Date().toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase() === day;
                       return (
-                        <div
-                          key={day}
-                          className={`flex justify-between text-sm ${
-                            isToday ? 'font-bold text-gray-900' : 'text-gray-600'
-                          }`}
-                        >
+                        <div key={day} className={`flex justify-between text-sm ${isToday ? 'font-bold text-gray-900' : 'text-gray-600'}`}>
                           <span className="capitalize">{day}</span>
                           <span>{hours.closed ? 'Fermé' : `${hours.open} - ${hours.close}`}</span>
                         </div>
@@ -128,20 +146,30 @@ export default function BusinessReservationSidebar({
               Envoyer un message
             </button>
 
-            <button
-              type="button"
-              onClick={() => setShowReservation(p => !p)}
-              className={`w-full font-bold py-3 rounded-lg flex items-center justify-center gap-2 transition-all border-2 active:scale-[0.98] ${
-                showReservation
-                  ? 'bg-slate-100 border-slate-200 text-slate-700'
-                  : 'bg-white border-gray-200 text-gray-900 hover:bg-gray-50'
-              }`}
-            >
-              {showReservation
-                ? <><X className="w-4 h-4" /> Fermer</>
-                : 'Réserver'
-              }
-            </button>
+            {isLinkedToStore && (
+              <button
+                type="button"
+                onClick={() => {
+                  setShowReservation(!showReservation);
+                }}
+                className={`w-full font-bold py-3 rounded-lg flex items-center justify-center gap-2 transition-all border-2 active:scale-[0.98] ${
+                  showReservation
+                    ? 'bg-slate-100 border-slate-200 text-slate-700'
+                    : 'bg-white border-gray-200 text-gray-900 hover:bg-gray-50'
+                }`}
+              >
+                {showReservation ? <><X className="w-4 h-4" /> Fermer</> : 'Réserver'}
+              </button>
+            )}
+
+            {hasProducts && (
+              <BusinessCommandSidebar
+                businessName={businessName}
+                items={items}
+                storeId={items[0]?.store_id}
+                isLinkedToStore={isLinkedToStore}
+              />
+            )}
           </div>
         </div>
 
@@ -155,6 +183,9 @@ export default function BusinessReservationSidebar({
               reviewCount={reviewCount}
               reservationFee={0}
               currency="TND "
+              service={items.find(i => i.item_type === 'SERVICE')}
+              storeId={items[0]?.store_id} // Taking store_id from any item if available
+              workingHours={workingHours}
               onConfirm={(data: ReservationData) => {
                 setConfirmedData(data);
                 setShowReservation(false);

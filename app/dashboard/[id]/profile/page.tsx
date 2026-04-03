@@ -17,7 +17,7 @@ import {
 import { Label } from '@/components/ui/label';
 import { Clock, Upload, X, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
-import { getStoreById, updateStoreProfile, getStoreByBusinessId } from '@/lib/actions/stores';
+import { getStoreById, updateStoreProfile, getStoreByAnyId } from '@/lib/actions/stores';
 import { uploadFile } from '@/lib/supabase/storage';
 
 type Category = 'boutique' | 'restaurant' | 'hotel' | 'salon' | 'grocery' | 'automotive' | 'fitness' | 'other';
@@ -44,8 +44,8 @@ export default function ProfilePage() {
     const fetchStore = async () => {
       setLoading(true);
 
-      // Resolve the actual internal store ID
-      const { data: store, error: resolveError } = await getStoreByBusinessId(storeId) as any;
+      // Resolve the actual internal store ID using universal resolver
+      const { data: store, error: resolveError } = await getStoreByAnyId(storeId) as any;
 
       if (resolveError || !store) {
         toast.error('Failed to resolve store profile');

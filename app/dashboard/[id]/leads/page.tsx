@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { useParams } from 'next/navigation';
-import { getLeadActions } from '@/lib/actions/overviews';
+import { getLeadActions, updateOrderStatus } from '@/lib/actions/leads';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   ShoppingCart,
@@ -11,9 +11,13 @@ import {
   Filter,
   Loader2,
   Phone,
+  Check,
+  X as XIcon,
 } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
+import { updateBookingStatus } from '@/lib/actions/reservation';
+import { toast } from 'sonner';
 
 type LeadType = 'all' | 'order' | 'booking';
 
@@ -25,15 +29,50 @@ export default function LeadsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [filterType, setFilterType] = useState<LeadType>('all');
   const [sortBy, setSortBy] = useState<'recent' | 'oldest'>('recent');
+  const [updatingIds, setUpdatingIds] = useState<Record<number, boolean>>({});
 
-  useEffect(() => {
+  const fetchData = () => {
     if (storeId) {
       getLeadActions(storeId).then(data => {
         setLeads(data as any);
         setIsLoading(false);
       });
     }
+  };
+
+  useEffect(() => {
+    fetchData();
   }, [storeId]);
+
+  const handleStatusUpdate = async (leadId: number, type: 'order' | 'booking', newStatus: string) => {
+    // Generate unique key for loading state
+    const key = `${type}-${leadId}`;
+    setUpdatingIds(prev => ({ ...prev, [leadId]: true })); // We can still use leadId as key or type-id
+    
+    try {
+      if (type === 'booking') {
+        await updateBookingStatus(leadId, newStatus as any);
+        toast.success(newStatus === 'CONFIRMED' ? 'Réservation acceptée' : 'Réservation refusée');
+      } else {
+        await updateOrderStatus(leadId, newStatus as any);
+        toast.success(newStatus === 'VALIDATED' ? 'Commande validée' : 'Commande refusée');
+      }
+      
+      // Update local state
+      setLeads(prev => ({
+        orders: type === 'order' 
+          ? prev.orders.map(o => o.id === leadId ? { ...o, status: newStatus } : o)
+          : prev.orders,
+        bookings: type === 'booking'
+          ? prev.bookings.map(b => b.id === leadId ? { ...b, status: newStatus } : b)
+          : prev.bookings
+      }));
+    } catch (err: any) {
+      toast.error(err.message || "Erreur lors de la mise à jour");
+    } finally {
+      setUpdatingIds(prev => ({ ...prev, [leadId]: false }));
+    }
+  };
 
   const allLeads = useMemo(() => {
     const combined = [
@@ -139,31 +178,66 @@ export default function LeadsPage() {
                     {lead.leadType === 'order' ? <ShoppingCart className="w-5 h-5" /> : <Calendar className="w-5 h-5" />}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
-                      <div>
-                        <h3 className="font-bold text-foreground">{lead.leadType === 'order' ? 'Commande' : 'Réservation'}</h3>
-                        <p className="text-sm text-foreground font-medium mt-0.5">{lead.customer_name}</p>
+                    <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 w-full">
+                      <div className="space-y-1">
+                        <h3 className="font-bold text-foreground flex items-center gap-2">
+                          {lead.leadType === 'order' ? 'Commande' : 'Réservation'}
+                          <span className="text-[10px] font-black px-2 py-0.5 bg-muted rounded uppercase tracking-widest opacity-70">#{lead.id}</span>
+                        </h3>
+                        <p className="text-sm text-foreground font-black uppercase italic tracking-tighter">{lead.customer_name}</p>
                         {lead.customer_phone && (
-                          <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
+                          <p className="text-xs text-muted-foreground flex items-center gap-1 opacity-80">
                             <Phone className="w-3 h-3" /> {lead.customer_phone}
                           </p>
                         )}
-                        <p className="text-sm text-muted-foreground mt-1">
-                          Montant : <span className="font-semibold">{lead.amount} DT</span>
+                        <p className="text-sm text-muted-foreground mt-2 border-l-2 border-primary/20 pl-3">
+                          Montant : <span className="font-black text-foreground">{lead.amount} DT</span>
                         </p>
-                        <span className={`text-xs font-bold px-2 py-0.5 rounded mt-1 inline-block ${
-                          lead.status === 'COMPLETED' ? 'bg-green-100 text-green-700' :
-                          lead.status === 'CANCELLED' ? 'bg-red-100 text-red-700' :
-                          'bg-yellow-100 text-yellow-700'
-                        }`}>{lead.status}</span>
                       </div>
-                      <div className="text-right">
-                        <p className="text-sm font-medium text-foreground">
-                          {new Intl.DateTimeFormat('fr-FR', { month: 'short', day: 'numeric' }).format(new Date(lead.created_at))}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          {new Intl.DateTimeFormat('fr-FR', { hour: '2-digit', minute: '2-digit' }).format(new Date(lead.created_at))}
-                        </p>
+
+                      <div className="flex flex-col items-end gap-3 text-right">
+                        <div className="space-y-0.5">
+                          <p className="text-sm font-black text-foreground">
+                            {new Intl.DateTimeFormat('fr-FR', { month: 'short', day: 'numeric' }).format(new Date(lead.created_at))}
+                          </p>
+                          <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-[0.2em] opacity-40">
+                            {new Intl.DateTimeFormat('fr-FR', { hour: '2-digit', minute: '2-digit' }).format(new Date(lead.created_at))}
+                          </p>
+                        </div>
+
+                        <div className="flex flex-col items-end gap-2">
+                          <span className={`text-[9px] font-black px-3 py-1 rounded-full uppercase tracking-widest border shadow-sm ${
+                            lead.status === 'COMPLETED' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' :
+                            lead.status === 'CANCELLED' ? 'bg-rose-50 text-rose-600 border-rose-100' :
+                            lead.status === 'CONFIRMED' || lead.status === 'VALIDATED' ? 'bg-blue-50 text-blue-600 border-blue-100' :
+                            'bg-amber-50 text-amber-600 border-amber-100 animate-pulse'
+                          }`}>{lead.status}</span>
+
+                          {lead.status === 'PENDING' && (
+                            <div className="flex gap-2 mt-1">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleStatusUpdate(lead.id, lead.leadType, lead.leadType === 'booking' ? 'CONFIRMED' : 'VALIDATED')}
+                                disabled={updatingIds[lead.id]}
+                                className="h-8 px-3 text-[9px] font-black uppercase tracking-widest border-emerald-500/20 text-emerald-600 hover:bg-emerald-600 hover:text-white transition-all active:scale-95 rounded-lg shadow-sm"
+                              >
+                                {updatingIds[lead.id] ? <Loader2 className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3" />}
+                                Accepter
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleStatusUpdate(lead.id, lead.leadType, 'CANCELLED')}
+                                disabled={updatingIds[lead.id]}
+                                className="h-8 px-3 text-[9px] font-black uppercase tracking-widest border-rose-500/20 text-rose-600 hover:bg-rose-600 hover:text-white transition-all active:scale-95 rounded-lg shadow-sm"
+                              >
+                                {updatingIds[lead.id] ? <Loader2 className="w-3 h-3 animate-spin" /> : <XIcon className="w-3 h-3" />}
+                                Refuser
+                              </Button>
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </div>
                   </div>

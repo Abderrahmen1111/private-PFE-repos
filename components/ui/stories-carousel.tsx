@@ -300,14 +300,15 @@ export interface StoriesCarouselProps {
     };
     caption?: string;
   }[];
+  onStoryClick?: (story: any) => void;
 }
 
-export function StoriesCarousel({ stories }: StoriesCarouselProps) {
+export function StoriesCarousel({ stories, onStoryClick }: StoriesCarouselProps) {
   return (
     <Stories>
       <StoriesContent>
         {stories.map((story) => (
-          <Story key={story.id}>
+          <Story key={story.id} onClick={() => onStoryClick?.(story)}>
             <StoryThumbnail>
               {story.media_type === 'video' ? (
                 <StoryVideo src={story.media_url} />
