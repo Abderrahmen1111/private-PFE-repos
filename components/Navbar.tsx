@@ -15,6 +15,7 @@ import { useState as useMotionState } from 'react';
 import { Menu, MenuItem, HoveredLink, ProductItem } from '@/components/ui/navbar-menu';
 import { useVoiceSearch } from '@/hooks/useVoiceSearch';
 import { useSmartSearch } from '@/hooks/useSmartSearch';
+import { useSavesStore } from '@/lib/store/use-saves-store';
 
 // ─── Category menu data ───────────────────────────────────────────────────────
 const categoryMenuItems = [
@@ -589,6 +590,7 @@ export default function Navbar() {
   const { search: doSmartSearch, results: searchResults, isLoading: isSearchLoading } = useSmartSearch();
   const [debouncedQuery, setDebouncedQuery] = useState('');
   const [showDropdown, setShowDropdown] = useState(false);
+  const saveCount = useSavesStore((state) => state.saveCount);
 
   useEffect(() => {
     const handler = setTimeout(() => {
@@ -620,25 +622,16 @@ export default function Navbar() {
     const handleScroll = () => {
       const currentY = window.scrollY;
 
-      // Clear any existing hide timeout
-      if (hideTimeoutRef.current) {
-        clearTimeout(hideTimeoutRef.current);
-      }
-
-      // Hide when scrolling DOWN, show when scrolling UP or at top
       if (currentY > lastScrollY.current && currentY > 80) {
         setHidden(true);
       } else {
         setHidden(false);
-        // Set a new timeout to hide after 2 seconds of no scrolling
-        hideTimeoutRef.current = setTimeout(() => {
-          setHidden(true);
-        }, 2000);
       }
 
       lastScrollY.current = currentY;
     };
 
+    
     window.addEventListener('scroll', handleScroll, { passive: true });
     return () => {
       window.removeEventListener('scroll', handleScroll);
@@ -646,7 +639,7 @@ export default function Navbar() {
         clearTimeout(hideTimeoutRef.current);
       }
     };
-  }, []);
+  }, [isHome]);
 
   // Dynamic placeholder state
   const [placeholderIndex, setPlaceholderIndex] = useState(0);
@@ -939,7 +932,7 @@ export default function Navbar() {
 
               </div>
 
-              <button type="submit" className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl ml-2 mr-2 text-sm font-medium transition-colors">
+              <button type="submit" className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-xl ml-2 mr-2 text-sm font-medium transition-colors">
                 Search
               </button>
             </form>
@@ -961,7 +954,7 @@ export default function Navbar() {
 
                     return storeId ? (
                       <Link href={`/dashboard/${storeId}`}>
-                        <button className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:shadow-lg hover:shadow-cyan-500/20 text-sm font-bold text-white transition-all ring-1 ring-white/10">
+                        <button className="flex items-center gap-2 px-4 py-2 rounded-xl bg-red-600 hover:shadow-lg hover:shadow-red-600/20 text-sm font-bold text-white transition-all ring-1 ring-white/10">
                           <FolderKanban className="w-4 h-4" />
                           Dashboard
                         </button>
@@ -976,7 +969,13 @@ export default function Navbar() {
                     );
                   })()}
 
-                  <UserDropdown
+                  <div className="relative inline-flex items-center justify-center">
+                    {saveCount >= 3 && (
+                      <div className="absolute -top-1.5 -right-6 z-50 rounded-full bg-blue-600 px-1.5 py-0.5 text-[9px] font-bold text-white shadow-xl ring-2 ring-[#0b0f1a] animate-in zoom-in duration-500 whitespace-nowrap pointer-events-none">
+                        {saveCount} sauvegardés
+                      </div>
+                    )}
+                    <UserDropdown
                     user={{
                       name: user.user_metadata?.full_name || user.email || 'User',
                       username: user.email || '',
@@ -1013,6 +1012,7 @@ export default function Navbar() {
                       }
                     }}
                   />
+                  </div>
                 </>
               ) : (
                 <>

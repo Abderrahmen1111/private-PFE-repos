@@ -41,8 +41,8 @@ html,
 body {
   max-width: 100vw;
   overflow-x: hidden;
-  background-color: transparent;
-  color: var(--foreground);
+  background-color: #F9F8F6;
+  color: #111827; /* dark text to ensure readability on the light background */
 }
 
 body {
@@ -200,3 +200,4 @@ body {
     background-position: 200% 0;
   }
 }
+

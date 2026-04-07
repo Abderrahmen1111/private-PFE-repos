@@ -60,14 +60,17 @@ const mockHotels: CarouselItem[] = [
 
 const OffersCarouselDemo = () => {
   return (
-    <div className="flex min-h-[500px] w-full items-center justify-center bg-background p-4">
-      <OffersCarousel
-        offerTitle="Flat 25% off on hotels"
+    <div className="w-full min-h-[500px] bg-[#F9F8F6] flex flex-col items-center justify-center p-4 md:p-10">
+      <div className="w-full max-w-6xl">
+        <h2 className="text-3xl font-bold mb-6 text-[#111111]">Seulement pour aujourd'hui 🔥🎁</h2>
+        <OffersCarousel
+        offerTitle="Today Only 🔥🎁"
         offerSubtitle="CTBEST - Code pre-applied for you!"
-        ctaText="View all hotels"
-        onCtaClick={() => alert("Redirecting to all hotels...")}
+        ctaText="View all offers"
+        onCtaClick={() => alert("Redirecting to all offers...")}
         items={mockHotels}
       />
+      </div>
     </div>
   );
 };

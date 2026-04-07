@@ -27,9 +27,10 @@ const OfferCard = React.forwardRef<HTMLAnchorElement, OfferCardProps>(({ offer }
   <motion.a
     ref={ref}
     href={offer.href}
-    className="relative flex-shrink-0 w-[300px] h-[380px] rounded-2xl overflow-hidden group snap-start"
-    whileHover={{ y: -8 }}
-    transition={{ type: "spring", stiffness: 300, damping: 20 }}
+    className="relative flex-shrink-0 w-[300px] h-[380px] rounded-2xl overflow-hidden group snap-start border border-[#2A2A2A] bg-[#1A1A1A] cursor-pointer"
+    whileHover={{ scale: 1.03 }}
+    whileTap={{ scale: 0.98 }}
+    transition={{ type: "spring", stiffness: 400, damping: 25 }}
     style={{ perspective: "1000px" }}
   >
     {/* Background Image */}
@@ -39,30 +40,30 @@ const OfferCard = React.forwardRef<HTMLAnchorElement, OfferCardProps>(({ offer }
       className="absolute inset-0 w-full h-2/4 object-cover transition-transform duration-500 group-hover:scale-110"
     />
     {/* Card Content */}
-    <div className="absolute bottom-0 left-0 right-0 h-2/4 text-white bg-card p-5 flex flex-col justify-between">
+    <div className="absolute bottom-0 left-0 right-0 h-2/4 text-[#FFFFFF] bg-[#1A1A1A] p-5 flex flex-col justify-between">
       <div className="space-y-2">
         {/* Tag */}
-        <div className="flex items-center text-xs text-muted-foreground">
-          <Tag className="w-4 h-4 mr-2 text-primary" />
-          <span>{offer.tag}</span>
+        <div className="flex items-center text-xs text-[#F97316]">
+          <Tag className="w-4 h-4 mr-2 text-[#F97316]" />
+          <span className="font-semibold">{offer.tag}</span>
         </div>
         {/* Title & Description */}
-        <h3 className="text-xl font-bold text-card-foreground leading-tight">{offer.title}</h3>
-        <p className="text-sm text-muted-foreground">{offer.description}</p>
+        <h3 className="text-xl font-bold text-[#FFFFFF] leading-tight">{offer.title}</h3>
+        <p className="text-sm text-[#A1A1AA]">{offer.description}</p>
       </div>
 
       {/* Footer */}
-      <div className="flex items-center justify-between pt-4 border-t border-border">
+      <div className="flex items-center justify-between pt-4 border-t border-[#2A2A2A]">
         <div className="flex items-center gap-3">
-          <img src={offer.brandLogoSrc} alt={`${offer.brandName} logo`} className="w-8 h-8 rounded-full bg-muted" />
+          <img src={offer.brandLogoSrc} alt={`${offer.brandName} logo`} className="w-8 h-8 rounded-full bg-[#222222] border border-[#2A2A2A]" />
           <div>
-            <p className="text-xs font-semibold text-card-foreground">{offer.brandName}</p>
+            <p className="text-xs font-semibold text-[#FFFFFF]">{offer.brandName}</p>
             {offer.promoCode && (
-              <p className="text-xs text-muted-foreground">{offer.promoCode}</p>
+              <p className="text-xs text-[#A1A1AA]">{offer.promoCode}</p>
             )}
           </div>
         </div>
-        <div className="w-8 h-8 rounded-full bg-secondary flex items-center justify-center text-secondary-foreground transform transition-transform duration-300 group-hover:rotate-[-45deg] group-hover:bg-primary group-hover:text-primary-foreground">
+        <div className="w-8 h-8 rounded-full bg-[#222222] border border-[#2A2A2A] flex items-center justify-center text-[#FFFFFF] transform transition-transform duration-300 group-hover:rotate-[-45deg] group-hover:bg-[#22C55E] group-hover:text-[#0A0A0A] group-hover:border-[#22C55E]">
           <ArrowRight className="w-4 h-4" />
         </div>
       </div>
@@ -97,16 +98,20 @@ const OfferCarousel = React.forwardRef<HTMLDivElement, OfferCarouselProps>(
         {/* Left Scroll Button */}
         <button
           onClick={() => scroll("left")}
-          className="absolute top-1/2 -translate-y-1/2 left-0 z-10 w-10 h-10 rounded-full bg-background/50 backdrop-blur-sm border border-border flex items-center justify-center text-foreground opacity-0 group-hover:opacity-100 transition-opacity duration-300 hover:bg-background/80 disabled:opacity-0"
+          className="absolute top-1/2 -translate-y-1/2 left-0 z-10 w-10 h-10 rounded-full bg-[#1A1A1A]/80 backdrop-blur-md border border-[#2A2A2A] flex items-center justify-center text-[#FFFFFF] opacity-0 group-hover:opacity-100 transition-all duration-300 hover:bg-[#222222] hover:scale-110 active:scale-95 disabled:opacity-0 shadow-lg"
           aria-label="Scroll Left"
         >
           <ChevronLeft className="w-6 h-6" />
         </button>
 
-        {/* Scrollable Container */}
+        {/* Scrollable Container with transparent scrollbar background */}
         <div
           ref={scrollContainerRef}
-          className="flex space-x-6 overflow-x-auto pb-4 scrollbar-hide snap-x snap-mandatory"
+          className="flex space-x-6 overflow-x-auto pb-4 snap-x snap-mandatory"
+          style={{
+            scrollbarColor:' #1A1A1A transparent',
+            scrollbarWidth: 'auto'
+          }}
         >
           {offers.map((offer: Offer) => (
             <OfferCard key={offer.id} offer={offer} />
@@ -116,7 +121,7 @@ const OfferCarousel = React.forwardRef<HTMLDivElement, OfferCarouselProps>(
         {/* Right Scroll Button */}
         <button
           onClick={() => scroll("right")}
-          className="absolute top-1/2 -translate-y-1/2 right-0 z-10 w-10 h-10 rounded-full bg-background/50 backdrop-blur-sm border border-border flex items-center justify-center text-foreground opacity-0 group-hover:opacity-100 transition-opacity duration-300 hover:bg-background/80 disabled:opacity-0"
+          className="absolute top-1/2 -translate-y-1/2 right-0 z-10 w-10 h-10 rounded-full bg-[#1A1A1A]/80 backdrop-blur-md border border-[#2A2A2A] flex items-center justify-center text-[#FFFFFF] opacity-0 group-hover:opacity-100 transition-all duration-300 hover:bg-[#222222] hover:scale-110 active:scale-95 disabled:opacity-0 shadow-lg"
           aria-label="Scroll Right"
         >
           <ChevronRight className="w-6 h-6" />

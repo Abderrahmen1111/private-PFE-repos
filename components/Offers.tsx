@@ -67,9 +67,9 @@ const sampleOffers: Offer[] = [
 // The demo component
 export default function OfferCarouselDemo() {
   return (
-    <div className="w-full min-h-screen bg-background flex flex-col items-center justify-center p-4 md:p-10">
+    <div className="w-full min-h-[500px] bg-[#F9F8F6] flex flex-col items-center justify-center p-4 md:p-10">
       <div className="w-full max-w-6xl">
-        <h2 className="text-3xl font-bold mb-6 text-white text-foreground">Produits tendances aujourd’hui</h2>
+        <h2 className="text-3xl font-bold mb-6 text-[#111111]">On commence à vous connaître ❤️</h2>
         <OfferCarousel offers={sampleOffers} />
       </div>
     </div>

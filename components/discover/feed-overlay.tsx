@@ -4,8 +4,7 @@ type FeedOverlayProps = {
   description: string
   price: string
   merchantId: string
-  isSaved?: boolean
-  onToggleSave?: () => void
+  onView?: () => void
 }
 
 export function FeedOverlay({
@@ -14,8 +13,7 @@ export function FeedOverlay({
   description,
   price,
   merchantId,
-  isSaved = false,
-  onToggleSave,
+  onView,
 }: FeedOverlayProps) {
   return (
     <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 p-4 sm:p-6">
@@ -29,11 +27,11 @@ export function FeedOverlay({
           <span className="text-lg font-semibold text-white">{price}</span>
           <button
             type="button"
-            onClick={onToggleSave}
-            aria-label={isSaved ? 'Saved' : 'Save'}
+            onClick={onView}
+            aria-label="View product"
             className="rounded-full border border-white/30 bg-white/20 px-4 py-2 text-sm font-semibold text-white transition-all duration-300 hover:-translate-y-0.5 hover:bg-white/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70"
           >
-            {isSaved ? 'Saved' : 'Save'}
+            View
           </button>
         </div>
       </div>

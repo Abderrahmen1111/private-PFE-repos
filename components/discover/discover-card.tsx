@@ -6,6 +6,8 @@ import { Star } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { type DiscoverFeedItem } from '@/components/discover/feed-algorithm'
 import { FeedActions } from '@/components/discover/feed-actions'
+import { toast } from 'sonner'
+import { useSavesStore } from '@/lib/store/use-saves-store'
 
 type DiscoverCardProps = {
   item: DiscoverFeedItem & { merchantScore?: number }
@@ -17,7 +19,11 @@ function DiscoverCardComponent({ item, priority = false }: DiscoverCardProps) {
   const [liked, setLiked] = useState(false)
   const [saved, setSaved] = useState(false)
   const [showLikeBurst, setShowLikeBurst] = useState(false)
+  const [isDimmed, setIsDimmed] = useState(false)
   const lastTapTsRef = useRef<number>(0)
+
+  const saveCount = useSavesStore((state) => state.saveCount)
+  const incrementSave = useSavesStore((state) => state.incrementSave)
 
   useEffect(() => {
     const id = window.setTimeout(() => setEntered(true), 50)
@@ -30,7 +36,17 @@ function DiscoverCardComponent({ item, priority = false }: DiscoverCardProps) {
     if (liked) return
     setLiked(true)
     setShowLikeBurst(true)
+    setIsDimmed(true)
+    setTimeout(() => setIsDimmed(false), 200)
   }, [liked])
+
+  const handleToggleLike = useCallback(() => {
+    if (liked) {
+      setLiked(false)
+    } else {
+      triggerLike()
+    }
+  }, [liked, triggerLike])
 
   useEffect(() => {
     if (!showLikeBurst) return
@@ -47,12 +63,34 @@ function DiscoverCardComponent({ item, priority = false }: DiscoverCardProps) {
 
   const isTopSeller = (item.merchantScore ?? 0) >= 80
 
+  const handleToggleSave = useCallback(() => {
+    const isSavedNow = !saved
+    setSaved(isSavedNow)
+    if (isSavedNow) {
+      toast('Ajouté ✓', {
+        position: 'top-right',
+        duration: 1500,
+        action: {
+          label: 'Annuler',
+          onClick: () => setSaved(false),
+        },
+      })
+      incrementSave()
+    }
+  }, [saved, incrementSave])
+
   return (
     <article
       className="relative h-screen w-full snap-start snap-always overflow-hidden bg-black"
       onDoubleClick={triggerLike}
       onTouchEnd={onMediaTouchEnd}
     >
+      <div 
+        className={cn(
+          "absolute inset-0 z-40 pointer-events-none transition-colors duration-200", 
+          isDimmed ? "bg-black/30" : "bg-transparent"
+        )} 
+      />
 
       {item.mediaType === 'video' ? (
         <video
@@ -78,7 +116,7 @@ function DiscoverCardComponent({ item, priority = false }: DiscoverCardProps) {
           )}
         />
       )}
-      <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/30 via-black/10 to-black/25" />
+      <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-[#0A0A0A]/50 via-transparent to-[#0A0A0A]/30" />
 
       <div
         className={cn(
@@ -87,7 +125,7 @@ function DiscoverCardComponent({ item, priority = false }: DiscoverCardProps) {
         )}
       >
         {item.isSponsored ? (
-          <div className="pointer-events-none absolute left-4 top-6 z-20 rounded-full border border-amber-300/50 bg-amber-300/20 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-amber-100 shadow-[0_0_24px_rgba(251,191,36,0.35)]">
+          <div className="pointer-events-none absolute left-4 top-6 z-20 rounded-full border border-[#F97316]/50 bg-[#F97316]/20 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-[#F97316] shadow-[0_0_24px_rgba(249,115,22,0.35)]">
             Sponsored
           </div>
         ) : null}
@@ -95,10 +133,10 @@ function DiscoverCardComponent({ item, priority = false }: DiscoverCardProps) {
         <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 p-4 sm:p-6">
           <div
             className={cn(
-              'pointer-events-auto w-full max-w-[74%] rounded-2xl border bg-white/10 p-4 shadow-[0_20px_80px_rgba(0,0,0,0.55)] backdrop-blur-xl transition-all duration-500',
+              'pointer-events-auto w-full max-w-[74%] rounded-2xl border bg-[#1A1A1A]/70 p-4 shadow-[0_20px_80px_rgba(0,0,0,0.55)] backdrop-blur-xl transition-all duration-500',
               item.isSponsored
-                ? 'border-amber-300/45 ring-1 ring-amber-300/35'
-                : 'border-white/15',
+                ? 'border-[#F97316]/45 ring-1 ring-[#F97316]/35'
+                : 'border-[#2A2A2A]',
             )}
           >
             <div className="mb-2 flex items-center gap-2">
@@ -106,7 +144,7 @@ function DiscoverCardComponent({ item, priority = false }: DiscoverCardProps) {
                 {item.merchantName}
               </p>
               {isTopSeller ? (
-                <span className="rounded-full bg-emerald-500/20 px-2 py-0.5 text-[10px] font-semibold text-emerald-100">
+                <span className="rounded-full bg-[#22C55E]/20 px-2 py-0.5 text-[10px] font-semibold text-[#22C55E]">
                   Top Seller
                 </span>
               ) : null}
@@ -123,15 +161,14 @@ function DiscoverCardComponent({ item, priority = false }: DiscoverCardProps) {
               <span className="text-xs uppercase text-white/70">{item.category}</span>
             </div>
 
-            <div className="mt-4 flex items-center justify-between gap-3">
+            <div className="mt-4 flex items-center justify-between gap-3 relative">
               <span className="text-lg font-semibold text-white">{item.price}</span>
               <button
                 type="button"
-                onClick={() => setSaved((v) => !v)}
-                aria-label={saved ? 'Saved' : 'Save'}
-                className="rounded-full border border-white/30 bg-white/20 px-4 py-2 text-sm font-semibold text-white transition-all duration-300 hover:-translate-y-0.5 hover:bg-white/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70"
+                aria-label="Buy"
+                className="rounded-full bg-[#22C55E] border border-[#22C55E] px-6 py-2 text-sm font-semibold text-[#0A0A0A] transition-all duration-300 hover:scale-105 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0A0A0A] hover:bg-[#16A34A] hover:border-[#16A34A]"
               >
-                {saved ? 'Saved' : 'Save'}
+                Buy
               </button>
             </div>
           </div>
@@ -154,9 +191,9 @@ function DiscoverCardComponent({ item, priority = false }: DiscoverCardProps) {
         likes={displayLikes}
         comments={item.comments}
         liked={liked}
-        onToggleLike={() => setLiked((v) => !v)}
+        onToggleLike={handleToggleLike}
         saved={saved}
-        onToggleSave={() => setSaved((v) => !v)}
+        onToggleSave={handleToggleSave}
       />
     </article>
   )

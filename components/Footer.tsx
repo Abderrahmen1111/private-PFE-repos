@@ -59,7 +59,7 @@ export default function Footer() {
 
         <div className="w-px h-3 bg-white/20" />
 
-        <span className="opacity-60">Phantom</span>
+        <span className="opacity-60">S'inscrire </span>
       </div>
     </footer>
   );

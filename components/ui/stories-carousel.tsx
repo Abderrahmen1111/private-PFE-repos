@@ -96,8 +96,8 @@ export type StoryThumbnailProps = HTMLAttributes<HTMLDivElement>;
 export const StoryThumbnail = ({ className, ...props }: StoryThumbnailProps) => (
   <div
     className={cn(
-      'relative w-full overflow-hidden rounded-xl bg-muted aspect-[9/16]',
-      'transition-transform duration-200 group-hover:scale-[1.02] group-hover:shadow-xl',
+      'relative w-full overflow-hidden rounded-xl bg-[#1A1A1A] aspect-[9/16]',
+      'transition-transform duration-300 group-hover:scale-105 group-active:scale-95 group-hover:shadow-xl',
       className
     )}
     {...props}
@@ -171,6 +171,25 @@ export const StoryVideo = ({ className, ...props }: StoryVideoProps) => {
   );
 };
 
+// ─── Corner badge (e.g. "Shorts" logo, discount label) ───────────────────────
+
+export type StoryBadgeProps = HTMLAttributes<HTMLSpanElement>;
+
+export const StoryBadge = ({ className, children, ...props }: StoryBadgeProps) => (
+  <span
+    className={cn(
+      'absolute top-2 left-2 z-20',
+      'inline-flex items-center gap-1',
+      'px-1.5 py-0.5 rounded-md',
+      'text-[10px] font-bold tracking-wide text-[#FFFFFF]',
+      'bg-[#0A0A0A]/60 backdrop-blur-md',
+      className
+    )}
+    {...props}
+  >
+    {children}
+  </span>
+);
 
 // ─── Duration label (bottom-right) ───────────────────────────────────────────
 
@@ -180,7 +199,7 @@ export const StoryDuration = ({ className, children, ...props }: StoryDurationPr
   <span
     className={cn(
       'absolute bottom-2 right-2 z-20',
-      'px-1 py-0.5 rounded text-[10px] font-bold text-white bg-black/70',
+      'px-1 py-0.5 rounded text-[10px] font-bold text-[#FFFFFF] bg-[#0A0A0A]/70 backdrop-blur-md',
       className
     )}
     {...props}
@@ -201,7 +220,7 @@ export const StoryOverlay = ({ className, side = 'bottom', ...props }: StoryOver
   return (
     <div
       className={cn(
-        'absolute inset-x-0 h-16 from-black/50 to-transparent pointer-events-none',
+        'absolute inset-x-0 h-16 from-[#0A0A0A]/80 to-transparent pointer-events-none',
         positionClasses,
         className
       )}
@@ -248,7 +267,7 @@ export type StoryTitleProps = HTMLAttributes<HTMLParagraphElement>;
 export const StoryTitle = ({ className, ...props }: StoryTitleProps) => (
   <p
     className={cn(
-      'text-[13px] font-semibold leading-snug line-clamp-2 text-foreground',
+      'text-[13px] font-semibold leading-snug line-clamp-2 text-[#000000]',
       className
     )}
     {...props}
@@ -258,7 +277,7 @@ export const StoryTitle = ({ className, ...props }: StoryTitleProps) => (
 export type StoryViewsProps = HTMLAttributes<HTMLSpanElement>;
 
 export const StoryViews = ({ className, ...props }: StoryViewsProps) => (
-  <span className={cn('text-[11px] text-muted-foreground mt-0.5', className)} {...props} />
+  <span className={cn('text-[11px] text-[#000000] mt-0.5', className)} {...props} />
 );
 
 // ─── Legacy compat exports ────────────────────────────────────────────────────
@@ -286,57 +305,3 @@ export type StoryAuthorNameProps = HTMLAttributes<HTMLSpanElement>;
 export const StoryAuthorName = ({ className, ...props }: StoryAuthorNameProps) => (
   <span className={cn('truncate font-medium text-sm', className)} {...props} />
 );
-
-// ─── Composite Carousel (High level API) ──────────────────────────────────────
-
-export interface StoriesCarouselProps {
-  stories: {
-    id: string;
-    media_url: string;
-    media_type: 'image' | 'video';
-    author: {
-      name: string;
-      avatar?: string;
-    };
-    caption?: string;
-  }[];
-  onStoryClick?: (story: any) => void;
-}
-
-export function StoriesCarousel({ stories, onStoryClick }: StoriesCarouselProps) {
-  return (
-    <Stories>
-      <StoriesContent>
-        {stories.map((story) => (
-          <Story key={story.id} onClick={() => onStoryClick?.(story)}>
-            <StoryThumbnail>
-              {story.media_type === 'video' ? (
-                <StoryVideo src={story.media_url} />
-              ) : (
-                <StoryImage src={story.media_url} alt={story.author.name} />
-              )}
-              
-              <StoryOverlay side="bottom" />
-              
-              <StoryAuthor>
-                <StoryAuthorImage 
-                  src={story.author.avatar} 
-                  name={story.author.name} 
-                />
-                <StoryAuthorName>{story.author.name}</StoryAuthorName>
-              </StoryAuthor>
-            </StoryThumbnail>
-
-            {story.caption && (
-              <StoryInfo className="mt-2">
-                <StoryMeta>
-                  <StoryTitle>{story.caption}</StoryTitle>
-                </StoryMeta>
-              </StoryInfo>
-            )}
-          </Story>
-        ))}
-      </StoriesContent>
-    </Stories>
-  );
-}

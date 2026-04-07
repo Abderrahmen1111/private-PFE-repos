@@ -390,7 +390,7 @@ const FloatingAiAssistant = () => {
           onClick={() => setIsChatOpen(prev => !prev)}
           className="relative w-14 h-14 rounded-full flex items-center justify-center hover:bg-white transition-colors shadow-lg"
         >
-          <div className="absolute inset-0 rounded-full bg-gradient-to-b from-white/20 to-transparent" />
+          <div className="absolute inset-0 rounded-full bg-[#ffffff]" />
           <div className="absolute inset-0 rounded-full border border-white/10" />
           <div className="relative z-10">
             {isChatOpen

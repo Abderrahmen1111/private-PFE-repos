@@ -31,11 +31,12 @@ export interface OffersCarouselProps {
 // Sub-component for individual item cards in the carousel
 const ItemCard = ({ item }: { item: CarouselItem }) => (
   <motion.div
-    className="group w-64 flex-shrink-0"
-    whileHover={{ y: -5 }}
-    transition={{ type: "spring", stiffness: 300 }}
+    className="group w-64 flex-shrink-0 cursor-pointer"
+    whileHover={{ scale: 1.03 }}
+    whileTap={{ scale: 0.98 }}
+    transition={{ type: "spring", stiffness: 400, damping: 25 }}
   >
-    <div className="overflow-hidden rounded-lg border bg-card text-card-foreground shadow-sm">
+    <div className="overflow-hidden rounded-2xl border border-[#2A2A2A] bg-[#1A1A1A] text-[#FFFFFF] shadow-lg">
       <div className="relative">
         <img
           src={item.imageUrl}
@@ -45,29 +46,29 @@ const ItemCard = ({ item }: { item: CarouselItem }) => (
           className="h-40 w-full object-cover transition-transform duration-300 group-hover:scale-105"
         />
         {item.discountPercentage && (
-          <div className="absolute bottom-2 right-2 rounded-md bg-primary text-red-500 px-2 py-1 text-xs font-semibold text-primary-foreground">
+          <div className="absolute bottom-2 right-2 rounded-md bg-[#22C55E] px-2 py-1 text-xs font-bold text-[#0A0A0A] shadow-md">
             {item.discountPercentage}% OFF
           </div>
         )}
       </div>
       <div className="p-4">
         <div className="flex items-start justify-between">
-          <h3 className="text-base font-semibold leading-tight">{item.title}</h3>
-          <div className="ml-2 flex flex-shrink-0 items-center gap-1 rounded-full bg-blue-100 px-2 py-0.5 text-xs font-semibold text-blue-600 dark:bg-blue-900/50 dark:text-blue-400">
-            <Star className="h-3 w-3" />
+          <h3 className="text-base font-semibold leading-tight text-[#FFFFFF]">{item.title}</h3>
+          <div className="ml-2 flex flex-shrink-0 items-center gap-1 rounded-full bg-[#222222] border border-[#2A2A2A] px-2 py-0.5 text-xs font-semibold text-[#A1A1AA]">
+            <Star className="h-3 w-3 text-[#F97316] fill-[#F97316]" />
             <span>{item.rating.toFixed(1)}</span>
           </div>
         </div>
-        <p className="mt-1 text-sm text-muted-foreground">{item.subtitle}</p>
+        <p className="mt-1 text-sm text-[#A1A1AA]">{item.subtitle}</p>
         <div className="mt-3 flex items-end gap-2">
-          <p className="text-lg font-bold">₹{item.price.toLocaleString('en-IN')}</p>
+          <p className="text-lg font-bold text-[#FFFFFF]">₹{item.price.toLocaleString('en-IN')}</p>
           {item.originalPrice && (
-            <p className="text-sm text-muted-foreground line-through">
+            <p className="text-sm text-[#71717A] line-through">
               ₹{item.originalPrice.toLocaleString('en-IN')}
             </p>
           )}
         </div>
-        <p className="text-xs text-muted-foreground">/ night</p>
+        <p className="text-xs text-[#71717A]">/ night</p>
       </div>
     </div>
   </motion.div>
@@ -120,21 +121,21 @@ export const OffersCarousel = React.forwardRef<HTMLDivElement, OffersCarouselPro
     return (
       <div
         ref={ref}
-        className={cn("w-full max-w-6xl rounded-2xl border bg-card p-4 shadow-sm md:p-6", className)}
+        className={cn("w-full max-w-6xl rounded-3xl border border-[#2A2A2A] bg-[#0A0A0A] p-4 md:p-6", className)}
       >
         <div className="grid grid-cols-1 items-center gap-6 lg:grid-cols-12">
 
           {/* Left: Offer Section */}
           <div className="flex flex-col items-center text-center text-white lg:col-span-3 lg:items-start lg:text-left">
             <div className="flex items-center gap-3">
-              {offerIcon || <Gift className="h-6 w-6 text-primary" />}
-              <p className="text-sm text-muted-foreground">Since you're flying with us!</p>
+              {offerIcon || <Gift className="h-6 w-6 text-[#22C55E]" />}
+              <p className="text-sm text-[#A1A1AA]">Since you're flying with us!</p>
             </div>
-            <h2 className="mt-4 text-2xl font-bold text-primary">{offerTitle}</h2>
-            <p className="mt-1 text-sm text-muted-foreground">{offerSubtitle}</p>
-            <Button variant="outline" className="mt-6 w-full max-w-xs lg:w-auto" onClick={onCtaClick}>
+            <h2 className="mt-4 text-2xl font-bold text-[#FFFFFF]">{offerTitle}</h2>
+            <p className="mt-1 text-sm text-[#A1A1AA]">{offerSubtitle}</p>
+            <button className="mt-6 w-full max-w-xs lg:w-auto bg-[#22C55E] text-[#0A0A0A] px-5 py-2.5 font-bold rounded-xl transition-all hover:bg-[#16A34A] hover:scale-105 active:scale-95" onClick={onCtaClick}>
               {ctaText}
-            </Button>
+            </button>
           </div>
 
           {/* Right: Carousel Section */}
@@ -152,26 +153,22 @@ export const OffersCarousel = React.forwardRef<HTMLDivElement, OffersCarouselPro
 
             {/* Navigation Buttons */}
             {!isAtStart && (
-              <Button
-                variant="outline"
-                size="icon"
-                className="absolute left-0 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full h-9 w-9 shadow-md z-10 hidden md:flex"
+              <button
+                className="absolute left-0 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full h-10 w-10 z-10 hidden md:flex items-center justify-center bg-[#1A1A1A] border border-[#2A2A2A] text-[#FFFFFF] hover:bg-[#222222] hover:scale-110 active:scale-95 transition-all shadow-xl"
                 onClick={() => scroll("left")}
                 aria-label="Scroll left"
               >
                 <ChevronLeft className="h-5 w-5" />
-              </Button>
+              </button>
             )}
             {!isAtEnd && (
-              <Button
-                variant="outline"
-                size="icon"
-                className="absolute right-0 top-1/2 translate-x-1/2 -translate-y-1/2 rounded-full h-9 w-9 shadow-md z-10 hidden md:flex"
+              <button
+                className="absolute right-0 top-1/2 translate-x-1/2 -translate-y-1/2 rounded-full h-10 w-10 z-10 hidden md:flex items-center justify-center bg-[#1A1A1A] border border-[#2A2A2A] text-[#FFFFFF] hover:bg-[#222222] hover:scale-110 active:scale-95 transition-all shadow-xl"
                 onClick={() => scroll("right")}
                 aria-label="Scroll right"
               >
                 <ChevronRight className="h-5 w-5" />
-              </Button>
+              </button>
             )}
           </div>
         </div>

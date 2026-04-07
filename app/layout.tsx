@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import { Toaster } from "sonner";
 
 export const metadata: Metadata = {
   title: "Phantom Marketplace",
@@ -22,6 +23,7 @@ export default function RootLayout({
       <body className="antialiased">
         {children}
         <GlobalActionDrawer />
+        <Toaster />
       </body>
     </html>
   );

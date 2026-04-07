@@ -1,6 +1,6 @@
 'use client'
 
-import { Bookmark, Heart, MessageCircle, Share2 } from 'lucide-react'
+import { Bookmark, Heart, MessageCircle, Share2, Phone } from 'lucide-react'
 
 type FeedActionsProps = {
   likes: number
@@ -30,6 +30,13 @@ export function FeedActions({
 
   return (
     <div className="absolute right-4 bottom-24 z-20 flex flex-col items-center gap-3 sm:right-6">
+      <style>{`
+        @keyframes heart-bounce {
+          0% { transform: scale(1); }
+          50% { transform: scale(1.35); }
+          100% { transform: scale(1); }
+        }
+      `}</style>
       <button
         type="button"
         aria-label="Like"
@@ -39,7 +46,7 @@ export function FeedActions({
         <Heart
           className="h-5 w-5 transition-all duration-300 group-hover:scale-110"
           fill={liked ? 'currentColor' : 'none'}
-          style={liked ? { color: '#fb7185' } : undefined}
+          style={liked ? { color: '#fb7185', animation: 'heart-bounce 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)' } : undefined}
         />
         <span className="text-xs font-medium">{formatCount(likes)}</span>
       </button>
@@ -52,6 +59,11 @@ export function FeedActions({
       <button type="button" aria-label="Share" className={actionBaseClass}>
         <Share2 className="h-5 w-5 transition-transform duration-300 group-hover:scale-110" />
         <span className="text-xs font-medium">Share</span>
+      </button>
+
+      <button type="button" aria-label="Contact" className={actionBaseClass}>
+        <Phone className="h-5 w-5 transition-transform duration-300 group-hover:scale-110" />
+        <span className="text-xs font-medium">Contact</span>
       </button>
 
       <button
