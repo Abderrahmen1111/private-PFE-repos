@@ -29,9 +29,9 @@ export const UserDropdown = ({ user, onAction = () => {} }: UserDropdownProps) =
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Avatar className="cursor-pointer size-9 border border-white/20 hover:border-white/40 transition">
+        <Avatar className="cursor-pointer size-9 border border-white/20 hover:border-black/40 transition">
           <AvatarImage src={user.avatar} alt={user.name} />
-          <AvatarFallback className="bg-white/10 text-white text-sm font-semibold">
+          <AvatarFallback className="bg-black/50 text-white text-sm font-semibold">
             {user.initials}
           </AvatarFallback>
         </Avatar>
@@ -46,7 +46,7 @@ export const UserDropdown = ({ user, onAction = () => {} }: UserDropdownProps) =
         <div className="flex items-center gap-3 px-3 py-3">
           <Avatar className="size-10 border border-white/20">
             <AvatarImage src={user.avatar} alt={user.name} />
-            <AvatarFallback className="bg-white/10 text-white text-sm font-semibold">
+            <AvatarFallback className="bg-black/10 text-white text-sm font-semibold">
               {user.initials}
             </AvatarFallback>
           </Avatar>
