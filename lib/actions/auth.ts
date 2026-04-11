@@ -4,7 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { headers } from 'next/headers'
-import { rateLimit, getClientIp, formatRetryAfter } from '@/lib/rate-limit'
+import { rateLimit, formatRetryAfter } from '@/lib/rate-limit'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // TYPES
@@ -237,16 +237,35 @@ export async function signout(): Promise<void> {
   revalidatePath('/', 'layout')
   redirect('/')
 }
-export async function sendPasswordResetEmail(email: string) {
-    const supabase = createClient()
-    
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/auth/update-password`,
-    });
 
-    if (error) {
-        return { error: error.message }
-    }
+// ─────────────────────────────────────────────────────────────────────────────
+// PASSWORD MANAGEMENT
+// ─────────────────────────────────────────────────────────────────────────────
 
-    return { success: true }
+export async function sendPasswordResetEmail(email: string): Promise<ActionResult> {
+  const supabase = createClient()
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+  
+  const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: `${siteUrl}/auth/update-password`,
+  })
+
+  if (error) {
+    console.error('[auth] reset password error:', error.message)
+    return { error: error.message }
+  }
+
+  return { success: true, message: 'Password reset link sent to your email.' }
+}
+
+export async function updateUserPassword(password: string): Promise<ActionResult> {
+  const supabase = createClient()
+  const { error } = await supabase.auth.updateUser({ password })
+  
+  if (error) {
+    console.error('[auth] update password error:', error.message)
+    return { error: error.message }
+  }
+  
+  return { success: true, message: 'Password updated successfully.' }
 }

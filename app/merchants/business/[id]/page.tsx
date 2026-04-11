@@ -18,6 +18,7 @@ import { Item } from '@/lib/actions/items';
 import BusinessReservationSidebar from '@/components/BusinessReservationSidebar';
 import BusinessCommandSidebar from '@/components/BusinessCommandSidebar';
 import FavoriteButton from '@/components/FavoriteButton';
+import StoreAnalyticsTracker from '@/components/StoreAnalyticsTracker';
 
 interface Promotion {
   id: number;
@@ -83,6 +84,7 @@ export default async function BusinessDetailPage({ params }: { params: { id: str
 
   return (
     <div className="min-h-screen bg-gray-50">
+      {storeId && <StoreAnalyticsTracker storeId={storeId} />}
       <Navbar />
       <PromotionBanner promotions={activePromos} />
       {/* Hero Section with Photos + Overlay Header */}

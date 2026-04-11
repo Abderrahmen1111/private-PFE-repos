@@ -18,7 +18,11 @@ export async function updateProfile(userId:string , updates:{
     city?:string,
     avatar_url?:string,
     date_of_birth?:string,
-    gender?:string}){
+    gender?:string,
+    two_factor_enabled?: boolean,
+    email_notifications_enabled?: boolean,
+    login_alerts_enabled?: boolean
+}){
         const supabase = createClient()
         const { data , error} = await (supabase as any)
         .from('users')

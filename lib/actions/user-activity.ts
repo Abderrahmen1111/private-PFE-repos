@@ -26,3 +26,27 @@ export async function logUserSearch(query: string) {
         console.error('Error logging user search:', error);
     }
 }
+
+/**
+ * Log a store analytics event (view, heartbeat, click).
+ */
+export async function logStoreAnalyticsEvent(storeId: number, type: string, sessionId: string) {
+    const supabase = createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    
+    const { error } = await (supabase as any)
+        .from('store_analytics')
+        .insert({
+            store_id: storeId,
+            user_id: user?.id || null,
+            session_id: sessionId,
+            type: type
+        });
+
+    if (error) {
+        console.error(`Error logging ${type} for store ${storeId}:`, error);
+        return { error: error.message };
+    }
+
+    return { success: true };
+}

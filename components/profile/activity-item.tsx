@@ -1,8 +1,8 @@
 'use client';
 
-import { Star, Heart, Eye, UserPlus, MessageCircle } from 'lucide-react';
+import { Star, Heart, Eye, UserPlus, MessageCircle, ShoppingBag } from 'lucide-react';
 
-type ActivityType = 'review' | 'saved' | 'visited' | 'joined' | 'comment';
+type ActivityType = 'review' | 'saved' | 'visited' | 'joined' | 'comment' | 'order';
 
 interface ActivityItemProps {
   type: ActivityType;
@@ -12,16 +12,18 @@ interface ActivityItemProps {
   isLast?: boolean;
 }
 
-const activityConfig: Record<ActivityType, { icon: any; color: string; bg: string }> = {
+const activityConfig: Record<string, { icon: any; color: string; bg: string }> = {
   review: { icon: Star, color: 'text-amber-600', bg: 'bg-amber-100' },
   saved: { icon: Heart, color: 'text-rose-600', bg: 'bg-rose-100' },
   visited: { icon: Eye, color: 'text-blue-600', bg: 'bg-blue-100' },
   joined: { icon: UserPlus, color: 'text-emerald-600', bg: 'bg-emerald-100' },
   comment: { icon: MessageCircle, color: 'text-purple-600', bg: 'bg-purple-100' },
+  order: { icon: ShoppingBag, color: 'text-indigo-600', bg: 'bg-indigo-100' },
 };
 
 export default function ActivityItem({ type, text, timestamp, businessName, isLast }: ActivityItemProps) {
-  const { icon: Icon, color, bg } = activityConfig[type];
+  const config = activityConfig[type] || activityConfig['visited'];
+  const { icon: Icon, color, bg } = config;
 
   return (
     <div className="flex gap-4 group">

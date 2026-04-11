@@ -14,6 +14,7 @@ import UserReservationsList from '@/components/profile/UserReservationsList';
 import { Save, Lock, Trash2, Loader2, ShoppingBag, Star, Heart, Activity as ActivityIcon, CalendarDays } from 'lucide-react';
 import { getUserProfileData } from '@/lib/actions/profile';
 import { updateProfile, deleteAccount } from '@/lib/actions/users';
+import { sendPasswordResetEmail } from '@/lib/actions/auth';
 import { toggleSaveAction } from '@/lib/actions/favorites';
 import { toast } from 'sonner';
 
@@ -21,6 +22,8 @@ import { toast } from 'sonner';
 
 function SettingsTab({ user, onUpdate }: { user: any, onUpdate: () => void }) {
   const [loading, setLoading] = useState(false);
+  const [resetLoading, setResetLoading] = useState(false);
+  const [deleteLoading, setDeleteLoading] = useState(false);
   const [form, setForm] = useState({ 
     name: user?.profile?.full_name || '', 
     email: user?.email || '', 
@@ -41,6 +44,36 @@ function SettingsTab({ user, onUpdate }: { user: any, onUpdate: () => void }) {
       toast.error(err.message || 'Erreur lors de la mise à jour');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleResetPassword = async () => {
+    if (!form.email) return;
+    setResetLoading(true);
+    try {
+      const result = await sendPasswordResetEmail(form.email);
+      if ('error' in result) throw new Error(result.error);
+      toast.success('E-mail de réinitialisation envoyé ! Vérifiez votre boîte de réception.');
+    } catch (err: any) {
+      toast.error(err.message || 'Erreur lors de l\'envoi de l\'e-mail');
+    } finally {
+      setResetLoading(false);
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    if (confirm('Êtes-vous sûr de vouloir supprimer votre compte ? Cette action est irréversible.')) {
+      setDeleteLoading(true);
+      try {
+        const { error } = await deleteAccount(user.id);
+        if (error) throw new Error(error);
+        toast.success('Compte supprimé avec succès');
+        window.location.href = '/';
+      } catch (err: any) {
+        toast.error(err.message || 'Erreur lors de la suppression du compte');
+      } finally {
+        setDeleteLoading(false);
+      }
     }
   };
 
@@ -83,8 +116,12 @@ function SettingsTab({ user, onUpdate }: { user: any, onUpdate: () => void }) {
         <div className="bg-white/80 backdrop-blur-md rounded-[2.5rem] shadow-sm border border-gray-100 p-8 sm:p-10">
           <h3 className="text-xl font-black text-gray-900 mb-2 tracking-tight">Sécurité</h3>
           <p className="text-xs font-bold text-gray-400 mb-8 uppercase tracking-wider leading-relaxed">Gérez vos paramètres d'authentification</p>
-          <button className="flex items-center gap-3 px-8 py-4 bg-gray-900 hover:bg-gray-800 text-white text-xs font-black rounded-2xl transition-all shadow-xl shadow-gray-900/10 hover:-translate-y-0.5 active:translate-y-0">
-            <Lock className="w-4 h-4" />
+          <button 
+            onClick={handleResetPassword}
+            disabled={resetLoading}
+            className="flex items-center gap-3 px-8 py-4 bg-gray-900 hover:bg-gray-800 text-white text-xs font-black rounded-2xl transition-all shadow-xl shadow-gray-900/10 hover:-translate-y-0.5 active:translate-y-0 disabled:opacity-50"
+          >
+            {resetLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Lock className="w-4 h-4" />}
             Réinitialiser le mot de passe
           </button>
         </div>
@@ -94,16 +131,11 @@ function SettingsTab({ user, onUpdate }: { user: any, onUpdate: () => void }) {
           <h3 className="text-xl font-black text-rose-600 mb-2 tracking-tight uppercase tracking-tighter">Zone de danger</h3>
           <p className="text-xs font-bold text-gray-400 mb-8 uppercase tracking-wider leading-relaxed">Supprimer définitivement votre compte</p>
           <button 
-            onClick={async () => {
-              if (confirm('Êtes-vous sûr de vouloir supprimer votre compte ? Cette action est irréversible.')) {
-                const { error } = await deleteAccount(user.id);
-                if (error) toast.error(error);
-                else window.location.href = '/';
-              }
-            }}
-            className="flex items-center gap-3 px-8 py-4 bg-rose-50 hover:bg-rose-100 text-rose-600 text-xs font-black rounded-2xl transition-all border border-rose-200 hover:-translate-y-0.5 active:translate-y-0"
+            onClick={handleDeleteAccount}
+            disabled={deleteLoading}
+            className="flex items-center gap-3 px-8 py-4 bg-rose-50 hover:bg-rose-100 text-rose-600 text-xs font-black rounded-2xl transition-all border border-rose-200 hover:-translate-y-0.5 active:translate-y-0 disabled:opacity-50"
           >
-            <Trash2 className="w-4 h-4" />
+            {deleteLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
             Supprimer le compte
           </button>
         </div>
@@ -179,6 +211,8 @@ export default function ProfilePage() {
           memberSince={user.profile?.created_at ? new Date(user.profile.created_at).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' }) : 'Inconnu'}
           isVerified={true}
           avatarUrl={user.profile?.avatar_url}
+          onEditProfile={() => setActiveTab('settings')}
+          userUrl={typeof window !== 'undefined' ? `${window.location.origin}/profile/user` : ''}
         />
 
         {/* Stats */}

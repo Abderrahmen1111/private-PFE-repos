@@ -115,11 +115,94 @@ export async function getOwnerProfileData(businessId?: number | string) {
             .select('*', { count: 'exact', head: true })
             .eq('store_id', storeData.id);
             
-        const countError = countRes.error;
-        const count = countRes.count;
+        if (!countRes.error) {
+            bookingsCount = countRes.count || 0;
+        }
+
+        // Fetch orders count for CTR calculation
+        const ordersRes = await supabase
+            .from('orders' as any)
+            .select('*', { count: 'exact', head: true })
+            .eq('store_id', storeData.id);
         
-        if (!countError) {
-            bookingsCount = count || 0;
+        const ordersCount = ordersRes.count || 0;
+
+        // Fetch Analytics Data
+        const { data: analyticsData } = await (supabase as any)
+            .from('store_analytics')
+            .select('user_id, session_id, type, created_at')
+            .eq('store_id', storeData.id);
+
+        // Calculate Advanced Metrics
+        let avgSessionTime = 0;
+        let returnVisitorsCount = 0;
+        let uniqueSessionsCount = 0;
+        let totalPhotoViews = totalViews; // Base profile views
+
+        if (analyticsData && analyticsData.length > 0) {
+            const sessions: Record<string, { start: Date, end: Date, userId: string | null }> = {};
+            const userHistory: Record<string, Set<string>> = {};
+
+            analyticsData.forEach((a: any) => {
+                const time = new Date(a.created_at);
+                if (!sessions[a.session_id]) {
+                    sessions[a.session_id] = { start: time, end: time, userId: a.user_id };
+                } else {
+                    if (time < sessions[a.session_id].start) sessions[a.session_id].start = time;
+                    if (time > sessions[a.session_id].end) sessions[a.session_id].end = time;
+                }
+
+                if (a.user_id) {
+                    if (!userHistory[a.user_id]) userHistory[a.user_id] = new Set();
+                    userHistory[a.user_id].add(a.session_id);
+                }
+
+                if (a.type === 'view') {
+                    totalPhotoViews++;
+                }
+            });
+
+            const sessionDurations = Object.values(sessions).map(s => 
+                (s.end.getTime() - s.start.getTime()) / 1000
+            );
+            
+            uniqueSessionsCount = Object.keys(sessions).length;
+            avgSessionTime = sessionDurations.length > 0
+                ? sessionDurations.reduce((a, b) => a + b, 0) / sessionDurations.length
+                : 0;
+            
+            returnVisitorsCount = Object.values(userHistory).filter(s => s.size > 1).length;
+        }
+
+        // Final Metrics Assembly
+        const ctr = uniqueSessionsCount > 0 
+            ? ((bookingsCount + ordersCount) / uniqueSessionsCount) * 100 
+            : 0;
+
+        return {
+            user: {
+                ...user,
+                profile: userData,
+                avatar: userData?.avatar_url || null,
+                email: user.email,
+                twoFactorEnabled: userData?.two_factor_enabled || false,
+                emailNotificationsEnabled: userData?.email_notifications_enabled !== false, // Default true
+                loginAlertsEnabled: userData?.login_alerts_enabled !== false, // Default true
+            },
+            store: storeData,
+            metrics: {
+                reviewsCount,
+                avgRating,
+                totalViews, // Profil views
+                totalPhotoViews, // Profil + Content views
+                bookingsCount,
+                ordersCount,
+                ctr: Number(ctr.toFixed(1)),
+                avgSessionTime: Math.round(avgSessionTime),
+                returnVisitorsCount,
+                uniqueSessionsCount
+            },
+            recentReviews,
         }
     }
 
@@ -129,15 +212,23 @@ export async function getOwnerProfileData(businessId?: number | string) {
             profile: userData,
             avatar: userData?.avatar_url || null,
             email: user.email,
+            twoFactorEnabled: userData?.two_factor_enabled || false,
+            emailNotificationsEnabled: userData?.email_notifications_enabled !== false,
+            loginAlertsEnabled: userData?.login_alerts_enabled !== false,
         },
         store: storeData,
         metrics: {
-            reviewsCount,
-            avgRating,
-            totalViews,
-            bookingsCount,
+            reviewsCount: 0,
+            avgRating: 0,
+            totalViews: 0,
+            bookingsCount: 0,
+            ordersCount: 0,
+            ctr: 0,
+            avgSessionTime: 0,
+            returnVisitorsCount: 0,
+            uniqueSessionsCount: 0
         },
-        recentReviews,
+        recentReviews: [],
     }
 }
 

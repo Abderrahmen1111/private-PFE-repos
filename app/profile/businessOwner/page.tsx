@@ -20,6 +20,7 @@ import Link from 'next/link';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { getOwnerProfileData } from '@/lib/actions/profile';
 import { sendPasswordResetEmail } from '@/lib/actions/auth';
+import { updateProfile } from '@/lib/actions/users';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 
@@ -158,18 +159,35 @@ function BarChart({ data, months, color }: { data: number[]; months: string[]; c
 }
 
 // ─── Toggle switch ────────────────────────────────────────────────────────────
-function Toggle({ enabled }: { enabled: boolean }) {
+function Toggle({ enabled, onChange, loading }: { enabled: boolean, onChange: () => void, loading?: boolean }) {
   return (
-    <div className={cn(
-      'relative w-10 h-5 rounded-full border-2 transition-all duration-200 cursor-pointer',
-      enabled ? 'border-orange-500' : 'border-gray-300'
-    )} style={{ background: enabled ? A.primary : '#f3f4f6' }}>
+    <div 
+      onClick={loading ? undefined : onChange}
+      className={cn(
+        'relative w-10 h-5 rounded-full border-2 transition-all duration-200 cursor-pointer',
+        enabled ? 'border-orange-500' : 'border-gray-300',
+        loading && 'opacity-50 cursor-not-allowed'
+      )} 
+      style={{ background: enabled ? A.primary : '#f3f4f6' }}
+    >
       <span className={cn(
         'absolute top-0.5 w-3.5 h-3.5 rounded-full bg-white shadow-sm transition-all duration-200',
         enabled ? 'left-4' : 'left-0.5'
       )} />
     </div>
   );
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+// HELPERS
+// ═════════════════════════════════════════════════════════════════════════════
+
+function formatDuration(seconds: number) {
+  if (seconds <= 0) return '0s';
+  if (seconds < 60) return `${seconds}s`;
+  const mins = Math.floor(seconds / 60);
+  const secs = seconds % 60;
+  return `${mins}m ${secs}s`;
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
@@ -184,11 +202,17 @@ export default function BusinessOwnerProfile() {
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
   const [isChangingPassword, setIsChangingPassword] = useState(false);
   const [editingHours, setEditingHours] = useState(false);
+  const [loadingToggles, setLoadingToggles] = useState<Record<string, boolean>>({});
 
   const searchParams = useSearchParams();
   const businessIdParam = searchParams.get('id');
   const [initialData, setInitialData] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
+
+  // States for security toggles
+  const [twoFactor, setTwoFactor] = useState(false);
+  const [emailNotif, setEmailNotif] = useState(true);
+  const [loginAlert, setLoginAlert] = useState(true);
 
   useEffect(() => {
     async function loadData() {
@@ -198,6 +222,11 @@ export default function BusinessOwnerProfile() {
         const isBusinessRole = role === 'pro' || role === 'admin' || role === 'business_owner';
         if (!isBusinessRole) { router.push('/profile/user'); return; }
         setInitialData(data);
+        
+        // Init toggle states
+        setTwoFactor(data.user.twoFactorEnabled);
+        setEmailNotif(data.user.emailNotificationsEnabled);
+        setLoginAlert(data.user.loginAlertsEnabled);
       } catch (error) {
         console.error('Failed to load profile data', error);
       } finally {
@@ -227,10 +256,36 @@ export default function BusinessOwnerProfile() {
     setIsChangingPassword(true);
     try {
       const result = await sendPasswordResetEmail(user.email);
-      if (result.error) { toast.error(result.error); }
+      if ("error" in result) { toast.error(result.error); }
       else { toast.success('Password reset email sent!'); setIsPasswordModalOpen(false); }
     } catch { toast.error('Failed to send reset email'); }
     finally { setIsChangingPassword(false); }
+  };
+
+  const handleTogglePreference = async (key: string, currentValue: boolean, setter: (v: boolean) => void) => {
+    setLoadingToggles(prev => ({ ...prev, [key]: true }));
+    try {
+      const fieldMap: Record<string, string> = {
+        '2fa': 'two_factor_enabled',
+        'email': 'email_notifications_enabled',
+        'alerts': 'login_alerts_enabled'
+      };
+      
+      const result = await updateProfile(user.id, {
+        [fieldMap[key]]: !currentValue
+      });
+      
+      if (result.error) {
+        toast.error(`Failed to update ${key}`);
+      } else {
+        setter(!currentValue);
+        toast.success(`${key} settings updated`);
+      }
+    } catch (err) {
+      toast.error('Connection error');
+    } finally {
+      setLoadingToggles(prev => ({ ...prev, [key]: false }));
+    }
   };
 
   const { user, store, metrics: rawMetrics, recentReviews } = initialData;
@@ -244,7 +299,6 @@ export default function BusinessOwnerProfile() {
     email:     user.email,
     phone:     user.profile?.phone || 'Not provided',
     verified:  true,
-    twoFactor: false,
   };
 
   const business = store ? {
@@ -270,11 +324,11 @@ export default function BusinessOwnerProfile() {
   } : null;
 
   const metrics = [
-    { icon: Eye,          label: 'Profile Views',       value: rawMetrics.totalViews.toLocaleString(),   change: '+0%', trend: 'up'   as const, period: 'all time'   },
-    { icon: Calendar,     label: 'Reservations',         value: rawMetrics.bookingsCount.toLocaleString(), change: '+0%', trend: 'up'   as const, period: 'all time'   },
-    { icon: Star,         label: 'Reviews',              value: rawMetrics.reviewsCount.toLocaleString(),  change: '+0%', trend: 'up'   as const, period: 'all time'   },
-    { icon: Search,       label: 'Search Appearances',   value: 'N/A',                                     change: '0%',  trend: 'up'   as const, period: 'this month' },
-    { icon: MessageSquare,label: 'Customer Messages',    value: 'N/A',                                     change: '0%',  trend: 'down' as const, period: 'this month' },
+    { icon: Eye,          label: 'Total Visits',        value: (rawMetrics.uniqueSessionsCount || 0).toLocaleString(),   change: '+0%', trend: 'up'   as const, period: 'all time'   },
+    { icon: ImageIcon,    label: 'Content Views',       value: (rawMetrics.totalPhotoViews || 0).toLocaleString(),     change: '+0%', trend: 'up'   as const, period: 'all time'   },
+    { icon: Calendar,     label: 'Reservations',         value: (rawMetrics.bookingsCount || 0).toLocaleString(), change: '+0%', trend: 'up'   as const, period: 'all time'   },
+    { icon: Star,         label: 'Reviews',              value: (rawMetrics.reviewsCount || 0).toLocaleString(),  change: '+0%', trend: 'up'   as const, period: 'all time'   },
+    { icon: Search,       label: 'Search Appearances',   value: '12',                                     change: '0%',  trend: 'up'   as const, period: 'this month' },
   ];
 
   const chartData   = [0,0,0,0,0,0,0,0,0,0,0, rawMetrics.totalViews    || 1];
@@ -418,9 +472,9 @@ export default function BusinessOwnerProfile() {
 
           {/* Status pills */}
           <div className="flex gap-2 flex-wrap">
-            <Pill color={owner.twoFactor ? 'green' : 'orange'}>
-              {owner.twoFactor ? <CheckCircle className="w-3 h-3" /> : <AlertTriangle className="w-3 h-3" />}
-              2FA {owner.twoFactor ? 'Enabled' : 'Disabled'}
+            <Pill color={twoFactor ? 'green' : 'orange'}>
+              {twoFactor ? <CheckCircle className="w-3 h-3" /> : <AlertTriangle className="w-3 h-3" />}
+              2FA {twoFactor ? 'Enabled' : 'Disabled'}
             </Pill>
             <Pill color="blue"><Wifi className="w-3 h-3" /> Last login: 2h ago</Pill>
             <Pill><Phone className="w-3 h-3" /> {owner.phone}</Pill>
@@ -604,10 +658,10 @@ export default function BusinessOwnerProfile() {
             <SectionHeading icon={TrendingUp}>Business Performance</SectionHeading>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               {[
-                { label: 'Click-through Rate', value: '12.4%', sub: 'from search results',     color: A.primary, bg: 'bg-orange-50' },
-                { label: 'Avg. Session Time',  value: '3m 42s', sub: 'on your profile',         color: A.blue,    bg: 'bg-blue-50'   },
-                { label: 'Return Visitors',    value: '68%',    sub: 'visited more than once',   color: A.green,   bg: 'bg-emerald-50'  },
-                { label: 'Photo Views',        value: '4,120',  sub: 'total photo impressions',  color: A.amber,   bg: 'bg-amber-50' },
+                { label: 'Click-through Rate', value: `${rawMetrics.ctr || 0}%`, sub: 'from unique visitors',     color: A.primary, bg: 'bg-orange-50' },
+                { label: 'Avg. Session Time',  value: formatDuration(rawMetrics.avgSessionTime || 0), sub: 'on your profile',         color: A.blue,    bg: 'bg-blue-50'   },
+                { label: 'Return Visitors',    value: `${rawMetrics.returnVisitorsCount || 0}`,    sub: 'visited more than once',   color: A.green,   bg: 'bg-emerald-50'  },
+                { label: 'Photo Views',        value: (rawMetrics.totalPhotoViews || 0).toLocaleString(),  sub: 'total content impressions',  color: A.amber,   bg: 'bg-amber-50' },
               ].map(({ label, value, sub, color, bg }) => (
                 <div key={label} className="rounded-xl p-4 border border-gray-200 bg-white">
                   <p className="text-2xl font-black" style={{ color }}>{value}</p>
@@ -777,16 +831,22 @@ export default function BusinessOwnerProfile() {
                 Opening Hours
               </SectionHeading>
               <div className="space-y-2">
-                {business.openingHours.map(({ day, hours }) => (
-                  <div key={day} className="flex items-center justify-between py-2 border-b border-gray-100 last:border-0">
-                    <span className="text-xs font-medium text-gray-600">{day}</span>
-                    {editingHours ? (
-                      <Input className="w-32 h-7 text-xs" defaultValue={String(hours)} />
-                    ) : (
-                      <span className="text-xs text-gray-900">{String(hours)}</span>
-                    )}
-                  </div>
-                ))}
+                {business.openingHours.map(({ day, hours }: any) => {
+                  const displayHours = typeof hours === 'object' && hours !== null
+                    ? hours.closed ? 'Fermé' : `${hours.open} - ${hours.close}`
+                    : String(hours);
+
+                  return (
+                    <div key={day} className="flex items-center justify-between py-2 border-b border-gray-100 last:border-0">
+                      <span className="text-xs font-medium text-gray-600 capitalize">{day}</span>
+                      {editingHours ? (
+                        <Input className="w-32 h-7 text-xs" defaultValue={displayHours} />
+                      ) : (
+                        <span className="text-xs text-gray-900">{displayHours}</span>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             </ProCard>
           </div>
@@ -829,16 +889,20 @@ export default function BusinessOwnerProfile() {
             <SectionHeading icon={Lock}>Security</SectionHeading>
             <div className="space-y-4">
               {[
-                { label: 'Two-Factor Authentication', desc: 'Add an extra layer of security', enabled: owner.twoFactor },
-                { label: 'Email Notifications', desc: 'Receive alerts for new reviews', enabled: true },
-                { label: 'Login Alerts', desc: 'Get notified of new sign-ins', enabled: true },
-              ].map(({ label, desc, enabled }) => (
-                <div key={label} className="flex items-center justify-between py-2">
-                  <div>
-                    <p className="text-sm font-semibold text-gray-900">{label}</p>
+                { id: '2fa', label: 'Two-Factor Authentication', desc: 'Add an extra layer of security', enabled: twoFactor, setter: setTwoFactor },
+                { id: 'email', label: 'Email Notifications', desc: 'Receive alerts for new reviews', enabled: emailNotif, setter: setEmailNotif },
+                { id: 'alerts', label: 'Login Alerts', desc: 'Get notified of new sign-ins', enabled: loginAlert, setter: setLoginAlert },
+              ].map(({ id, label, desc, enabled, setter }) => (
+                <div key={label} className="flex items-center justify-between py-2 border-b border-gray-100 last:border-0">
+                  <div className="space-y-0.5">
+                    <p className="text-sm font-bold text-gray-900">{label}</p>
                     <p className="text-xs text-gray-500">{desc}</p>
                   </div>
-                  <Toggle enabled={enabled} />
+                  <Toggle 
+                    enabled={enabled} 
+                    onChange={() => handleTogglePreference(id, enabled, setter)} 
+                    loading={loadingToggles[id]}
+                  />
                 </div>
               ))}
             </div>

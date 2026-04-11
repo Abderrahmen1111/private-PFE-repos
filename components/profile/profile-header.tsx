@@ -1,7 +1,9 @@
 'use client';
 
-import { Camera, MapPin, Calendar, BadgeCheck, Share2 } from 'lucide-react';
+import { Camera, MapPin, Calendar, BadgeCheck, Share2, Twitter, Facebook, Linkedin, Link as LinkIcon } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { ShareButton } from '@/components/ui/share-button';
+import { toast } from 'sonner';
 
 interface ProfileHeaderProps {
   name: string;
@@ -10,10 +12,40 @@ interface ProfileHeaderProps {
   memberSince: string;
   avatarUrl?: string;
   isVerified?: boolean;
+  onEditProfile?: () => void;
+  userUrl?: string;
 }
 
-export default function ProfileHeader({ name, email, city, memberSince, avatarUrl, isVerified }: ProfileHeaderProps) {
+export default function ProfileHeader({ name, email, city, memberSince, avatarUrl, isVerified, onEditProfile, userUrl }: ProfileHeaderProps) {
   const initials = name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+
+  const shareLinks = [
+    {
+      icon: Twitter,
+      label: "Partager sur Twitter",
+      onClick: () => window.open(`https://twitter.com/intent/tweet?url=${encodeURIComponent(userUrl || '')}&text=${encodeURIComponent(`Découvrez le profil de ${name} sur Ro2ya !`)}`, "_blank"),
+    },
+    {
+      icon: Facebook,
+      label: "Partager sur Facebook",
+      onClick: () => window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(userUrl || '')}`, "_blank"),
+    },
+    {
+      icon: Linkedin,
+      label: "Partager sur LinkedIn",
+      onClick: () => window.open(`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(userUrl || '')}`, "_blank"),
+    },
+    {
+      icon: LinkIcon,
+      label: "Copier le lien",
+      onClick: () => {
+        if (userUrl) {
+          navigator.clipboard.writeText(userUrl);
+          toast.success('Lien copié dans le presse-papier');
+        }
+      },
+    },
+  ];
 
   return (
     <div className="relative group">
@@ -58,11 +90,13 @@ export default function ProfileHeader({ name, email, city, memberSince, avatarUr
 
           {/* Action Buttons Area */}
           <div className="flex items-center gap-3 self-start sm:self-auto group/btns">
-             <button className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-white border border-gray-100 text-sm font-bold text-gray-700 hover:shadow-lg hover:shadow-gray-200/50 hover:-translate-y-0.5 active:translate-y-0 transition-all">
+             <ShareButton links={shareLinks} className="!w-32 sm:!w-40 !rounded-xl !h-11">
               <Share2 className="w-4 h-4 text-indigo-500" />
               Share
-            </button>
-            <button className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-gray-900 text-white text-sm font-bold hover:shadow-xl hover:shadow-gray-900/20 hover:-translate-y-0.5 active:translate-y-0 transition-all">
+            </ShareButton>
+            <button 
+              onClick={onEditProfile}
+              className="flex items-center gap-2 px-6 py-2.5 h-11 rounded-xl bg-gray-900 text-white text-sm font-bold hover:shadow-xl hover:shadow-gray-900/20 hover:-translate-y-0.5 active:translate-y-0 transition-all">
               Edit Profile
             </button>
           </div>
