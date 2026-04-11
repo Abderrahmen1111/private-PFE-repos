@@ -70,7 +70,8 @@ export default function TransactionsPage() {
       const isBooking = selectedTxn.type === 'booking';
       const actualStatus = newStatus === 'failed' ? 'CANCELLED' : newStatus.toUpperCase();
       
-      const realId = parseInt(selectedTxn.id.split('-')[1]);
+      const realId = selectedTxn.original_id;
+      if (!realId) throw new Error("ID d'origine introuvable pour cette transaction.");
       
       if (isBooking) {
         await updateBookingStatus(realId, actualStatus as any);

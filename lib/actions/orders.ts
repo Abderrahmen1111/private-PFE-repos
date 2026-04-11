@@ -3,6 +3,7 @@
 import { createClient } from '@/lib/supabase/server';
 import { Database } from '@/types/supabase';
 import { revalidatePath } from 'next/cache';
+import { syncOrderTransaction } from './transactions';
 
 export type OrderInsert = Database['public']['Tables']['orders']['Insert'];
 export type OrderRow = Database['public']['Tables']['orders']['Row'];
@@ -37,6 +38,10 @@ export async function createOrder(data: Omit<OrderInsert, 'order_number' | 'stat
   if (error) {
     console.error('Error creating order:', error);
     throw new Error(`Erreur lors de la commande : ${error.message}`);
+  }
+
+  if (order) {
+    await syncOrderTransaction(order, supabase);
   }
 
   revalidatePath(`/merchants/business/${data.store_id}`);
@@ -174,9 +179,8 @@ export async function validateOrder(orderId: number) {
     .select()
     .single();
 
-  if (error) {
-    console.error('Error validating order:', error);
-    throw new Error(error.message);
+  if (data) {
+    await syncOrderTransaction(data, supabase);
   }
 
   // Revalidate both dashboard and user profile
@@ -213,9 +217,8 @@ export async function updateOrderStatus(
     .select()
     .single();
 
-  if (error) {
-    console.error('Error updating order status:', error);
-    throw new Error(error.message);
+  if (data) {
+    await syncOrderTransaction(data, supabase);
   }
 
   // Revalidate affected pages
@@ -244,9 +247,8 @@ export async function cancelOrder(orderId: number, reason?: string) {
     .select()
     .single();
 
-  if (error) {
-    console.error('Error cancelling order:', error);
-    throw new Error(error.message);
+  if (data) {
+    await syncOrderTransaction(data, supabase);
   }
 
   revalidatePath(`/dashboard`);
@@ -308,9 +310,8 @@ export async function markOrderAsDelivered(orderId: number) {
     .select()
     .single();
 
-  if (error) {
-    console.error('Error marking order as delivered:', error);
-    throw new Error(error.message);
+  if (data) {
+    await syncOrderTransaction(data, supabase);
   }
 
   revalidatePath(`/dashboard`);
@@ -338,9 +339,8 @@ export async function markOrderAsFailed(orderId: number, reason?: string) {
     .select()
     .single();
 
-  if (error) {
-    console.error('Error marking order as failed:', error);
-    throw new Error(error.message);
+  if (data) {
+    await syncOrderTransaction(data, supabase);
   }
 
   revalidatePath(`/dashboard`);

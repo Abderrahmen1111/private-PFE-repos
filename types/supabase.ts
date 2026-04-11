@@ -801,7 +801,7 @@ export interface Database {
             support_ticket_priority: 'low' | 'medium' | 'high' | 'critical'
             support_ticket_status: 'open' | 'in_progress' | 'waiting_customer' | 'resolved' | 'closed'
             support_ticket_channel: 'chat' | 'email' | 'phone'
-            transaction_status: 'pending' | 'completed' | 'cancelled' | 'refunded'
+            transaction_status: 'pending' | 'completed' | 'failed' | 'refunded'
             transaction_type: 'payment' | 'payout' | 'refund'
         }
         CompositeTypes: {

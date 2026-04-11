@@ -3,6 +3,7 @@ import { getReviewsByStoreId } from '@/lib/actions/reviews';
 import { getPublicItemsByStoreId } from '@/lib/actions/items';
 import { getBusinessStories } from '@/lib/actions/stories';
 import { getPromotions } from '@/lib/actions/promotions';
+import { recordStoreView } from '@/lib/actions/reels';
 import { Star, MapPin, Phone, Globe, Clock, Bookmark, Camera, Package, AlertCircle } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
@@ -43,6 +44,11 @@ export default async function BusinessDetailPage({ params }: { params: { id: str
   }
 
   const storeId = business.store_id;
+  if (storeId) {
+    // Record visit for personalized recommendations (don't await to avoid blocking render)
+    recordStoreView(storeId).catch(console.error);
+  }
+
   const items = storeId ? await getPublicItemsByStoreId(storeId) : [];
   const reviews = storeId ? await getReviewsByStoreId(storeId) : [];
   const stories = storeId ? await getBusinessStories(storeId) : [];

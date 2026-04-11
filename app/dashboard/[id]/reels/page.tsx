@@ -3,11 +3,11 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams } from 'next/navigation';
 import { 
-  getBusinessStories, 
-  publishStory, 
-  deleteStory, 
-  uploadStoryMedia 
-} from '@/lib/actions/stories';
+  getBusinessReels, 
+  publishReel, 
+  deleteReel, 
+  uploadReelMedia 
+} from '@/lib/actions/reels';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { 
@@ -22,6 +22,9 @@ import {
   StopCircle,
   RefreshCw,
   AlertCircle,
+  Heart,
+  Bookmark,
+  Target,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
@@ -35,23 +38,38 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import {
+  Carousel,
+  CarouselContent,
+  CarouselItem,
+  CarouselNext,
+  CarouselPrevious,
+} from "@/components/ui/carousel";
 
 export default function ReelsPage() {
   const { id } = useParams();
   const storeId = parseInt(id as string);
 
-  const [stories, setStories] = useState<any[]>([]);
+  const [reels, setReels] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isUploading, setIsUploading] = useState(false);
   const [isDeleting, setIsDeleting] = useState<number | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [caption, setCaption] = useState('');
+  
+  // Form state
+  const [title, setTitle] = useState('');
+  const [subtitle, setSubtitle] = useState('');
+  const [price, setPrice] = useState('');
+  const [ctaType, setCtaType] = useState<'call' | 'whatsapp' | 'view'>('view');
+  const [ctaValue, setCtaValue] = useState('');
+  const [category, setCategory] = useState('');
+  
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [previewUrls, setPreviewUrls] = useState<string[]>([]);
 
   // Camera & Recording states
-  const [mode, setMode] = useState<'upload' | 'record'>('upload');
+  const [mode, setMode] = useState<'upload' | 'record'>('record');
   const [isRecording, setIsRecording] = useState(false);
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
@@ -62,14 +80,14 @@ export default function ReelsPage() {
   const chunksRef = useRef<Blob[]>([]);
 
   useEffect(() => {
-    fetchStories();
+    fetchReels();
   }, [storeId]);
 
-  const fetchStories = async () => {
+  const fetchReels = async () => {
     setIsLoading(true);
     try {
-      const data = await getBusinessStories(storeId);
-      setStories(data);
+      const data = await getBusinessReels(storeId);
+      setReels(data);
     } catch (error) {
       toast.error('Erreur lors du chargement des reels');
     } finally {
@@ -78,48 +96,76 @@ export default function ReelsPage() {
   };
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
 
-    if (file.size > 50 * 1024 * 1024) {
-      toast.error('Fichier trop lourd (max 50 MB)');
+    const oversized = files.find(f => f.size > 50 * 1024 * 1024);
+    if (oversized) {
+      toast.error(`Fichier ${oversized.name} trop lourd (max 50 MB)`);
       return;
     }
 
-    setSelectedFile(file);
-    setPreviewUrl(URL.createObjectURL(file));
+    setSelectedFiles(prev => [...prev, ...files]);
+    const newPreviews = files.map(f => URL.createObjectURL(f));
+    setPreviewUrls(prev => [...prev, ...newPreviews]);
+  };
+  
+  const removeSelectedFile = (index: number) => {
+    URL.revokeObjectURL(previewUrls[index]);
+    setSelectedFiles(prev => prev.filter((_, i) => i !== index));
+    setPreviewUrls(prev => prev.filter((_, i) => i !== index));
   };
 
   const handleUpload = async () => {
-    if (!selectedFile) {
-      toast.error('Veuillez sélectionner un fichier');
+    if (selectedFiles.length === 0) {
+      toast.error('Veuillez sélectionner au moins un fichier');
+      return;
+    }
+
+    if (!title) {
+      toast.error('Veuillez donner un titre à votre reel');
       return;
     }
 
     setIsUploading(true);
     try {
-      const formData = new FormData();
-      formData.append('file', selectedFile);
+      // Upload all files in parallel
+      const uploadPromises = selectedFiles.map(async (file) => {
+        const formData = new FormData();
+        formData.append('file', file);
+        const url = await uploadReelMedia(formData);
+        if (!url) throw new Error(`Erreur lors de l'upload de ${file.name}`);
+        return url;
+      });
 
-      const mediaUrl = await uploadStoryMedia(formData);
-      if (!mediaUrl) throw new Error("Erreur lors de l'upload");
-
-      const isVideo = selectedFile.type.startsWith('video/');
+      const mediaUrls = await Promise.all(uploadPromises);
       
-      const result = await publishStory({
+      const isVideo = selectedFiles[0].type.startsWith('video/');
+      
+      const result = await publishReel({
         storeId,
-        mediaUrl,
+        mediaUrl: mediaUrls.length === 1 ? mediaUrls[0] : mediaUrls,
         mediaType: isVideo ? 'video' : 'image',
-        caption: caption || undefined,
+        title,
+        subtitle: subtitle || undefined,
+        price: price ? parseFloat(price) : undefined,
+        ctaType,
+        ctaValue: ctaValue || undefined,
+        category: category || undefined,
       });
 
       if (result.success) {
         toast.success('Reel publié avec succès !');
         setIsDialogOpen(false);
-        setCaption('');
-        setSelectedFile(null);
-        setPreviewUrl(null);
-        fetchStories();
+        // Reset form
+        setTitle('');
+        setSubtitle('');
+        setPrice('');
+        setCtaValue('');
+        setCategory('');
+        setSelectedFiles([]);
+        setPreviewUrls([]);
+        fetchReels();
       } else {
         throw new Error(result.error);
       }
@@ -130,15 +176,15 @@ export default function ReelsPage() {
     }
   };
 
-  const handleDelete = async (storyId: number) => {
+  const handleDelete = async (reelId: number) => {
     if (!confirm('Voulez-vous vraiment supprimer ce reel ?')) return;
     
-    setIsDeleting(storyId);
+    setIsDeleting(reelId);
     try {
-      const result = await deleteStory(storyId);
+      const result = await deleteReel(reelId);
       if (result.success) {
         toast.success('Reel supprimé');
-        setStories(prev => prev.filter(s => s.id !== storyId));
+        setReels(prev => prev.filter(r => r.id !== reelId));
       } else {
         throw new Error();
       }
@@ -238,8 +284,8 @@ export default function ReelsPage() {
     recorder.onstop = () => {
       const blob = new Blob(chunksRef.current, { type: 'video/webm' });
       const file = new File([blob], `recorded-reel-${Date.now()}.webm`, { type: 'video/webm' });
-      setSelectedFile(file);
-      setPreviewUrl(URL.createObjectURL(blob));
+      setSelectedFiles([file]);
+      setPreviewUrls([URL.createObjectURL(blob)]);
       stopCamera();
     };
 
@@ -256,19 +302,13 @@ export default function ReelsPage() {
   };
 
   useEffect(() => {
-    if (mode === 'record' && isDialogOpen && !previewUrl) {
+    if (mode === 'record' && isDialogOpen && previewUrls.length === 0) {
       startCamera();
     } else {
       stopCamera();
     }
     return () => stopCamera();
-  }, [mode, isDialogOpen, previewUrl]);
-
-  const resetRecording = () => {
-    setPreviewUrl(null);
-    setSelectedFile(null);
-    startCamera();
-  };
+  }, [mode, isDialogOpen, previewUrls.length]);
 
   return (
     <div className="p-4 md:p-8 space-y-8 max-w-6xl mx-auto">
@@ -278,13 +318,31 @@ export default function ReelsPage() {
           <p className="text-muted-foreground">Gérez vos vidéos et photos qui apparaissent dans le flux Discover.</p>
         </div>
 
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <Dialog 
+          open={isDialogOpen} 
+          onOpenChange={(open) => {
+            setIsDialogOpen(open);
+            if (open) {
+              setMode('record');
+              setPreviewUrls([]);
+              setSelectedFiles([]);
+            }
+          }}
+        >
           <DialogTrigger asChild>
-            <Button size="lg" className="bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl shadow-lg shadow-red-500/20">
+            <Button 
+              size="lg" 
+              className="bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl shadow-lg shadow-red-500/20"
+              onClick={() => {
+                setMode('record');
+                setPreviewUrls([]);
+                setSelectedFiles([]);
+              }}
+            >
               <Plus className="w-5 h-5 mr-2" /> Nouveau Reel
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-md bg-slate-900 border-slate-800 text-white">
+          <DialogContent className="sm:max-w-xl bg-slate-900 border-slate-800 text-white scrollbar-hide max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Publier un nouveau Reel</DialogTitle>
               <DialogDescription className="text-slate-400">
@@ -297,14 +355,14 @@ export default function ReelsPage() {
                 <Button 
                   variant={mode === 'upload' ? 'secondary' : 'ghost'} 
                   className="flex-1 rounded-lg"
-                  onClick={() => { setMode('upload'); setPreviewUrl(null); }}
+                  onClick={() => { setMode('upload'); setPreviewUrls([]); }}
                 >
                   Importer
                 </Button>
                 <Button 
                   variant={mode === 'record' ? 'secondary' : 'ghost'} 
                   className="flex-1 rounded-lg"
-                  onClick={() => { setMode('record'); setPreviewUrl(null); }}
+                  onClick={() => { setMode('record'); setPreviewUrls([]); setSelectedFiles([]); }}
                 >
                   Caméra
                 </Button>
@@ -312,29 +370,41 @@ export default function ReelsPage() {
 
               <div className="space-y-4">
                 <Label className="text-sm font-semibold">
-                  {mode === 'upload' ? 'Sélectionner un fichier' : 'Enregistrer votre story'}
+                  {mode === 'upload' ? 'Sélectionner des fichiers' : 'Enregistrer votre story'}
                 </Label>
                 
                 <div 
-                  className="border-2 border-dashed border-slate-700 rounded-2xl aspect-[9/16] max-h-[400px] flex flex-col items-center justify-center bg-slate-800/50 hover:bg-slate-800/80 transition-colors cursor-pointer overflow-hidden relative group"
-                  onClick={() => mode === 'upload' && !previewUrl && fileInputRef.current?.click()}
+                  className="border-2 border-dashed border-slate-700 rounded-2xl min-h-[200px] flex flex-col items-center justify-center bg-slate-800/50 hover:bg-slate-800/80 transition-colors cursor-pointer overflow-hidden relative group p-4"
+                  onClick={() => mode === 'upload' && fileInputRef.current?.click()}
                 >
-                  {previewUrl ? (
-                    <>
-                      {selectedFile?.type.startsWith('video/') ? (
-                        <video src={previewUrl} className="w-full h-full object-cover" controls autoPlay loop />
-                      ) : (
-                        <img src={previewUrl} className="w-full h-full object-cover" alt="Preview" />
+                  {previewUrls.length > 0 ? (
+                    <div className="grid grid-cols-3 gap-2 w-full">
+                      {previewUrls.map((url, idx) => (
+                        <div key={idx} className="relative aspect-[9/16] rounded-lg overflow-hidden border border-slate-700">
+                          {selectedFiles[idx]?.type.startsWith('video/') ? (
+                            <video src={url} className="w-full h-full object-cover" />
+                          ) : (
+                            <img src={url} className="w-full h-full object-cover" />
+                          )}
+                          <Button 
+                            variant="destructive" 
+                            size="sm" 
+                            className="absolute top-1 right-1 h-6 w-6 p-0 rounded-full scale-75"
+                            onClick={(e) => { e.stopPropagation(); removeSelectedFile(idx); }}
+                          >
+                            <Trash2 className="w-3 h-3" />
+                          </Button>
+                        </div>
+                      ))}
+                      {mode === 'upload' && (
+                        <div 
+                          className="flex flex-col items-center justify-center aspect-[9/16] rounded-lg border-2 border-dashed border-slate-700 hover:bg-slate-700/50 transition-colors"
+                          onClick={(e) => { e.stopPropagation(); fileInputRef.current?.click(); }}
+                        >
+                          <Plus className="w-6 h-6 text-slate-500" />
+                        </div>
                       )}
-                      <Button 
-                        variant="destructive" 
-                        size="sm" 
-                        className="absolute top-4 right-4 h-8 w-8 p-0 rounded-full"
-                        onClick={(e) => { e.stopPropagation(); setPreviewUrl(null); setSelectedFile(null); mode === 'record' && startCamera(); }}
-                      >
-                        <RefreshCw className="w-4 h-4" />
-                      </Button>
-                    </>
+                    </div>
                   ) : mode === 'record' ? (
                     <div className="relative w-full h-full flex items-center justify-center bg-black">
                       {!stream ? (
@@ -345,45 +415,6 @@ export default function ReelsPage() {
                           <div className="space-y-2">
                             <p className="text-sm font-bold text-white">
                               {cameraError || "Accès caméra requis"}
-                            </p>
-                            {isPermissionDenied && (
-                              <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-4 text-[10px] text-red-400 max-w-[280px] mt-2 mb-4 text-left">
-                                <p className="font-bold mb-2 flex items-center gap-1.5 uppercase tracking-wider text-[11px]">
-                                  <AlertCircle className="w-3 h-3" /> État du matériel :
-                                </p>
-                                <div className="space-y-3">
-                                  <div className="bg-black/20 p-2 rounded border border-red-500/10">
-                                    <p className="font-bold text-white mb-1">Caméras détectées : {availableCameras.length}</p>
-                                    {availableCameras.length > 0 ? (
-                                      <ul className="list-disc list-inside ml-1 text-[9px]">
-                                        {availableCameras.map((c, i) => (
-                                          <li key={i}>{c.label || `Caméra #${i+1}`}</li>
-                                        ))}
-                                      </ul>
-                                    ) : (
-                                      <p className="text-red-300 italic">⚠️ Aucune caméra n'est reconnue par Windows/Navigateur.</p>
-                                    )}
-                                  </div>
-                                  
-                                  <div>
-                                    <p className="font-bold text-white mb-1">1. Dans le navigateur :</p>
-                                    <ul className="list-disc list-inside ml-1">
-                                      <li>Cliquez sur l'icône 🔒 ou ⚙️ (barre d'adresse)</li>
-                                      <li>Passez "Caméra" sur <b>Autoriser</b></li>
-                                    </ul>
-                                  </div>
-                                  <div>
-                                    <p className="font-bold text-white mb-1">2. Sur Windows (si bloqué) :</p>
-                                    <ul className="list-disc list-inside ml-1">
-                                      <li>Démarrer → Paramètres → Confidentialité → Caméra</li>
-                                      <li>Activez "Autoriser les applis à accéder à votre caméra"</li>
-                                    </ul>
-                                  </div>
-                                </div>
-                              </div>
-                            )}
-                            <p className="text-xs text-slate-400 max-w-[200px] mx-auto">
-                              L'accès à la caméra est nécessaire pour enregistrer vos stories directement.
                             </p>
                           </div>
                           
@@ -425,9 +456,6 @@ export default function ReelsPage() {
                                 <Circle className="w-8 h-8 fill-current" />
                               </Button>
                             )}
-                            <span className="text-xs font-bold text-white bg-black/50 px-3 py-1 rounded-full backdrop-blur-sm">
-                              {isRecording ? 'ENREGISTREMENT EN COURS...' : 'APPUYEZ POUR ENREGISTRER'}
-                            </span>
                           </div>
                         </>
                       )}
@@ -447,28 +475,94 @@ export default function ReelsPage() {
                   ref={fileInputRef} 
                   className="hidden" 
                   accept="image/*,video/*" 
+                  multiple={mode === 'upload'}
                   onChange={handleFileSelect} 
                 />
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="caption" className="text-sm font-semibold">Légende (Optionnelle)</Label>
-                <Input 
-                  id="caption" 
-                  className="bg-slate-800 border-slate-700 focus:ring-red-500" 
-                  placeholder="Dites-en plus sur ce reel..."
-                  value={caption}
-                  onChange={(e) => setCaption(e.target.value)}
-                />
-              </div>
+               <div className="grid grid-cols-2 gap-4">
+                 <div className="space-y-2">
+                   <Label htmlFor="title" className="text-sm font-semibold">Titre</Label>
+                   <Input 
+                     id="title" 
+                     className="bg-slate-800 border-slate-700 focus:ring-red-500 text-white" 
+                     placeholder="Ex: Nouvelle Collection"
+                     value={title}
+                     onChange={(e) => setTitle(e.target.value)}
+                   />
+                 </div>
+                 <div className="space-y-2">
+                   <Label htmlFor="category" className="text-sm font-semibold">Catégorie</Label>
+                   <Input 
+                     id="category" 
+                     className="bg-slate-800 border-slate-700 focus:ring-red-500 text-white" 
+                     placeholder="Ex: Mode"
+                     value={category}
+                     onChange={(e) => setCategory(e.target.value)}
+                   />
+                 </div>
+               </div>
+               
+               <div className="space-y-2">
+                 <Label htmlFor="subtitle" className="text-sm font-semibold">Sous-titre (Optionnel)</Label>
+                 <Input 
+                   id="subtitle" 
+                   className="bg-slate-800 border-slate-700 focus:ring-red-500 text-white" 
+                   placeholder="Dites-en plus..."
+                   value={subtitle}
+                   onChange={(e) => setSubtitle(e.target.value)}
+                 />
+               </div>
+               
+               <div className="grid grid-cols-2 gap-4">
+                 <div className="space-y-2">
+                   <Label htmlFor="price" className="text-sm font-semibold">Prix (Optionnel)</Label>
+                   <Input 
+                     id="price" 
+                     type="number"
+                     className="bg-slate-800 border-slate-700 focus:ring-red-500 text-white" 
+                     placeholder="0.00"
+                     value={price}
+                     onChange={(e) => setPrice(e.target.value)}
+                   />
+                 </div>
+                 <div className="space-y-2">
+                   <Label htmlFor="ctaType" className="text-sm font-semibold">Action Bouton</Label>
+                   <select 
+                     id="ctaType"
+                     className="w-full h-10 px-3 rounded-md bg-slate-800 border border-slate-700 text-sm focus:ring-2 focus:ring-red-500 outline-none text-white"
+                     value={ctaType}
+                     onChange={(e) => setCtaType(e.target.value as any)}
+                   >
+                     <option value="view">Voir plus</option>
+                     <option value="call">Appeler</option>
+                     <option value="whatsapp">WhatsApp</option>
+                   </select>
+                 </div>
+               </div>
+               
+               {ctaType !== 'view' && (
+                 <div className="space-y-2">
+                   <Label htmlFor="ctaValue" className="text-sm font-semibold">
+                     {ctaType === 'call' ? 'Numéro de téléphone' : 'Lien / Numéro WhatsApp'}
+                   </Label>
+                   <Input 
+                     id="ctaValue" 
+                     className="bg-slate-800 border-slate-700 focus:ring-red-500 text-white" 
+                     placeholder={ctaType === 'call' ? '+216...' : 'https://wa.me/...'}
+                     value={ctaValue}
+                     onChange={(e) => setCtaValue(e.target.value)}
+                   />
+                 </div>
+               )}
             </div>
 
             <DialogFooter>
-              <Button variant="ghost" onClick={() => setIsDialogOpen(false)} disabled={isUploading}>Annuler</Button>
+              <Button variant="ghost" className="text-white hover:bg-slate-800" onClick={() => setIsDialogOpen(false)} disabled={isUploading}>Annuler</Button>
               <Button 
                 className="bg-red-600 hover:bg-red-700 text-white font-bold"
                 onClick={handleUpload}
-                disabled={isUploading || !selectedFile}
+                disabled={isUploading || selectedFiles.length === 0}
               >
                 {isUploading ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Publication...</> : 'Publier'}
               </Button>
@@ -481,7 +575,7 @@ export default function ReelsPage() {
         <div className="flex items-center justify-center py-20">
           <Loader2 className="w-8 h-8 animate-spin text-red-500" />
         </div>
-      ) : stories.length === 0 ? (
+      ) : reels.length === 0 ? (
         <Card className="border-0 shadow-none bg-slate-50/50 dark:bg-slate-900/20 py-20">
           <div className="flex flex-col items-center justify-center text-center">
             <div className="p-6 rounded-full bg-slate-100 dark:bg-slate-800 mb-6 group-hover:scale-110 transition-transform">
@@ -498,24 +592,42 @@ export default function ReelsPage() {
         </Card>
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
-          {stories.map((story) => (
-            <div key={story.id} className="relative group">
+          {reels.map((reel) => (
+            <div key={reel.id} className="relative group">
               <Card className="overflow-hidden border-0 bg-slate-100 dark:bg-slate-900 aspect-[9/16] ring-1 ring-slate-200 dark:ring-white/5 shadow-md">
                 <div className="p-0 h-full relative">
-                  {story.media_type === 'video' ? (
-                    <video src={story.media_url} className="w-full h-full object-cover" />
+                  {reel.is_gallery ? (
+                    <Carousel className="w-full h-full">
+                      <CarouselContent className="h-full ml-0">
+                        {reel.media_urls.map((url: string, idx: number) => (
+                           <CarouselItem key={idx} className="pl-0 h-full">
+                             <img src={url} className="w-full h-full object-cover" alt={`${reel.title} ${idx + 1}`} />
+                           </CarouselItem>
+                        ))}
+                      </CarouselContent>
+                      <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1 z-10">
+                        {reel.media_urls.map((_: any, idx: number) => (
+                          <div key={idx} className="w-1.5 h-1.5 rounded-full bg-white/50" />
+                        ))}
+                      </div>
+                    </Carousel>
+                  ) : reel.media_type === 'video' ? (
+                    <video src={reel.media_url} className="w-full h-full object-cover" />
                   ) : (
-                    <img src={story.media_url} className="w-full h-full object-cover" alt="Story" />
+                    <img src={reel.media_url} className="w-full h-full object-cover" alt={reel.title} />
                   )}
                   
                   <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-end p-4">
-                    {story.caption && <p className="text-xs text-white line-clamp-2 mb-3">{story.caption}</p>}
+                    <p className="text-sm font-bold text-white mb-1">{reel.title}</p>
+                    {reel.subtitle && <p className="text-[10px] text-white/70 line-clamp-2 mb-2">{reel.subtitle}</p>}
+                    {reel.price && <p className="text-xs font-bold text-red-500 mb-3">{reel.price} {reel.currency}</p>}
+                    
                     <div className="flex items-center justify-between gap-2">
                        <Button 
                          variant="ghost" 
                          size="sm" 
                          className="h-8 w-8 p-0 text-white hover:bg-white/20"
-                         onClick={() => window.open(story.media_url, '_blank')}
+                         onClick={() => window.open(reel.media_url, '_blank')}
                        >
                          <Play className="w-4 h-4" />
                        </Button>
@@ -523,22 +635,49 @@ export default function ReelsPage() {
                         variant="destructive" 
                         size="sm" 
                         className="h-8 w-8 p-0"
-                        onClick={() => handleDelete(story.id)}
-                        disabled={isDeleting === story.id}
+                        onClick={() => handleDelete(reel.id)}
+                        disabled={isDeleting === reel.id}
                       >
-                        {isDeleting === story.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                        {isDeleting === reel.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
                       </Button>
                     </div>
                   </div>
 
-                  <div className="absolute top-2 right-2 bg-black/60 backdrop-blur-md px-2 py-1 rounded-lg flex items-center gap-1.5 text-[10px] font-bold text-white shadow-xl ring-1 ring-white/10">
-                    <Eye className="w-3 h-3" />
-                    {story.views_count}
+                  <div className="absolute top-2 right-2 flex flex-col gap-2">
+                    <div className="bg-black/60 backdrop-blur-md px-2 py-1 rounded-lg flex flex-col items-center gap-1 text-[10px] font-bold text-white shadow-xl ring-1 ring-white/10">
+                      <div className="flex items-center gap-1">
+                        <Eye className="w-3 h-3 text-blue-400" />
+                        {reel.stats?.views_count || 0}
+                      </div>
+                    </div>
+                    
+                    <div className="bg-black/60 backdrop-blur-md px-2 py-1 rounded-lg flex flex-col items-center gap-1 text-[10px] font-bold text-white shadow-xl ring-1 ring-white/10">
+                      <div className="flex items-center gap-1">
+                        <Heart className="w-3 h-3 text-red-400 fill-red-400" />
+                        {reel.stats?.likes_count || 0}
+                      </div>
+                    </div>
+
+                    <div className="bg-black/60 backdrop-blur-md px-2 py-1 rounded-lg flex flex-col items-center gap-1 text-[10px] font-bold text-white shadow-xl ring-1 ring-white/10">
+                      <div className="flex items-center gap-1">
+                        <Bookmark className="w-3 h-3 text-yellow-400 fill-yellow-400" />
+                        {reel.stats?.saves_count || 0}
+                      </div>
+                    </div>
+
+                    <div className="bg-black/60 backdrop-blur-md px-2 py-1 rounded-lg flex flex-col items-center gap-1 text-[10px] font-bold text-white shadow-xl ring-1 ring-white/10">
+                      <div className="flex items-center gap-1" title="Taux de complétion">
+                        <Target className="w-3 h-3 text-green-400" />
+                        {reel.stats?.views_count > 0 
+                          ? Math.round(((reel.stats?.completions_count || 0) / reel.stats.views_count) * 100) 
+                          : 0}%
+                      </div>
+                    </div>
                   </div>
 
                   <div className="absolute bottom-4 left-4 flex items-center gap-2 group-hover:opacity-0 transition-opacity">
                     <div className="p-1 px-2 rounded bg-red-600 text-white text-[10px] font-bold uppercase tracking-wider">
-                      {story.media_type}
+                      {reel.category || reel.media_type}
                     </div>
                   </div>
                 </div>

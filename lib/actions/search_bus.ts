@@ -3,9 +3,15 @@
 import { createClient } from '@/lib/supabase/server'
 import { Business } from '@/types/business'
 import { translateDarijaForSearch } from '@/lib/darija-dictionary'
+import { logUserSearch } from './user-activity'
 
 export async function searchStores(queryStr: string = '', locationStr: string = ''): Promise<Business[]> {
     const supabase = createClient()
+
+    // 0. Log search for recommendation engine
+    if (queryStr) {
+        logUserSearch(queryStr);
+    }
 
     // 1. Search native stores
     let storesQuery = supabase

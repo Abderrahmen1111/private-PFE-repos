@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
+import { syncOrderTransaction } from './transactions';
 
 /**
  * Fetch all leads (orders and bookings) for a specific store
@@ -108,7 +109,9 @@ export async function updateOrderStatus(
 
     revalidatePath(`/dashboard/${(data as any).store_id}/leads`)
     revalidatePath(`/dashboard/${(data as any).store_id}/transactions`)
-    revalidatePath(`/profile/user`)
+    if (data) {
+        await syncOrderTransaction(data, supabase);
+    }
     
     return data
 }

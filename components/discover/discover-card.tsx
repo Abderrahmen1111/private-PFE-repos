@@ -8,6 +8,8 @@ import { type DiscoverFeedItem } from '@/components/discover/feed-algorithm'
 import { FeedActions } from '@/components/discover/feed-actions'
 import { toast } from 'sonner'
 import { useSavesStore } from '@/lib/store/use-saves-store'
+import { trackReelInteraction } from '@/lib/actions/reels'
+import { CommentDrawer } from '@/components/discover/comment-drawer'
 
 type DiscoverCardProps = {
   item: DiscoverFeedItem & { merchantScore?: number }
@@ -20,10 +22,17 @@ function DiscoverCardComponent({ item, priority = false }: DiscoverCardProps) {
   const [saved, setSaved] = useState(false)
   const [showLikeBurst, setShowLikeBurst] = useState(false)
   const [isDimmed, setIsDimmed] = useState(false)
+  const [commentsOpen, setCommentsOpen] = useState(false)
   const lastTapTsRef = useRef<number>(0)
 
   const saveCount = useSavesStore((state) => state.saveCount)
   const incrementSave = useSavesStore((state) => state.incrementSave)
+
+  // Extract numeric ID for database calls (handles 'story-123' or 'p0-item...')
+  const numericId = useMemo(() => {
+    const match = item.id.match(/\d+$/);
+    return match ? parseInt(match[0]) : null;
+  }, [item.id]);
 
   useEffect(() => {
     const id = window.setTimeout(() => setEntered(true), 50)
@@ -32,21 +41,26 @@ function DiscoverCardComponent({ item, priority = false }: DiscoverCardProps) {
 
   const displayLikes = useMemo(() => item.likes + (liked ? 1 : 0), [item.likes, liked])
 
-  const triggerLike = useCallback(() => {
+  const triggerLike = useCallback(async () => {
     if (liked) return
     setLiked(true)
     setShowLikeBurst(true)
     setIsDimmed(true)
     setTimeout(() => setIsDimmed(false), 200)
-  }, [liked])
 
-  const handleToggleLike = useCallback(() => {
+    if (numericId) {
+      trackReelInteraction(numericId, 'like');
+    }
+  }, [liked, numericId])
+
+  const handleToggleLike = useCallback(async () => {
     if (liked) {
       setLiked(false)
+      if (numericId) trackReelInteraction(numericId, 'like'); // This handles removal in my action
     } else {
       triggerLike()
     }
-  }, [liked, triggerLike])
+  }, [liked, triggerLike, numericId])
 
   useEffect(() => {
     if (!showLikeBurst) return
@@ -63,7 +77,7 @@ function DiscoverCardComponent({ item, priority = false }: DiscoverCardProps) {
 
   const isTopSeller = (item.merchantScore ?? 0) >= 80
 
-  const handleToggleSave = useCallback(() => {
+  const handleToggleSave = useCallback(async () => {
     const isSavedNow = !saved
     setSaved(isSavedNow)
     if (isSavedNow) {
@@ -77,7 +91,11 @@ function DiscoverCardComponent({ item, priority = false }: DiscoverCardProps) {
       })
       incrementSave()
     }
-  }, [saved, incrementSave])
+
+    if (numericId) {
+      trackReelInteraction(numericId, 'save');
+    }
+  }, [saved, incrementSave, numericId])
 
   return (
     <article
@@ -194,7 +212,16 @@ function DiscoverCardComponent({ item, priority = false }: DiscoverCardProps) {
         onToggleLike={handleToggleLike}
         saved={saved}
         onToggleSave={handleToggleSave}
+        onOpenComments={() => setCommentsOpen(true)}
       />
+
+      {numericId && (
+        <CommentDrawer 
+          isOpen={commentsOpen} 
+          onClose={() => setCommentsOpen(false)} 
+          reelId={numericId} 
+        />
+      )}
     </article>
   )
 }

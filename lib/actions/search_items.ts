@@ -3,6 +3,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { Database } from '@/types/supabase'
 import { translateDarijaForSearch } from '@/lib/darija-dictionary'
+import { logUserSearch } from './user-activity'
 
 export type SearchResultItem = {
     id: any;
@@ -25,6 +26,11 @@ export type SearchResultItem = {
 
 export async function searchItems(query?: string, category?: string) {
     const supabase = createClient()
+    
+    // Log search for recommendation engine
+    if (query) {
+        logUserSearch(query);
+    }
 
     let request = supabase
         .from('items')

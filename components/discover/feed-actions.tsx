@@ -9,6 +9,7 @@ type FeedActionsProps = {
   onToggleLike?: () => void
   saved?: boolean
   onToggleSave?: () => void
+  onOpenComments?: () => void
 }
 
 const formatCount = (count: number) => {
@@ -24,6 +25,7 @@ export function FeedActions({
   onToggleLike,
   saved = false,
   onToggleSave,
+  onOpenComments,
 }: FeedActionsProps) {
   const actionBaseClass =
     'group flex flex-col items-center gap-1 rounded-full bg-white/10 p-2.5 text-white backdrop-blur-md transition-all duration-300 hover:scale-105 hover:bg-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70'
@@ -51,7 +53,12 @@ export function FeedActions({
         <span className="text-xs font-medium">{formatCount(likes)}</span>
       </button>
 
-      <button type="button" aria-label="Comment" className={actionBaseClass}>
+      <button 
+        type="button" 
+        aria-label="Comment" 
+        className={actionBaseClass}
+        onClick={onOpenComments}
+      >
         <MessageCircle className="h-5 w-5 transition-transform duration-300 group-hover:scale-110" />
         <span className="text-xs font-medium">{formatCount(comments)}</span>
       </button>

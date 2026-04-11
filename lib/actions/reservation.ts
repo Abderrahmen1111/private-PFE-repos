@@ -3,6 +3,7 @@
 import { createClient } from '@/lib/supabase/server';
 import { Database } from '@/types/supabase';
 import { revalidatePath } from 'next/cache';
+import { syncBookingTransaction } from './transactions';
 
 export type BookingInsert = Database['public']['Tables']['bookings']['Insert'];
 export type BookingRow = Database['public']['Tables']['bookings']['Row'];
@@ -36,6 +37,10 @@ export async function createBooking(data: Omit<BookingInsert, 'booking_number' |
   if (error) {
     console.error('Error creating booking:', error);
     throw new Error(`Erreur lors de la réservation : ${error.message}`);
+  }
+
+  if (booking) {
+    await syncBookingTransaction(booking, supabase);
   }
 
   revalidatePath(`/merchants/business/${data.store_id}`);
@@ -116,9 +121,8 @@ export async function updateBookingStatus(
     .select()
     .single();
 
-  if (error) {
-    console.error('Error updating booking status:', error);
-    throw new Error(error.message);
+  if (data) {
+    await syncBookingTransaction(data, supabase);
   }
 
   revalidatePath(`/dashboard/${data.store_id}/leads`);
