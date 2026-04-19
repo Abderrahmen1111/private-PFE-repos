@@ -12,6 +12,6 @@ export async function debugReelsColumns() {
     }
     
     // If no data, try to get from information_schema
-    const { data: cols } = await supabase.rpc('get_table_columns', { table_name: 'reels' })
+    const { data: cols } = await (supabase as any).rpc('get_table_columns', { table_name: 'reels' })
     return { columns: cols || 'No data and RPC failed' }
 }

@@ -169,7 +169,7 @@ export function BusinessReservationSidebar({
                 <BusinessCommandSidebar
                   businessName={businessName}
                   items={items}
-                  storeId={items[0]?.store_id}
+                  storeId={items[0]?.store_id ?? undefined}
                   isLinkedToStore={isLinkedToStore}
                 />
               )}
@@ -194,7 +194,7 @@ export function BusinessReservationSidebar({
               reservationFee={0}
               currency="TND "
               service={items.find(i => i.item_type === 'SERVICE')}
-              storeId={items[0]?.store_id} // Taking store_id from any item if available
+              storeId={items[0]?.store_id ?? undefined} // Taking store_id from any item if available
               workingHours={workingHours}
               onConfirm={(data: ReservationData) => {
                 setConfirmedData(data);

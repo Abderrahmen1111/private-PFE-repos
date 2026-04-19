@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import {
   Star, MapPin, Phone, Globe, Mail, Shield, Edit2, Key,
   Lock, Camera, ExternalLink, MessageSquare, Flag, TrendingUp,
@@ -195,7 +195,7 @@ function formatDuration(seconds: number) {
 // MAIN PAGE
 // ═════════════════════════════════════════════════════════════════════════════
 
-export default function BusinessOwnerProfile() {
+function BusinessOwnerContent() {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<Tab>('overview');
   const [replyingTo, setReplyingTo] = useState<string | null>(null);
@@ -992,5 +992,22 @@ export default function BusinessOwnerProfile() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function BusinessOwnerProfile() {
+  return (
+    <Suspense fallback={
+      <div className="flex items-center justify-center min-h-[60vh] bg-gray-50">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-10 h-10 rounded-2xl flex items-center justify-center bg-orange-50">
+            <Loader2 className="w-5 h-5 animate-spin text-orange-500" />
+          </div>
+          <p className="text-sm text-gray-500 font-medium">Loading your profile…</p>
+        </div>
+      </div>
+    }>
+      <BusinessOwnerContent />
+    </Suspense>
   );
 }

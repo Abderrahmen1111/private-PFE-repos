@@ -133,7 +133,7 @@ export async function getOrdersByStatus(storeId: number, status: string) {
             )
         `)
         .eq('store_id', storeId)
-        .eq('status', status)
+        .eq('status', status as any)
         .order('created_at', { ascending: false })
     
     if (error) {

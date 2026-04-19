@@ -1,4 +1,13 @@
+export const dynamic = 'force-dynamic'
 import { verifySignatureAppRouter } from '@upstash/qstash/nextjs';
+
+// Fallback for build time if QStash keys are missing
+if (!process.env.QSTASH_CURRENT_SIGNING_KEY) {
+  process.env.QSTASH_CURRENT_SIGNING_KEY = 'dummy_key_for_build';
+}
+if (!process.env.QSTASH_NEXT_SIGNING_KEY) {
+  process.env.QSTASH_NEXT_SIGNING_KEY = 'dummy_key_for_build';
+}
 import { NextResponse } from 'next/server';
 import { cancelOrder } from '@/lib/actions/orders';
 

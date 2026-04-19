@@ -153,7 +153,7 @@ export async function getStoreOrders(storeId: number, status?: string) {
     .eq('store_id', storeId);
 
   if (status) {
-    query = query.eq('status', status);
+    query = query.eq('status', status as any);
   }
 
   const { data, error } = await query.order('created_at', { ascending: false });

@@ -1,5 +1,6 @@
 'use client';
 
+import { Suspense } from 'react';
 import { AuthCard } from '@/components/AuthCard';
 
 export default function LoginPage() {
@@ -29,7 +30,9 @@ export default function LoginPage() {
 
             {/* Content */}
             <div className="relative z-10 flex flex-col items-center justify-center">
-                <AuthCard />
+                <Suspense fallback={<div className="h-[400px] w-[350px] animate-pulse bg-white/5 rounded-3xl" />}>
+                    <AuthCard />
+                </Suspense>
 
                 {/* Footer text */}
                 <p className="text-muted-foreground text-xs mt-12 text-center max-w-sm">

@@ -47,14 +47,14 @@ export async function getStoreTickets(storeId: number): Promise<SupportTicket[]>
     return (fallbackData || []).map((t: any) => ({
       ...t,
       customer_phone: null
-    }));
+    })) as SupportTicket[];
   }
 
   // Flatten the customer phone into the ticket object
   return (data || []).map((ticket: any) => ({
     ...ticket,
     customer_phone: (ticket.customer as any)?.phone || null
-  }));
+  })) as SupportTicket[];
 }
 
 export async function createSupportTicket(payload: {
@@ -82,7 +82,7 @@ export async function createSupportTicket(payload: {
     return { success: false, error: error.message };
   }
 
-  return { success: true, data };
+  return { success: true, data: data as any };
 }
 
 export async function getTicketMessages(ticketId: string): Promise<any[]> {

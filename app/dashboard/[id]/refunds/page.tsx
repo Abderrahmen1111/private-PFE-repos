@@ -37,7 +37,7 @@ export default function RefundsPage() {
   }, [storeId]);
 
   const cancelledTransactions = useMemo(() => {
-    return transactions.filter(t => t.status === 'CANCELLED');
+    return transactions.filter(t => t.status === ('CANCELLED' as any));
   }, [transactions]);
 
   const filteredRefunds = useMemo(() => {

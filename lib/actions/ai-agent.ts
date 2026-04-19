@@ -54,7 +54,7 @@ async function fetchRawStoreData(storeId: number) {
         'id, name, item_type, price, price_unit, stock_quantity, status, view_count, order_count, booking_count, rating_average'
       )
       .eq('store_id', storeId)
-      .neq('status', 'ARCHIVED')
+      .neq('status', 'ARCHIVED' as any)
       .order('order_count', { ascending: false })
       .limit(30),
 

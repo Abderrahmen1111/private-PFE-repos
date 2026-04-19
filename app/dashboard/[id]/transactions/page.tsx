@@ -81,7 +81,7 @@ export default function TransactionsPage() {
       
       toast.success(newStatus === 'completed' ? 'Transaction finalisée avec succès' : 'Transaction marquée comme échouée');
       
-      setTransactions(prev => prev.map(t => t.id === selectedTxn.id ? { ...t, status: newStatus === 'failed' ? 'cancelled' : newStatus } : t));
+      setTransactions(prev => prev.map(t => t.id === selectedTxn.id ? { ...t, status: newStatus === 'completed' ? 'completed' : 'failed' } : t));
       setSelectedTxn(null);
       setIsScannerOpen(false);
     } catch (err: any) {
@@ -191,7 +191,7 @@ export default function TransactionsPage() {
             <option value="pending">En attente</option>
             <option value="completed">Complété</option>
             <option value="shipped">Expédié</option>
-            <option value="cancelled">Annulé</option>
+            <option value="failed">Annulé</option>
           </FilterSelect>
 
           <div className="flex flex-col gap-1">
