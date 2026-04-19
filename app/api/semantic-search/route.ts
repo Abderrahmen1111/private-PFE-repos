@@ -80,7 +80,7 @@ function preNormalizeWithDictionary(query: string): string {
  * Pour gérer cas complexes que le dictionnaire ne couvre pas
  */
 async function normalizeDarijaAdvanced(query: string): Promise<string> {
-  const model = gemini.getGenerativeModel({ model: 'gemini-1.5-flash' })
+  const model = gemini.getGenerativeModel({ model: 'gemini-2.5-flash' })
 
   // Extraire mots darija détectés
   const darijaWords = extractDarijaWords(query)
@@ -121,7 +121,7 @@ async function correctSpelling(text: string): Promise<string> {
 }
 
 async function enrichContext(text: string): Promise<string> {
-    const model = gemini.getGenerativeModel({ model: 'gemini-1.5-flash' })
+    const model = gemini.getGenerativeModel({ model: 'gemini-2.5-flash' })
     const prompt = `Tu es un expert SEO et recherche sémantique.
 Prends cette recherche traduite : "${text}"
 
@@ -148,21 +148,36 @@ async function generateEmbedding(text: string): Promise<number[] | null> {
 
 async function hybridSearch(params: { originalQuery: string, enrichedQuery: string, embedding: number[] | null }) {
     const supabase = createClient()
-    
-    // As hybridSearch requires pgvector setup which we might not have, 
-    // we use standard full-text matching or ilike logic on the enriched text as fallback.
-    const query = params.enrichedQuery || params.originalQuery;
-    
-    let { data, error } = await supabase
+
+    const rawQuery = params.enrichedQuery || params.originalQuery;
+
+    // Split enriched query into individual keywords and filter noise words
+    const noiseWords = new Set(['je', 'tu', 'il', 'elle', 'un', 'une', 'des', 'le', 'la', 'les', 'de', 'du',
+        'au', 'aux', 'mon', 'ma', 'mes', 'pour', 'trouver', 'veux', 'où', 'a', 'à', 'est', 'sont', 'y',
+        'dans', 'avec', 'et', 'ou', 'moi', 'toi', 'en', 'par', 'sur', 'qui']);
+    const keywords = rawQuery
+        .toLowerCase()
+        .split(/\s+/)
+        .filter(w => w.length > 2 && !noiseWords.has(w));
+
+    const effectiveKeywords = keywords.length > 0 ? keywords : [rawQuery.toLowerCase()];
+
+    // Chain one .or() per keyword so ANY keyword that matches surfaces the item
+    let request = supabase
         .from('items')
         .select('*, stores(name, rating_average)')
-        .or(`name.ilike.%${query}%,description.ilike.%${query}%`)
-        .limit(20)
-        
+        .eq('status', 'AVAILABLE')
+
+    effectiveKeywords.forEach(keyword => {
+        request = (request as any).or(`name.ilike.%${keyword}%,description.ilike.%${keyword}%`)
+    })
+
+    const { data, error } = await (request as any).limit(20)
+
     if (error) {
-       console.error("hybrid search fallback error:", error)
-       return []
+        console.error('hybrid search fallback error:', error)
+        return []
     }
-    
+
     return data;
 }

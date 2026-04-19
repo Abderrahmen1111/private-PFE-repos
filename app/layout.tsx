@@ -13,6 +13,14 @@ const GlobalActionDrawer = dynamic(() => import('@/components/GlobalActionDrawer
   ssr: false,
 });
 
+const MessageBubble = dynamic(() => import('@/components/messaging/MessageBubble').then(mod => mod.MessageBubble), {
+  ssr: false,
+});
+
+const ChatHeads = dynamic(() => import('@/components/messaging/ChatHeads').then(mod => mod.ChatHeads), {
+  ssr: false,
+});
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -23,6 +31,7 @@ export default function RootLayout({
       <body className="antialiased">
         {children}
         <GlobalActionDrawer />
+        <ChatHeads />
         <Toaster />
       </body>
     </html>

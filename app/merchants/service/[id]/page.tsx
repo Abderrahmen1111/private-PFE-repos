@@ -56,19 +56,17 @@ const categoryColors: Record<string, string> = {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export default async function ServiceProfilePage({ params }: { params: { id: string } }) {
-  const id = parseInt(params.id);
-  if (isNaN(id)) notFound();
+  const identifier = params.id; // Could be a numeric ID or a string slug
 
-  const [service, reviews] = await Promise.all([
-    getServiceById(id),
-    getServiceReviews(id),
-  ]);
-
+  const service = await getServiceById(identifier);
   if (!service) notFound();
+
+  // Now that we have the exact numeric ID, fetch reviews safely
+  const reviews = await getServiceReviews(service.id);
 
   const stories = await getBusinessStories(service.store.id);
 
-  const related    = await getRelatedItems(service.store.id, id);
+  const related    = await getRelatedItems(service.store.id, service.id);
   const images     = [service.main_image, service.image_2, service.image_3].filter(Boolean) as string[];
   const heroImage  = images[0] ?? 'https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=1200&h=500&fit=crop';
   const catColor   = categoryColors[service.store.category] ?? categoryColors.OTHER;

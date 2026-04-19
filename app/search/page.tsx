@@ -168,8 +168,7 @@ function SearchPageContent() {
                             <ServiceCard 
                               item={item} 
                               businessName={item.stores?.name}
-                              onViewDetails={() => router.push(`/merchants/service/${item.id}`)}
-
+                              onViewDetails={() => router.push(`/merchants/business/${item.id}`)}
                               hideBooking={false} 
                             />
                             ) : (
@@ -240,8 +239,7 @@ function SearchPageContent() {
                             <ServiceCard 
                               item={item} 
                               businessName={item.stores?.name}
-                              onViewDetails={() => router.push(`/merchants/service/${item.id}`)}
-
+                              onViewDetails={() => router.push(`/merchants/business/${item.id}`)}
                               hideBooking={false}
                             />
                           ) : (

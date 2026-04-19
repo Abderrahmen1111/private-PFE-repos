@@ -5,7 +5,6 @@ import { Zap, Tag, Star, Clock, TrendingUp, Flame, Clapperboard } from 'lucide-r
 import {
   Stories,
   StoriesContent,
-  Story,
   StoryThumbnail,
   StoryImage,
   StoryOverlay,
@@ -16,6 +15,7 @@ import {
   StoryMeta,
   StoryTitle,
   StoryViews,
+  StoryCard,
 } from '@/components/ui/stories-carousel';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -186,14 +186,14 @@ export default function ShortAdsSection() {
   return (
     <section className="py-5">
       {/* ── Header ── */}
-      <div className="flex items-center justify-between mb-3 px-4 md:px-6">
+      <div className="flex items-center justify-between mb-3 px-0.5">
         <div className="flex items-center gap-2">
           {/* YouTube Shorts-style camera icon + label */}
           <div className="flex items-center gap-1.5">
             <div className="w-7 h-7 rounded-lg bg-[#ffffff] flex items-center justify-center shadow-sm">
               <Clapperboard className="w-4 h-4 text-black" />
             </div>
-            <h2 className="text-base font-bold tracking-tight text-[#000000]">
+            <h2 className="text-sm font-bold tracking-tight text-[#000000]">
               explore
             </h2>
           </div>
@@ -202,21 +202,16 @@ export default function ShortAdsSection() {
 
       </div>
 
-      {/* ── Carousel ── */}
-      {/* Outer wrapper clips the partial last card and adds side padding */}
-      <div className="px-4 md:px-6">
-        <Stories>
-          <StoriesContent className="pb-1">
-            {shortAds.map((ad) => (
-              <Story
-                key={ad.id}
-                isNew={ad.isNew}
-                onClick={handleAdClick}
-                onKeyDown={(e) => e.key === 'Enter' && handleAdClick()}
-                // Fixed card width — partial visibility of next card creates the
-                // "more content" affordance naturally
-                className="w-[140px] md:w-[155px] shrink-0"
-              >
+      <div className="px-0.5">
+        <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 xl:grid-cols-6 gap-3">
+          {shortAds.map((ad) => (
+            <StoryCard
+              key={ad.id}
+              isNew={ad.isNew}
+              onClick={handleAdClick}
+              onKeyDown={(e) => e.key === 'Enter' && handleAdClick()}
+              className="w-full"
+            >
                 {/* ── Thumbnail ── */}
                 <StoryThumbnail>
                   <StoryImage alt={`${ad.brand} short ad`} src={ad.image} />
@@ -245,29 +240,28 @@ export default function ShortAdsSection() {
                     fallback={ad.brand[0]}
                   />
                   <StoryMeta>
-                    <StoryTitle>{ad.tagline}</StoryTitle>
-                    <StoryViews>
+                    <StoryTitle className="text-[11px] leading-tight">{ad.tagline}</StoryTitle>
+                    <StoryViews className="text-[10px]">
                       <span className={`font-semibold ${ad.textColor}`}>{ad.brand}</span>
                       {' · '}{ad.views}
                     </StoryViews>
                   </StoryMeta>
                 </StoryInfo>
-              </Story>
+              </StoryCard>
             ))}
 
-            {/* ── "See all" ghost card at the end ── */}
-            <div className="pl-3 flex items-stretch">
-              <button
-                onClick={() => router.push('/discover')}
-                className="w-[100px] md:w-[110px] rounded-xl border border-dashed border-[#2A2A2A] bg-[#1A1A1A] flex flex-col items-center justify-center gap-2 text-[#A1A1AA] hover:text-[#FFFFFF] hover:bg-[#222222] transition-colors hover:scale-105 active:scale-95"
-                style={{ aspectRatio: '9/16' }}
-              >
-                <span className="text-2xl">→</span>
-                <span className="text-[11px] font-semibold text-center leading-tight px-2">See all shorts</span>
-              </button>
-            </div>
-          </StoriesContent>
-        </Stories>
+          {/* ── "See all" ghost card at the end ── */}
+          <div className="flex items-stretch">
+            <button
+              onClick={() => router.push('/discover')}
+              className="w-full rounded-xl border border-dashed border-[#2A2A2A] bg-[#1A1A1A] flex flex-col items-center justify-center gap-2 text-[#A1A1AA] hover:text-[#FFFFFF] hover:bg-[#222222] transition-colors hover:scale-105 active:scale-95"
+              style={{ aspectRatio: '9/16' }}
+            >
+              <span className="text-2xl">→</span>
+              <span className="text-[11px] font-semibold text-center leading-tight px-2">See all shorts</span>
+            </button>
+          </div>
+        </div>
       </div>
     </section>
   );

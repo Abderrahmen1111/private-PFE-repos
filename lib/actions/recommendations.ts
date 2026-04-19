@@ -40,18 +40,30 @@ export async function getPersonalizedReels(): Promise<DiscoverFeedItem[]> {
     const { data: reelsData, error } = await (supabase as any)
         .from('reels')
         .select(`
-            *,
+            id,
+            store_id,
+            media_path,
+            media_type,
+            title,
+            subtitle,
+            price,
+            currency,
+            category,
+            item_id,
+            created_at,
             stores (
                 id,
                 name,
                 city,
                 category
             ),
+            items:item_id (
+                id,
+                item_type
+            ),
             reel_stats (
                 views_count,
-                likes_count,
-                saves_count,
-                completions_count
+                likes_count
             )
         `)
         .eq('status', 'active');
@@ -60,6 +72,17 @@ export async function getPersonalizedReels(): Promise<DiscoverFeedItem[]> {
         console.error('Error fetching reels for recommendations:', error);
         return [];
     }
+
+    const reelIds = reelsData.map((r: any) => r.id);
+
+    // Fetch real global interactions directly to count exact likes and comments
+    const [allInteractionsRes, allCommentsRes] = await Promise.all([
+        (supabase as any).from('user_interactions').select('reel_id, type').in('reel_id', reelIds),
+        (supabase as any).from('reel_comments').select('reel_id').in('reel_id', reelIds)
+    ]);
+
+    const globalInteractions = allInteractionsRes.data || [];
+    const globalComments = allCommentsRes.data || [];
 
     // 3. Scoring Strategy
     const scoredReels = reelsData.map((reel: any) => {
@@ -95,7 +118,10 @@ export async function getPersonalizedReels(): Promise<DiscoverFeedItem[]> {
         }
 
         // E. Base Engagement (normalized popularity)
-        const totalEngagement = (stats.likes_count || 0) + (stats.saves_count || 0) + (stats.completions_count || 0);
+        const reelLikesCount = globalInteractions.filter((i: any) => i.reel_id === reel.id && i.type === 'like').length;
+        const reelCommentsCount = globalComments.filter((c: any) => c.reel_id === reel.id).length;
+        
+        const totalEngagement = reelLikesCount + (stats.views_count || 0);
         const popularityScore = Math.min(100, Math.log10(totalEngagement + 1) * 20);
 
         return {
@@ -105,10 +131,13 @@ export async function getPersonalizedReels(): Promise<DiscoverFeedItem[]> {
             product: reel.title,
             description: reel.subtitle || '',
             price: reel.price ? `${reel.price} ${reel.currency || 'TND'}` : '',
-            image: parseFirstMediaUrl(reel.media_url),
+            image: parseFirstMediaPath(reel.media_path),
+            allMedia: parseMediaUrls(reel.media_path),
             mediaType: reel.media_type,
-            likes: stats.likes_count || 0,
-            comments: 0, // Will be updated if comments are fetched
+            likes: reelLikesCount,
+            comments: reelCommentsCount,
+            hasLiked: recentInteractions.some(i => i.reel_id === reel.id && i.type === 'like'),
+            hasSaved: recentInteractions.some(i => i.reel_id === reel.id && i.type === 'save'),
             category: (reel.category || store.category || 'lifestyle').toLowerCase(),
             popularityScore: popularityScore,
             engagementScore: personalScore, // We use engagementScore to represent personalization
@@ -117,7 +146,9 @@ export async function getPersonalizedReels(): Promise<DiscoverFeedItem[]> {
                 rating: 5.0,
                 totalSales: 100,
                 responseRate: 98
-            }
+            },
+            itemId: reel.item_id,
+            itemType: reel.items?.item_type
         } as DiscoverFeedItem;
     });
 
@@ -125,15 +156,20 @@ export async function getPersonalizedReels(): Promise<DiscoverFeedItem[]> {
     return scoredReels.sort((a : any, b: any) => b.engagementScore - a.engagementScore);
 }
 
-function parseFirstMediaUrl(url: string): string {
-    if (!url) return '';
-    if (url.startsWith('[') && url.endsWith(']')) {
+function parseMediaUrls(path: string): string[] {
+    if (!path) return [];
+    if (path.startsWith('[') && path.endsWith(']')) {
         try {
-            const arr = JSON.parse(url);
-            return arr[0] || '';
+            return JSON.parse(path);
         } catch (e) {
-            return url;
+            return [path];
         }
     }
-    return url;
+    return [path];
+}
+
+function parseFirstMediaPath(path: string): string {
+    if (!path) return '';
+    const urls = parseMediaUrls(path);
+    return urls[0] || '';
 }

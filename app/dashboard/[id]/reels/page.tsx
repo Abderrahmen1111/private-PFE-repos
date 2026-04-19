@@ -8,6 +8,7 @@ import {
   deleteReel, 
   uploadReelMedia 
 } from '@/lib/actions/reels';
+import { getAdminItemsByStoreId, Item } from '@/lib/actions/items';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { 
@@ -64,6 +65,10 @@ export default function ReelsPage() {
   const [ctaValue, setCtaValue] = useState('');
   const [category, setCategory] = useState('');
   
+  const [itemId, setItemId] = useState<number | undefined>(undefined);
+  const [storeItems, setStoreItems] = useState<Item[]>([]);
+  const [isItemsLoading, setIsItemsLoading] = useState(false);
+  
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [previewUrls, setPreviewUrls] = useState<string[]>([]);
@@ -81,7 +86,35 @@ export default function ReelsPage() {
 
   useEffect(() => {
     fetchReels();
+    fetchStoreItems();
   }, [storeId]);
+
+  const fetchStoreItems = async () => {
+    setIsItemsLoading(true);
+    try {
+      const items = await getAdminItemsByStoreId(storeId);
+      setStoreItems(items);
+    } catch (error) {
+      console.error('Error fetching store items:', error);
+    } finally {
+      setIsItemsLoading(false);
+    }
+  };
+
+  const handleItemSelect = (idStr: string) => {
+    if (idStr === 'none') {
+      setItemId(undefined);
+      return;
+    }
+    const id = parseInt(idStr);
+    setItemId(id);
+    const selectedItem = storeItems.find(item => item.id === id);
+    if (selectedItem) {
+      setTitle(selectedItem.name);
+      setPrice((selectedItem.price || 0).toString());
+      setCategory(selectedItem.item_type === 'SERVICE' ? 'Service' : 'Produit');
+    }
+  };
 
   const fetchReels = async () => {
     setIsLoading(true);
@@ -144,7 +177,7 @@ export default function ReelsPage() {
       
       const result = await publishReel({
         storeId,
-        mediaUrl: mediaUrls.length === 1 ? mediaUrls[0] : mediaUrls,
+        mediaPath: mediaUrls.length === 1 ? mediaUrls[0] : mediaUrls,
         mediaType: isVideo ? 'video' : 'image',
         title,
         subtitle: subtitle || undefined,
@@ -152,6 +185,7 @@ export default function ReelsPage() {
         ctaType,
         ctaValue: ctaValue || undefined,
         category: category || undefined,
+        itemId: itemId,
       });
 
       if (result.success) {
@@ -326,6 +360,7 @@ export default function ReelsPage() {
               setMode('record');
               setPreviewUrls([]);
               setSelectedFiles([]);
+              setItemId(undefined);
             }
           }}
         >
@@ -337,6 +372,7 @@ export default function ReelsPage() {
                 setMode('record');
                 setPreviewUrls([]);
                 setSelectedFiles([]);
+                setItemId(undefined);
               }}
             >
               <Plus className="w-5 h-5 mr-2" /> Nouveau Reel
@@ -480,6 +516,24 @@ export default function ReelsPage() {
                 />
               </div>
 
+              <div className="space-y-2">
+                <Label htmlFor="linkedItemId" className="text-sm font-semibold">Lier un article (Produit/Service)</Label>
+                <select 
+                  id="linkedItemId"
+                  className="w-full h-10 px-3 rounded-md bg-slate-800 border border-slate-700 text-sm focus:ring-2 focus:ring-red-500 outline-none text-white appearance-none"
+                  value={itemId || 'none'}
+                  onChange={(e) => handleItemSelect(e.target.value)}
+                >
+                  <option value="none" className="bg-slate-900 text-slate-400 italic">-- Aucun article lié --</option>
+                  {storeItems.map(item => (
+                    <option key={item.id} value={item.id} className="bg-slate-900 text-white">
+                      [{item.item_type === 'PRODUCT' ? '📦 Produit' : '🛠️ Service'}] {item.name} - {item.price} TND
+                    </option>
+                  ))}
+                </select>
+                <p className="text-[10px] text-slate-500">Lier un article permet d'auto-remplir les champs et d'ajouter un lien direct d'achat sur votre Reel.</p>
+              </div>
+
                <div className="grid grid-cols-2 gap-4">
                  <div className="space-y-2">
                    <Label htmlFor="title" className="text-sm font-semibold">Titre</Label>
@@ -612,9 +666,9 @@ export default function ReelsPage() {
                       </div>
                     </Carousel>
                   ) : reel.media_type === 'video' ? (
-                    <video src={reel.media_url} className="w-full h-full object-cover" />
+                    <video src={reel.media_urls?.[0] || reel.media_path} className="w-full h-full object-cover" />
                   ) : (
-                    <img src={reel.media_url} className="w-full h-full object-cover" alt={reel.title} />
+                    <img src={reel.media_urls?.[0] || reel.media_path} className="w-full h-full object-cover" alt={reel.title} />
                   )}
                   
                   <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-end p-4">
@@ -627,7 +681,7 @@ export default function ReelsPage() {
                          variant="ghost" 
                          size="sm" 
                          className="h-8 w-8 p-0 text-white hover:bg-white/20"
-                         onClick={() => window.open(reel.media_url, '_blank')}
+                         onClick={() => window.open(reel.media_urls?.[0] || reel.media_path, '_blank')}
                        >
                          <Play className="w-4 h-4" />
                        </Button>
@@ -661,16 +715,14 @@ export default function ReelsPage() {
                     <div className="bg-black/60 backdrop-blur-md px-2 py-1 rounded-lg flex flex-col items-center gap-1 text-[10px] font-bold text-white shadow-xl ring-1 ring-white/10">
                       <div className="flex items-center gap-1">
                         <Bookmark className="w-3 h-3 text-yellow-400 fill-yellow-400" />
-                        {reel.stats?.saves_count || 0}
+                        {reel.stats?.clicks_count || 0}
                       </div>
                     </div>
 
                     <div className="bg-black/60 backdrop-blur-md px-2 py-1 rounded-lg flex flex-col items-center gap-1 text-[10px] font-bold text-white shadow-xl ring-1 ring-white/10">
-                      <div className="flex items-center gap-1" title="Taux de complétion">
+                      <div className="flex items-center gap-1" title="Contact / Intérêt">
                         <Target className="w-3 h-3 text-green-400" />
-                        {reel.stats?.views_count > 0 
-                          ? Math.round(((reel.stats?.completions_count || 0) / reel.stats.views_count) * 100) 
-                          : 0}%
+                        {reel.stats?.contact_count || 0}
                       </div>
                     </div>
                   </div>

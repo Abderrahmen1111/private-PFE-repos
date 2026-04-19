@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { Item } from '@/lib/actions/items';
-import { Star, Package, ShoppingCart, Scale, Heart, Zap } from 'lucide-react';
+import { Star, Package, ShoppingCart, Scale, Heart, Zap, Calendar } from 'lucide-react';
 import { useActionDrawer } from '@/hooks/useActionDrawer';
 
 interface ServiceCardProps {
@@ -28,6 +28,7 @@ interface ProductCardProps {
     onViewDetails?: () => void;
     onBuy?: () => void;
     hideBuyButton?: boolean;
+    isOwner?: boolean;
 }
 
 const categoryStyles: Record<string, { icon: string; color: string; tag: string }> = {
@@ -55,7 +56,7 @@ function Stars({ n }: { n: number }) {
     );
 }
 
-export function ProductCard({ item, businessName, compared, promotion, onCompare, onViewDetails, onBuy, hideBuyButton }: ProductCardProps) {
+export function ProductCard({ item, businessName, compared, promotion, onCompare, onViewDetails, onBuy, hideBuyButton, isOwner = false }: ProductCardProps) {
     const { openDrawer } = useActionDrawer();
     const [isWished, setIsWished] = useState(false);
     
@@ -77,6 +78,7 @@ export function ProductCard({ item, businessName, compared, promotion, onCompare
                     item,
                     businessName: bName,
                     promotion,
+                    isOwner,
                 });
             }
         }
@@ -197,8 +199,12 @@ export function ProductCard({ item, businessName, compared, promotion, onCompare
                                 className="flex-1 overflow-hidden relative group/btn h-11 flex items-center justify-center gap-2 text-[12px] font-black tracking-widest uppercase bg-stone-900 text-white rounded-2xl hover:bg-stone-800 transition-all active:scale-95 shadow-[0_10px_20px_rgba(0,0,0,0.1)]"
                             >
                                 <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/10 to-white/0 -translate-x-full group-hover/btn:translate-x-full transition-transform duration-1000" />
-                                <ShoppingCart className="w-4 h-4 mb-0.5" />
-                                Acheter
+                                {item.item_type === 'SERVICE' ? (
+                                    <Calendar className="w-4 h-4 mb-0.5" />
+                                ) : (
+                                    <ShoppingCart className="w-4 h-4 mb-0.5" />
+                                )}
+                                {item.item_type === 'SERVICE' ? 'Réserver' : 'Acheter'}
                             </button>
 
                             <button

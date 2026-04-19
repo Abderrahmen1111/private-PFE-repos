@@ -298,8 +298,10 @@ export default function DashboardLayout({
               user={user || { name: 'Commerçant', username: '', initials: 'C' }}
               onAction={(action) => {
                 if (action === 'logout') {
-                  const supabase = createClient();
-                  supabase.auth.signOut().then(() => router.push('/login'));
+                  fetch('/api/auth/logout', { method: 'POST' }).then(() => {
+                    router.push('/login');
+                    router.refresh();
+                  });
                 }
               }}
             />

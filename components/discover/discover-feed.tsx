@@ -2,16 +2,34 @@
 
 import { DiscoverCard } from '@/components/discover/discover-card'
 import { useInfiniteFeed } from '@/components/discover/useInfiniteFeed'
+import { X } from 'lucide-react'
+import { useRouter } from 'next/navigation'
+import { cn } from '@/lib/utils'
 
-export function DiscoverFeed() {
+export function DiscoverFeed({ isCompact = false }: { isCompact?: boolean }) {
+  const router = useRouter()
   const { items, isLoading, hasMore, containerRef, sentinelRef } = useInfiniteFeed()
 
   return (
     <section
       aria-label="Discover feed"
-      className="h-screen overflow-y-scroll snap-y snap-mandatory scroll-smooth bg-black"
+      className={cn(
+        "relative overflow-y-auto snap-y snap-mandatory scroll-smooth bg-black",
+        isCompact ? "h-full w-full" : "h-screen"
+      )}
       ref={containerRef}
     >
+      {/* Close button - only show if NOT compact */}
+      {!isCompact && (
+        <button
+          onClick={() => router.push('/')}
+          className="fixed top-6 left-6 z-[60] size-12 rounded-full bg-white/10 backdrop-blur-xl border border-white/20 flex items-center justify-center text-white transition-all hover:scale-110 active:scale-95 hover:bg-white/20 shadow-2xl"
+          aria-label="Close"
+        >
+          <X className="w-6 h-6" />
+        </button>
+      )}
+
       {items.map((item, index) => (
         <DiscoverCard key={`${item.id}-${index}`} item={item} priority={index < 2} />
       ))}

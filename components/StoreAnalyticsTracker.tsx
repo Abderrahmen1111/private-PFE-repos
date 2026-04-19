@@ -15,8 +15,7 @@ export default function StoreAnalyticsTracker({ storeId }: StoreAnalyticsTracker
   useEffect(() => {
     // 1. Generate a unique session ID for this visit
     if (!sessionIdRef.current) {
-      sessionIdRef.current = Math.random().toString(36).substring(2, 15) + 
-                            Math.random().toString(36).substring(2, 15);
+      sessionIdRef.current = crypto.randomUUID();
     }
 
     const sessionId = sessionIdRef.current;

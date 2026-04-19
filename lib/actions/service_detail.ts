@@ -67,11 +67,12 @@ export interface ServiceReview {
 
 // ── Fetch service by id ───────────────────────────────────────────────────────
 
-export async function getServiceById(id: any): Promise<ServiceDetail | null> {
+export async function getServiceById(identifier: any): Promise<ServiceDetail | null> {
   const supabase = createClient();
-
+  const isNumeric = !isNaN(Number(identifier));
+  
   // 1. Try to find in 'items' table first
-  const { data: itemData, error: itemError } = await (supabase
+  let itemsQuery = supabase
     .from('items')
     .select(`
       id,
@@ -118,15 +119,21 @@ export async function getServiceById(id: any): Promise<ServiceDetail | null> {
         max_bookings
       )
     `)
-    .eq('id', id)
-    .eq('item_type', 'SERVICE')
-    .single() as any);
+    .eq('item_type', 'SERVICE');
+    
+  if (isNumeric) {
+    itemsQuery = itemsQuery.eq('id', identifier);
+  } else {
+    itemsQuery = itemsQuery.eq('slug', identifier);
+  }
+  
+  const { data: itemData, error: itemError } = await (itemsQuery.single() as any);
 
   if (itemData) {
     // Increment view count (fire-and-forget)
     (supabase.from('items') as any)
       .update({ view_count: (itemData.view_count ?? 0) + 1 })
-      .eq('id', id)
+      .eq('id', itemData.id)
       .then(() => {});
 
     const storeObj = Array.isArray(itemData.stores) ? itemData.stores[0] : itemData.stores;
@@ -156,7 +163,7 @@ export async function getServiceById(id: any): Promise<ServiceDetail | null> {
   }
 
   // 2. If not found in items, try 'service_directory'
-  const { data: dirData, error: dirError } = await (supabase
+  let dirQuery = supabase
     .from('service_directory')
     .select(`
         *,
@@ -178,9 +185,15 @@ export async function getServiceById(id: any): Promise<ServiceDetail | null> {
             opening_hours,
             verified_at
         )
-    `)
-    .eq('service_id', id)
-    .single() as any);
+    `);
+
+  if (isNumeric) {
+    dirQuery = dirQuery.eq('service_id', identifier);
+  } else {
+    dirQuery = dirQuery.eq('slug', identifier);
+  }
+  
+  const { data: dirData, error: dirError } = await (dirQuery.single() as any);
 
   if (dirData) {
     return {
@@ -225,8 +238,51 @@ export async function getServiceById(id: any): Promise<ServiceDetail | null> {
   }
 
   if (itemError && dirError) {
-      console.error('getServiceById error (Items):', itemError);
-      console.error('getServiceById error (Directory):', dirError);
+      console.log('getServiceById: not found in items or service_directory, checking native stores...');
+  }
+
+  // 3. Fallback: try the 'stores' table directly (for native stores acting as services)
+  let storeQuery = supabase
+      .from('stores')
+      .select('id, name, slug, description, category, phone, address, city, rating_average, total_reviews, opening_hours, logo_url, status');
+
+  if (isNumeric) {
+      storeQuery = storeQuery.eq('id', Number(identifier));
+  } else {
+      storeQuery = storeQuery.eq('slug', identifier);
+  }
+
+  const { data: storeData } = await (storeQuery.maybeSingle() as any);
+
+  if (storeData) {
+      return {
+          id: storeData.id,
+          name: storeData.name,
+          slug: storeData.slug,
+          description: storeData.description,
+          price: 0,
+          price_unit: 'variable',
+          duration_minutes: 0,
+          is_bookable: true,
+          available_days: null,
+          main_image: storeData.logo_url || null,
+          image_2: null,
+          image_3: null,
+          status: storeData.status || 'PUBLISHED',
+          view_count: 0,
+          booking_count: 0,
+          rating_average: storeData.rating_average || 0,
+          total_reviews: storeData.total_reviews || 0,
+          created_at: '', // Not strictly needed for UI display
+          store: {
+              ...storeData,
+              banner_url: null,
+              verified_at: null,
+              email: null,
+              website: null
+          },
+          schedules: [],
+      } as ServiceDetail;
   }
 
   return null;

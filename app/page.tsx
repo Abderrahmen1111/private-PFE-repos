@@ -57,17 +57,21 @@ export default function Home() {
         {/* Spacer to prevent content overlay from fixed Navbar */}
         <div className="h-24 md:h-28" />
 
-        {/* Smart Strip — between shorts and offers for max attention */}
-        <div className="px-4 md:px-6 py-2">
-  <SmartStrip
-    items={STRIP_ITEMS}
-    title="Trending & Offers"
-    onSelect={handleFilterSelect}
-  />
-</div>
 
         <div className={`transition-all duration-300 ${isFiltering ? 'opacity-40 blur-[2px] scale-[0.98]' : 'opacity-100 blur-0 scale-100'}`}>
-          <ShortAdsSection />
+          <div className="max-w-[1600px] mx-auto grid grid-cols-1 lg:grid-cols-4 gap-8 px-4 md:px-6 py-6">
+            <div className="lg:col-span-1">
+              <SmartStrip
+                items={STRIP_ITEMS}
+                title="Trending & Offers"
+                onSelect={handleFilterSelect}
+              />
+            </div>
+            <div className="lg:col-span-3">
+              <ShortAdsSection />
+            </div>
+          </div>
+
           <Offers />
           <OffersCarouselDemo />
         

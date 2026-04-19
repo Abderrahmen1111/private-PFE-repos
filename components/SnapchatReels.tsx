@@ -220,20 +220,23 @@ export default function SnapchatReels() {
                 <div className="absolute inset-0 bg-indigo-500/10 mix-blend-overlay opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
 
                 {/* Content Container */}
-                <div className="absolute inset-0 p-5 flex flex-col justify-between">
-                  <div className="flex justify-between items-start">
-                     <div className="px-4 py-1.5 rounded-2xl bg-white/10 backdrop-blur-2xl border border-white/20 shadow-xl overflow-hidden group/tag">
-                        <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/10 to-white/0 -translate-x-full group-hover/tag:translate-x-full transition-transform duration-1000" />
-                        <span className="relative text-white text-[11px] font-black uppercase tracking-widest truncate max-w-[100px]">
-                           {story.store_name}
-                        </span>
-                     </div>
-                     <div className="w-10 h-10 rounded-full bg-white/10 backdrop-blur-2xl border border-white/20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-500 transform translate-y-2 group-hover:translate-y-0 scale-75 group-hover:scale-100">
-                        <Play className="w-4 h-4 text-white fill-white shadow-[0_0_10px_rgba(255,255,255,0.5)]" />
-                     </div>
-                  </div>
+                  <div className="absolute inset-0 p-5 flex flex-col justify-between">
+                    <div className="flex justify-between items-start">
+                       <div className="px-4 py-1.5 rounded-2xl bg-white/10 backdrop-blur-2xl border border-white/20 shadow-xl overflow-hidden group/tag">
+                          <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/10 to-white/0 -translate-x-full group-hover/tag:translate-x-full transition-transform duration-1000" />
+                          <span className="relative text-white text-[11px] font-black uppercase tracking-widest truncate max-w-[100px]">
+                             {story.store_name}
+                          </span>
+                       </div>
+                    </div>
 
-                  <div className="space-y-3">
+                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                       <div className="w-10 h-10 rounded-full bg-white/10 backdrop-blur-2xl border border-white/20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-500 transform translate-y-2 group-hover:translate-y-0 scale-75 group-hover:scale-100">
+                          <Play className="w-4 h-4 text-white fill-white shadow-[0_0_10px_rgba(255,255,255,0.5)]" />
+                       </div>
+                    </div>
+
+                    <div className="space-y-3">
                     <p className="text-white text-[15px] sm:text-[17px] font-black leading-tight line-clamp-3 text-left drop-shadow-[0_4px_4px_rgba(0,0,0,0.8)] group-hover:translate-x-1 transition-transform">
                       {story.caption}
                     </p>

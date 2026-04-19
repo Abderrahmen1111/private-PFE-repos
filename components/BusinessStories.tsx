@@ -302,16 +302,17 @@ interface BusinessStoriesProps {
   businessName: string;
   storeId: number;
   initialStories?: RealStory[];
+  canAddStory?: boolean;
 }
 
-export function BusinessStories({ storeId, initialStories = [] }: BusinessStoriesProps) {
+export function BusinessStories({ storeId, initialStories = [], canAddStory = false }: BusinessStoriesProps) {
   const [stories, setStories] = useState<RealStory[]>(initialStories);
 
   const handleAdded = (newStory: RealStory) => {
     setStories(prev => [newStory, ...prev]);
   };
 
-  if (stories.length === 0) {
+  if (stories.length === 0 && !canAddStory) {
     return null;
   }
 
@@ -336,8 +337,8 @@ export function BusinessStories({ storeId, initialStories = [] }: BusinessStorie
         </div>
 
         <div className="flex gap-5 overflow-x-auto pb-4 scrollbar-none snap-x h-full">
-          {/* Add story button always first */}
-          <AddStoryButton storeId={storeId} onAdded={handleAdded} />
+          {/* Add story button restricted by canAddStory */}
+          {canAddStory && <AddStoryButton storeId={storeId} onAdded={handleAdded} />}
           
           {/* Real stories */}
           {stories.map((story, i) => (

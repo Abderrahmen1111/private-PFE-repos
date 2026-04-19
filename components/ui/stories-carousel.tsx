@@ -50,42 +50,49 @@ export const StoriesContent = ({
 
 // ─── Individual card slot ─────────────────────────────────────────────────────
 
-export type StoryProps = HTMLAttributes<HTMLDivElement> & {
-  /** show a red "new" dot on the thumbnail corner */
+export type StoryCardProps = HTMLAttributes<HTMLDivElement> & {
   isNew?: boolean;
 };
 
-export const Story = ({ className, isNew, children, ...props }: StoryProps) => (
-  <CarouselItem className={cn('basis-auto pl-3 first:pl-0', className)}>
+export const StoryCard = ({ className, isNew, children, ...props }: StoryCardProps) => (
+  <div
+    className={cn(
+      'group relative flex flex-col gap-2 cursor-pointer',
+      'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+      className
+    )}
+    role="button"
+    tabIndex={0}
+    {...props}
+  >
+    {children}
+
+    {/* Red "new/unwatched" dot */}
+    {isNew && (
+      <span className="absolute top-2 right-2 z-30 w-2.5 h-2.5 rounded-full bg-red-500 ring-2 ring-black/40" />
+    )}
+
+    {/* Play button overlay — appears on hover, positioned over thumbnail only */}
     <div
       className={cn(
-        'group relative flex flex-col gap-2 cursor-pointer',
-        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+        'absolute inset-0 z-20 flex items-center justify-center',
+        'opacity-0 group-hover:opacity-100 transition-opacity duration-200',
       )}
-      role="button"
-      tabIndex={0}
-      {...props}
     >
-      {children}
-
-      {/* Red "new/unwatched" dot */}
-      {isNew && (
-        <span className="absolute top-2 right-2 z-30 w-2.5 h-2.5 rounded-full bg-red-500 ring-2 ring-black/40" />
-      )}
-
-      {/* Play button overlay — appears on hover, positioned over thumbnail only */}
-      <div
-        className={cn(
-          'absolute inset-x-0 top-0 z-20 flex items-center justify-center',
-          'opacity-0 group-hover:opacity-100 transition-opacity duration-200',
-          'bottom-[72px]',
-        )}
-      >
-        <div className="w-12 h-12 rounded-full bg-black/60 backdrop-blur-sm flex items-center justify-center shadow-xl">
-          <Play className="w-5 h-5 text-white fill-white translate-x-0.5" />
-        </div>
+      <div className="w-12 h-12 rounded-full bg-black/60 backdrop-blur-sm flex items-center justify-center shadow-xl">
+        <Play className="w-5 h-5 text-white fill-white translate-x-0.5" />
       </div>
     </div>
+  </div>
+);
+
+export type StoryProps = StoryCardProps;
+
+export const Story = ({ className, isNew, children, ...props }: StoryProps) => (
+  <CarouselItem className={cn('basis-auto pl-3 first:pl-0', className)}>
+    <StoryCard isNew={isNew} {...props}>
+      {children}
+    </StoryCard>
   </CarouselItem>
 );
 

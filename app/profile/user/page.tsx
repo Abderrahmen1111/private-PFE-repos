@@ -315,7 +315,7 @@ export default function ProfilePage() {
                                src={place.businessImage} 
                                alt={place.businessName} 
                                className="w-full h-full object-cover transition-transform group-hover:scale-110" 
-                               onError={(e) => { (e.target as any).src = '/placeholder-business.png' }}
+                               onError={(e) => { (e.target as any).src = '/placeholder-business.svg' }}
                              />
                           </div>
                           <div className="flex-1 min-w-0">

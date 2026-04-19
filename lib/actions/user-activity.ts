@@ -15,15 +15,19 @@ export async function logUserSearch(query: string) {
     // We only log searches for authenticated users to personalize their experience
     if (!user) return;
 
-    const { error } = await (supabase as any)
-        .from('user_search_history')
-        .insert({
-            user_id: user.id,
-            query: query.trim().toLowerCase()
-        });
+    try {
+        const { error } = await (supabase as any)
+            .from('user_search_history')
+            .insert({
+                user_id: user.id,
+                query: query.trim().toLowerCase()
+            });
 
-    if (error) {
-        console.error('Error logging user search:', error);
+        if (error) {
+            console.error('Error logging user search:', error);
+        }
+    } catch (err) {
+        console.error('Unexpected error logging user search:', err);
     }
 }
 
@@ -49,4 +53,26 @@ export async function logStoreAnalyticsEvent(storeId: number, type: string, sess
     }
 
     return { success: true };
+}
+
+/**
+ * Check if the current user has any interactions in the user_interactions table.
+ */
+export async function hasUserInteractions() {
+    const supabase = createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    
+    if (!user) return false;
+
+    const { count, error } = await (supabase as any)
+        .from('user_interactions')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', user.id);
+
+    if (error) {
+        console.error('Error checking user interactions:', error);
+        return false;
+    }
+
+    return (count || 0) > 0;
 }

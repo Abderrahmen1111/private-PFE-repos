@@ -1,6 +1,7 @@
 export interface Business {
     id: string;
     store_id?: number;
+    owner_id?: string;
     id_business?: number;
     status?: string;
     name: string;

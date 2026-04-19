@@ -153,3 +153,24 @@ export async function getFinancialSummary(storeId: number) {
     totalTransactions: (ordersResponse.data?.length || 0) + (bookingsResponse.data?.length || 0),
   };
 }
+
+export async function hasCompletedTransactionWithStore(storeId: number): Promise<boolean> {
+  const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return false;
+
+  const { data, error } = await supabase
+    .from('transactions')
+    .select('id')
+    .eq('customer_id', user.id)
+    .eq('merchant_id', storeId)
+    .eq('status', 'completed')
+    .limit(1);
+
+  if (error) {
+    console.error('Error checking completed transactions:', error);
+    return false;
+  }
+
+  return (data && data.length > 0) || false;
+}
