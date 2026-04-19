@@ -18,7 +18,7 @@ export async function GET(request: Request) {
     let query = supabaseAdmin.from('orders').select('*').order('created_at', { ascending: false }).limit(limit);
 
     if (status) {
-      query = query.eq('status', status);
+      query = query.eq('status', status as any);
     }
 
     const { data: orders, error } = await query;

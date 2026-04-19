@@ -31,7 +31,7 @@ async function handler(request: Request) {
       body: JSON.stringify({ 
         order_reference: order.order_number, 
         customer_id: order.customer_id,
-        items: order.cart,
+        items: (order as any).cart,
         status: order.status
       }),
     });
