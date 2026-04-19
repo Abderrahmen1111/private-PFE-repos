@@ -1,7 +1,8 @@
 'use client';
 
-import { Camera, MapPin, Calendar, BadgeCheck, Share2, Twitter, Facebook, Linkedin, Link as LinkIcon } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { Camera, MapPin, Calendar, BadgeCheck, Share2, Twitter, Facebook, Linkedin, Link as LinkIcon, Loader2 } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { useRef } from 'react';
 import { ShareButton } from '@/components/ui/share-button';
 import { toast } from 'sonner';
 
@@ -14,10 +15,26 @@ interface ProfileHeaderProps {
   isVerified?: boolean;
   onEditProfile?: () => void;
   userUrl?: string;
+  onAvatarUpdate?: (file: File) => void;
+  isUpdatingAvatar?: boolean;
 }
 
-export default function ProfileHeader({ name, email, city, memberSince, avatarUrl, isVerified, onEditProfile, userUrl }: ProfileHeaderProps) {
+export default function ProfileHeader({ 
+  name, email, city, memberSince, avatarUrl, isVerified, onEditProfile, userUrl, onAvatarUpdate, isUpdatingAvatar 
+}: ProfileHeaderProps) {
   const initials = name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleAvatarClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file && onAvatarUpdate) {
+      onAvatarUpdate(file);
+    }
+  };
 
   const shareLinks = [
     {
@@ -83,9 +100,24 @@ export default function ProfileHeader({ name, email, city, memberSince, avatarUr
             {/* Pulsing glow behind avatar */}
             <div className="absolute inset-0 rounded-[2rem] bg-indigo-500/30 blur-xl scale-95 opacity-0 group-hover/avatar:opacity-100 transition-opacity duration-500 -z-0" />
             
-            <button className="absolute bottom-1 right-1 z-20 w-8 h-8 sm:w-9 sm:h-9 bg-white rounded-xl shadow-lg border border-gray-100 flex items-center justify-center hover:bg-gray-50 hover:scale-110 active:scale-95 transition-all text-gray-600">
-              <Camera className="w-4 h-4" />
+            <button 
+              onClick={handleAvatarClick}
+              disabled={isUpdatingAvatar}
+              className="absolute bottom-1 right-1 z-20 w-8 h-8 sm:w-9 sm:h-9 bg-white rounded-xl shadow-lg border border-gray-100 flex items-center justify-center hover:bg-gray-50 hover:scale-110 active:scale-95 transition-all text-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isUpdatingAvatar ? (
+                <Loader2 className="w-4 h-4 animate-spin text-indigo-500" />
+              ) : (
+                <Camera className="w-4 h-4" />
+              )}
             </button>
+            <input 
+              type="file" 
+              ref={fileInputRef} 
+              onChange={handleFileChange} 
+              className="hidden" 
+              accept="image/*" 
+            />
           </div>
 
           {/* Action Buttons Area */}

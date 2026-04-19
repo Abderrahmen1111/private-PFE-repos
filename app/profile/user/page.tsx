@@ -13,7 +13,7 @@ import ActivityItem from '@/components/profile/activity-item';
 import UserReservationsList from '@/components/profile/UserReservationsList';
 import { Save, Lock, Trash2, Loader2, ShoppingBag, Star, Heart, Activity as ActivityIcon, CalendarDays } from 'lucide-react';
 import { getUserProfileData } from '@/lib/actions/profile';
-import { updateProfile, deleteAccount } from '@/lib/actions/users';
+import { updateProfile, updateAvatar, deleteAccount } from '@/lib/actions/users';
 import { sendPasswordResetEmail } from '@/lib/actions/auth';
 import { toggleSaveAction } from '@/lib/actions/favorites';
 import { toast } from 'sonner';
@@ -153,6 +153,7 @@ export default function ProfilePage() {
   const [activeTab, setActiveTab] = useState<TabId>(initialTab);
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [isUpdatingAvatar, setIsUpdatingAvatar] = useState(false);
 
   const fetchData = async () => {
     try {
@@ -199,6 +200,21 @@ export default function ProfilePage() {
     }
   };
 
+  const handleAvatarUpdate = async (file: File) => {
+    if (!user?.id) return;
+    setIsUpdatingAvatar(true);
+    try {
+      const { error } = await updateAvatar(user.id, file);
+      if (error) throw new Error(typeof error === 'string' ? error : (error as any).message);
+      toast.success('Photo de profil mise à jour');
+      fetchData(); // Refresh to show new avatar
+    } catch (err: any) {
+      toast.error(err.message || "Erreur lors de la mise à jour de l'image");
+    } finally {
+      setIsUpdatingAvatar(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-50/30 selection:bg-indigo-100 selection:text-indigo-900">
       <div className="max-w-5xl mx-auto px-4 sm:px-10 py-10 space-y-8">
@@ -213,6 +229,8 @@ export default function ProfilePage() {
           avatarUrl={user.profile?.avatar_url}
           onEditProfile={() => setActiveTab('settings')}
           userUrl={typeof window !== 'undefined' ? `${window.location.origin}/profile/user` : ''}
+          onAvatarUpdate={handleAvatarUpdate}
+          isUpdatingAvatar={isUpdatingAvatar}
         />
 
         {/* Stats */}

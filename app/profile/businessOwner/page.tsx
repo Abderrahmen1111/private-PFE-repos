@@ -7,7 +7,7 @@ import {
   Eye, Search, Calendar, Users, BarChart2, Clock, ChevronRight,
   CheckCircle, AlertTriangle, Wifi, X, Check,
   Building2, Tag, Image as ImageIcon, Settings, Activity, Loader2,
-  Zap, ArrowUpRight, ArrowDownRight,
+  Zap, ArrowUpRight, ArrowDownRight, Camera as CameraIcon
 } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -18,9 +18,10 @@ import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import Link from 'next/link';
 import { useSearchParams, useRouter } from 'next/navigation';
+import { useRef } from 'react';
 import { getOwnerProfileData } from '@/lib/actions/profile';
 import { sendPasswordResetEmail } from '@/lib/actions/auth';
-import { updateProfile } from '@/lib/actions/users';
+import { updateProfile, updateAvatar } from '@/lib/actions/users';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 
@@ -203,6 +204,8 @@ export default function BusinessOwnerProfile() {
   const [isChangingPassword, setIsChangingPassword] = useState(false);
   const [editingHours, setEditingHours] = useState(false);
   const [loadingToggles, setLoadingToggles] = useState<Record<string, boolean>>({});
+  const [isUpdatingAvatar, setIsUpdatingAvatar] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const searchParams = useSearchParams();
   const businessIdParam = searchParams.get('id');
@@ -285,6 +288,26 @@ export default function BusinessOwnerProfile() {
       toast.error('Connection error');
     } finally {
       setLoadingToggles(prev => ({ ...prev, [key]: false }));
+    }
+  };
+
+  const handleAvatarUpdate = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !user?.id) return;
+    
+    setIsUpdatingAvatar(true);
+    try {
+      const { error } = await updateAvatar(user.id, file);
+      if (error) throw new Error(typeof error === 'string' ? error : (error as any).message);
+      toast.success('Photo de profil mise à jour');
+      
+      // Refresh data
+      const data = await getOwnerProfileData(businessIdParam || undefined);
+      setInitialData(data);
+    } catch (err: any) {
+      toast.error(err.message || "Erreur lors de la mise à jour de l'image");
+    } finally {
+      setIsUpdatingAvatar(false);
     }
   };
 
@@ -406,10 +429,23 @@ export default function BusinessOwnerProfile() {
                   )}
                 </div>
                 <button
-                  className="absolute -bottom-1 -right-1 w-7 h-7 rounded-full flex items-center justify-center shadow-lg transition-all duration-200 hover:scale-110 active:scale-95 bg-orange-500"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={isUpdatingAvatar}
+                  className="absolute -bottom-1 -right-1 w-7 h-7 rounded-full flex items-center justify-center shadow-lg transition-all duration-200 hover:scale-110 active:scale-95 bg-orange-500 disabled:opacity-50"
                 >
-                  <Camera className="w-3.5 h-3.5 text-white" />
+                  {isUpdatingAvatar ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin text-white" />
+                  ) : (
+                    <Camera className="w-3.5 h-3.5 text-white" />
+                  )}
                 </button>
+                <input 
+                  type="file" 
+                  ref={fileInputRef} 
+                  onChange={handleAvatarUpdate} 
+                  className="hidden" 
+                  accept="image/*" 
+                />
               </div>
 
               <div className="mb-1 space-y-1">

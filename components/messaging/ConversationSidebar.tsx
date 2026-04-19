@@ -177,7 +177,14 @@ export function ConversationSidebar({ conversations, activeId, onSelect }: Conve
                       "text-xs truncate transition-colors",
                       conv.unread_count > 0 ? "text-primary font-bold" : "text-muted-foreground"
                     )}>
-                      {conv.last_message}
+                      {(() => {
+                        if (conv.unread_count > 1) return `${conv.unread_count} nouveaux messages`;
+                        if (conv.unread_count === 1) {
+                          const words = conv.last_message?.split(' ') || [];
+                          return words.slice(0, 5).join(' ') + (words.length > 5 ? '...' : '');
+                        }
+                        return conv.last_message;
+                      })()}
                     </p>
                   </div>
 

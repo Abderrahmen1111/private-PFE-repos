@@ -37,6 +37,8 @@ export function useMessaging() {
     getUser();
   }, [supabase]);
 
+
+
   // Total Unread Count
   const totalUnreadCount = useMemo(() => {
     return conversations.reduce((acc, conv) => acc + (conv.unread_count || 0), 0);
@@ -85,6 +87,13 @@ export function useMessaging() {
       console.error('Error fetching conversations:', error);
     }
   }, [currentUser, setConversations]);
+
+  // Initial Data Fetch
+  useEffect(() => {
+    if (currentUser) {
+      fetchConversations();
+    }
+  }, [currentUser, fetchConversations]);
 
   // Fetch Messages for a specific partner
   const fetchMessages = useCallback(async (partnerId: string) => {

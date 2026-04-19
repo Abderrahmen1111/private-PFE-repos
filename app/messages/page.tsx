@@ -25,9 +25,7 @@ function MessagesContent() {
     sendMessage 
   } = useMessaging();
 
-  useEffect(() => {
-    fetchConversations();
-  }, [fetchConversations]);
+
 
   useEffect(() => {
     if (activePartnerId) {

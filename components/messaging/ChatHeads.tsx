@@ -5,7 +5,7 @@ import { motion, AnimatePresence, useMotionValue, useSpring, useTransform } from
 import { cn } from '@/lib/utils';
 import { useMessaging } from '@/hooks/useMessaging';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { MessageCircle, Video, Compass, X, ChevronLeft, GripVertical, GripHorizontal, ExternalLink, ShoppingBag } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { ChatWindow } from './ChatWindow';
@@ -132,69 +132,81 @@ export function ChatHeads() {
         </div>
       )}
 
-      <TooltipProvider>
-        {/* DRAGGABLE MAIN HUB */}
-        <motion.div 
-          style={{ x: springX, y: springY }}
-          drag
-          dragMomentum={false}
-          dragElastic={0.05}
-          dragConstraints={{ 
-            left: 20, 
-            right: typeof window !== 'undefined' ? window.innerWidth - 180 : 1000, 
-            top: 20, 
-            bottom: typeof window !== 'undefined' ? window.innerHeight - 120 : 1000 
+      {/* DRAGGABLE MAIN HUB */}
+      <motion.div 
+        style={{ x: springX, y: springY }}
+        drag
+        dragMomentum={false}
+        dragElastic={0.05}
+        dragConstraints={{ 
+          left: 20, 
+          right: typeof window !== 'undefined' ? window.innerWidth - 180 : 1000, 
+          top: 20, 
+          bottom: typeof window !== 'undefined' ? window.innerHeight - 120 : 1000 
+        }}
+        onDragEnd={handleDragEnd}
+        onDragStart={() => setIsNearEdge(true)}
+        className="fixed top-0 left-0 z-[140] pointer-events-auto flex items-center justify-center h-20 w-44 group"
+      >
+        {/* Unified Logo Hub */}
+        <div 
+          className={cn(
+            "flex gap-3 px-4 py-3 bg-zinc-900/40 backdrop-blur-3xl border border-white/20 rounded-[30px] shadow-2xl transition-all duration-300 relative z-50 overflow-hidden",
+            isOpen ? "opacity-0 scale-50 pointer-events-none" : "opacity-100 scale-100 animate-in fade-in zoom-in duration-500",
+            !isNearEdge && "opacity-0 scale-50 translate-x-10 pointer-events-none"
+          )}
+          onMouseEnter={() => setIsNearEdge(true)}
+          onMouseLeave={() => {
+            if (!isOpen) setIsNearEdge(false);
           }}
-          onDragEnd={handleDragEnd}
-          onDragStart={() => setIsNearEdge(true)}
-          className="fixed top-0 left-0 z-[140] pointer-events-auto flex items-center justify-center h-20 w-44 group"
         >
-          {/* Unified Logo Hub */}
           <div 
-            className={cn(
-              "flex gap-3 px-4 py-3 bg-white/10 backdrop-blur-3xl border border-white/20 rounded-[30px] shadow-2xl transition-all duration-300 relative z-50 overflow-hidden",
-              isOpen ? "opacity-0 scale-50 pointer-events-none" : "opacity-100 scale-100 animate-in fade-in zoom-in duration-500",
-              !isNearEdge && "opacity-0 scale-50"
-            )}
-            onMouseEnter={() => setIsNearEdge(true)}
+            className="relative p-2 rounded-2xl bg-white text-black hover:scale-110 active:scale-95 transition-all cursor-pointer shadow-lg"
+            onClick={() => { setViewMode('messages'); setIsOpen(true); }}
           >
-            <div 
-              className="relative p-2 rounded-2xl bg-white text-black hover:scale-110 active:scale-95 transition-all cursor-pointer shadow-lg"
-              onClick={() => { setViewMode('messages'); setIsOpen(true); }}
-            >
-              <MessageCircle className="w-6 h-6" strokeWidth={2.5} />
-              {totalUnreadCount > 0 && (
-                <span className="absolute -top-2 -right-2 bg-red-600 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full border-2 border-white shadow-lg">
-                  {totalUnreadCount}
-                </span>
-              )}
-            </div>
-
-            <div 
-              className="p-2 rounded-2xl bg-zinc-900 text-white hover:scale-110 active:scale-95 transition-all cursor-pointer shadow-lg border border-white/5"
-              onClick={() => { setViewMode('discover'); setIsOpen(true); }}
-            >
-              <Video className="w-6 h-6" />
-            </div>
-
-            <div 
-              className="p-2 rounded-2xl bg-indigo-600 text-white hover:scale-110 active:scale-95 transition-all cursor-pointer shadow-lg border border-white/5"
-              onClick={() => { setViewMode('shop'); setIsOpen(true); }}
-            >
-              <ShoppingBag className="w-6 h-6" />
-            </div>
-
-            <div className="absolute top-1 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity">
-              <GripHorizontal className="w-4 h-4 text-white/40" />
-            </div>
+            <MessageCircle className="w-6 h-6" strokeWidth={2.5} />
+            {totalUnreadCount > 0 && (
+              <span className="absolute -top-2 -right-2 bg-red-600 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full border-2 border-white shadow-lg">
+                {totalUnreadCount}
+              </span>
+            )}
           </div>
-        </motion.div>
+
+          <div 
+            className="p-2 rounded-2xl bg-zinc-900 text-white hover:scale-110 active:scale-95 transition-all cursor-pointer shadow-lg border border-white/5"
+            onClick={() => { setViewMode('discover'); setIsOpen(true); }}
+          >
+            <Video className="w-6 h-6" />
+          </div>
+
+          <div 
+            className="p-2 rounded-2xl bg-indigo-600 text-white hover:scale-110 active:scale-95 transition-all cursor-pointer shadow-lg border border-white/5"
+            onClick={() => { setViewMode('shop'); setIsOpen(true); }}
+          >
+            <ShoppingBag className="w-6 h-6" />
+          </div>
+
+          <div className="absolute top-1 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity">
+            <GripHorizontal className="w-4 h-4 text-white/40" />
+          </div>
+        </div>
+      </motion.div>
 
         {/* THE TABBED PANEL (Moved Outside the draggable hub for better coordinate management) */}
         <AnimatePresence>
           {isOpen && (
-            <motion.div
-              initial={{ opacity: 0, scale: 0.9, filter: "blur(20px)" }}
+            <>
+              {/* Backdrop to close on click outside */}
+              <motion.div 
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={() => setIsOpen(false)}
+                className="fixed inset-0 bg-black/40 backdrop-blur-[2px] z-[145]"
+              />
+              
+              <motion.div
+                initial={{ opacity: 0, scale: 0.9, filter: "blur(20px)" }}
               animate={{ opacity: 1, scale: 1, filter: "blur(0px)" }}
               exit={{ opacity: 0, scale: 0.9, filter: "blur(20px)" }}
               style={{ x: panelX, y: panelY }}
@@ -257,8 +269,13 @@ export function ChatHeads() {
                         <p>Ouvrir la page complète</p>
                       </TooltipContent>
                     </Tooltip>
-                    <Button variant="ghost" size="icon" className="h-10 w-10 rounded-full hover:bg-white/10 transition-colors" onClick={() => setIsOpen(false)}>
-                      <X className="h-5 w-5 text-white" />
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      className="h-10 w-10 rounded-full bg-white/10 hover:bg-white/20 transition-all text-white border border-white/10" 
+                      onClick={() => setIsOpen(false)}
+                    >
+                      <X className="h-5 w-5" />
                     </Button>
                   </div>
                 </div>
@@ -346,9 +363,9 @@ export function ChatHeads() {
                 </AnimatePresence>
               </div>
             </motion.div>
-          )}
-        </AnimatePresence>
-      </TooltipProvider>
+          </>
+        )}
+      </AnimatePresence>
 
       {/* Snap Indicator */}
       <AnimatePresence>
