@@ -4,10 +4,10 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useParams } from 'next/navigation';
 import { 
   getBusinessReels, 
-  publishReel, 
   deleteReel, 
-  uploadReelMedia 
 } from '@/lib/actions/reels';
+import { uploadToSupabase } from '@/lib/upload';
+import { supabase } from "@/lib/supabase/browser";
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { 
@@ -67,6 +67,7 @@ export default function ReelsPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [previewUrls, setPreviewUrls] = useState<string[]>([]);
+  const [file, setFile] = useState<File | null>(null);
 
   // Camera & Recording states
   const [mode, setMode] = useState<'upload' | 'record'>('record');
@@ -108,6 +109,8 @@ export default function ReelsPage() {
     setSelectedFiles(prev => [...prev, ...files]);
     const newPreviews = files.map(f => URL.createObjectURL(f));
     setPreviewUrls(prev => [...prev, ...newPreviews]);
+    // keep single-file convenience `file` state for legacy upload logic
+    setFile(files[0] || null);
   };
   
   const removeSelectedFile = (index: number) => {
@@ -117,8 +120,9 @@ export default function ReelsPage() {
   };
 
   const handleUpload = async () => {
-    if (selectedFiles.length === 0) {
-      toast.error('Veuillez sélectionner au moins un fichier');
+    // new supabase upload flow
+    if (!file) {
+      toast.error('Veuillez sélectionner un fichier');
       return;
     }
 
@@ -129,48 +133,43 @@ export default function ReelsPage() {
 
     setIsUploading(true);
     try {
-      // Upload all files in parallel
-      const uploadPromises = selectedFiles.map(async (file) => {
-        const formData = new FormData();
-        formData.append('file', file);
-        const url = await uploadReelMedia(formData);
-        if (!url) throw new Error(`Erreur lors de l'upload de ${file.name}`);
-        return url;
-      });
-
-      const mediaUrls = await Promise.all(uploadPromises);
-      
-      const isVideo = selectedFiles[0].type.startsWith('video/');
-      
-      const result = await publishReel({
-        storeId,
-        mediaUrl: mediaUrls.length === 1 ? mediaUrls[0] : mediaUrls,
-        mediaType: isVideo ? 'video' : 'image',
-        title,
-        subtitle: subtitle || undefined,
-        price: price ? parseFloat(price) : undefined,
-        ctaType,
-        ctaValue: ctaValue || undefined,
-        category: category || undefined,
-      });
-
-      if (result.success) {
-        toast.success('Reel publié avec succès !');
-        setIsDialogOpen(false);
-        // Reset form
-        setTitle('');
-        setSubtitle('');
-        setPrice('');
-        setCtaValue('');
-        setCategory('');
-        setSelectedFiles([]);
-        setPreviewUrls([]);
-        fetchReels();
-      } else {
-        throw new Error(result.error);
+      // determine file to upload (support recorded files which set selectedFiles)
+      const uploadFile = file ?? selectedFiles[0] ?? null;
+      if (!uploadFile) {
+        toast.error('Aucun fichier à uploader');
+        setIsUploading(false);
+        return;
       }
-    } catch (error: any) {
-      toast.error(error.message || "Erreur lors de la publication");
+
+      // 1. Upload file to storage
+      const media_path = await uploadToSupabase(uploadFile, storeId);
+
+      // 2. Save in DB
+      await supabase.from('reels').insert({
+        store_id: storeId,
+        media_path: media_path,
+        title,
+        subtitle,
+        price: price ? parseFloat(price) : undefined,
+        currency: undefined,
+        cta_type: ctaType,
+      });
+
+      toast.success('Reel uploaded successfully 🚀');
+      setIsDialogOpen(false);
+      // reset form
+      setTitle('');
+      setSubtitle('');
+      setPrice('');
+      setCtaValue('');
+      setCategory('');
+      setSelectedFiles([]);
+      setPreviewUrls([]);
+      setFile(null);
+      fetchReels();
+    } catch (err: any) {
+      console.error(err);
+      toast.error('Upload failed ❌');
     } finally {
       setIsUploading(false);
     }
@@ -562,7 +561,7 @@ export default function ReelsPage() {
               <Button 
                 className="bg-red-600 hover:bg-red-700 text-white font-bold"
                 onClick={handleUpload}
-                disabled={isUploading || selectedFiles.length === 0}
+                disabled={isUploading || (!file && selectedFiles.length === 0)}
               >
                 {isUploading ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Publication...</> : 'Publier'}
               </Button>
