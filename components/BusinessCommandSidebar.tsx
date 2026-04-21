@@ -10,6 +10,7 @@ interface Props {
   items: Item[];
   storeId?: number;
   isLinkedToStore?: boolean;
+  isOwner?: boolean;
 }
 
 export default function BusinessCommandSidebar({
@@ -17,6 +18,7 @@ export default function BusinessCommandSidebar({
   items,
   storeId,
   isLinkedToStore = true,
+  isOwner = false,
 }: Props) {
   const [showCommand, setShowCommand] = useState(false);
   const { openDrawer } = useActionDrawer();
@@ -42,8 +44,8 @@ export default function BusinessCommandSidebar({
   }, []);
 
   const products = items.filter(i => i.item_type === 'PRODUCT');
-
-  if (products.length === 0 || !isLinkedToStore) return null;
+ 
+  if (products.length === 0 || !isLinkedToStore || isOwner) return null;
 
   return (
     <div id="command-sidebar" className="space-y-3 pt-3 border-t border-gray-50 scroll-mt-24">

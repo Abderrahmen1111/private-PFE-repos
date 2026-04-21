@@ -5,7 +5,7 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import { Search, Loader2, SlidersHorizontal, Star, Package, Scale, Tags, ShoppingCart, ChevronDown, X } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import Footer from "@/components/Footer";
-import { searchItems, SearchResultItem } from '@/lib/actions/search_prod_serv';
+import { searchItems, SearchResultItem } from '@/lib/actions/search_items';
 import { ProductCard } from '@/components/ProductCard';
 
 const SORT_OPTIONS = [

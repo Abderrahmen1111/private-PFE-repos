@@ -9,7 +9,7 @@ export async function getBusinessById(id: string): Promise<Business | null> {
 
     // 1. Try fetching from stores (by slug or numeric id)
     let storeQuery = supabase.from('stores')
-        .select('id, id_business, name, slug, description, category, phone, email, website, address, city, rating_average, total_reviews, opening_hours, status, gallery, logo_url');
+        .select('id, owner_id, id_business, name, slug, description, category, phone, email, website, address, city, rating_average, total_reviews, opening_hours, status, gallery, logo_url');
     if (isNumeric) {
         storeQuery = storeQuery.eq('id', Number(id));
     } else {
@@ -41,7 +41,7 @@ export async function getBusinessById(id: string): Promise<Business | null> {
         if (directoryData) {
             const { data: orphanStore } = await supabase
                 .from('stores')
-                .select('id, id_business, name, slug, description, category, phone, email, website, address, city, rating_average, total_reviews, opening_hours, status, gallery, logo_url')
+                .select('id, owner_id, id_business, name, slug, description, category, phone, email, website, address, city, rating_average, total_reviews, opening_hours, status, gallery, logo_url')
                 .eq('id_business', Number(id))
                 .maybeSingle();
             if (orphanStore) (storeData as any) || Object.assign({}, orphanStore);
@@ -54,7 +54,7 @@ export async function getBusinessById(id: string): Promise<Business | null> {
         // Try by slug first (non-numeric), then by service_id (numeric)
         const sdQuery = supabase
             .from('service_directory' as any)
-            .select('service_id, name, slug, description, category, phone, address, city, latitude, longitude, rating_average, total_reviews, opening_hours, status');
+            .select('service_id, owner_id, name, slug, description, category, phone, address, city, latitude, longitude, rating_average, total_reviews, opening_hours, status');
 
         const { data: sd } = isNumeric
             ? await sdQuery.eq('service_id', Number(id)).maybeSingle()
@@ -75,6 +75,7 @@ export async function getBusinessById(id: string): Promise<Business | null> {
         return {
             id: sdData.service_id?.toString() || id,
             store_id: undefined,
+            owner_id: sdData.owner_id || undefined,
             id_business: undefined,
             status: sdData.status || 'ACTIVE',
             name: sdData.name || '',
@@ -95,12 +96,13 @@ export async function getBusinessById(id: string): Promise<Business | null> {
                 lat: (!isNaN(Number(sdData.latitude)) && sdData.latitude !== null) ? Number(sdData.latitude) : 36.8065,
                 lng: (!isNaN(Number(sdData.longitude)) && sdData.longitude !== null) ? Number(sdData.longitude) : 10.1815,
             }
-        };
+        } as Business;
     }
 
     return {
         id: (directoryData ? dData.id?.toString() : sData?.id?.toString()) || id,
         store_id: sData.id,
+        owner_id: sData.owner_id || undefined,
         id_business: dData.id || undefined,
         status: sData.status || (directoryData ? 'PUBLISHED' : 'DRAFT'),
         name: sData.name || dData.title || '',
@@ -121,7 +123,7 @@ export async function getBusinessById(id: string): Promise<Business | null> {
             lat: (!isNaN(Number(dData.latitude)) && dData.latitude !== null) ? Number(dData.latitude) : 36.8065,
             lng: (!isNaN(Number(dData.longitude)) && dData.longitude !== null) ? Number(dData.longitude) : 10.1815,
         }
-    };
+    } as Business;
 }
 
 export async function getLatestStores(limit: number = 10) {

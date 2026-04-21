@@ -5,17 +5,19 @@ import { useRouter, usePathname } from 'next/navigation';
 import {
   FolderKanban, Search, MapPin, Plus, Camera, X, Upload, Loader2, Mic, MicOff, Navigation,
   Utensils, Wrench, ShoppingBag, Stethoscope, GraduationCap, Car, Home, Scissors,
-  Dumbbell, Laptop,
+  Dumbbell, Laptop, Bell, MessageCircle
 } from "lucide-react";
 import { createClient } from '@/lib/supabase/client';
 import { signOut } from '@/lib/supabase/auth';
 import Link from 'next/link';
+import { NotificationDropdown } from '@/components/notifications/NotificationDropdown';
 import { UserDropdown } from '@/components/ui/user-dropdown';
 import { useState as useMotionState } from 'react';
 import { Menu, MenuItem, HoveredLink, ProductItem } from '@/components/ui/navbar-menu';
 import { useVoiceSearch } from '@/hooks/useVoiceSearch';
 import { useSmartSearch } from '@/hooks/useSmartSearch';
 import { useSavesStore } from '@/lib/store/use-saves-store';
+import { useMessaging } from '@/hooks/useMessaging';
 
 // ─── Category menu data ───────────────────────────────────────────────────────
 const categoryMenuItems = [
@@ -569,6 +571,7 @@ function CategoryFloatingMenu() {
 
 // ─── Navbar ───────────────────────────────────────────────────────────────────
 export default function Navbar() {
+  const { totalUnreadCount: messageUnreadCount } = useMessaging();
   const router = useRouter();
   const pathname = usePathname();
   const isHome = pathname === '/';
@@ -807,8 +810,9 @@ export default function Navbar() {
   };
 
   const handleSignOut = async () => {
-    await signOut();
+    await fetch('/api/auth/logout', { method: 'POST' });
     router.push('/');
+    router.refresh();
   };
 
   return (
@@ -969,12 +973,29 @@ export default function Navbar() {
                     );
                   })()}
 
-                  <div className="relative inline-flex items-center justify-center">
-                    {saveCount >= 3 && (
-                      <div className="absolute -top-1.5 -right-6 z-50 rounded-full bg-blue-600 px-1.5 py-0.5 text-[9px] font-bold text-white shadow-xl ring-2 ring-[#0b0f1a] animate-in zoom-in duration-500 whitespace-nowrap pointer-events-none">
-                        {saveCount} sauvegardés
-                      </div>
-                    )}
+                    <div className="flex items-center gap-2">
+                      {/* Message Icon */}
+                      <Link href="/messages">
+                        <button className="relative group/msg w-10 h-10 flex items-center justify-center rounded-2xl bg-[#11111198] hover:bg-[#111111d1] backdrop-blur-sm border border-white/10 transition-all duration-300">
+                          <MessageCircle className="w-5 h-5 text-white/70 group-hover/msg:text-white transition-colors" />
+                          {messageUnreadCount > 0 && (
+                            <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-blue-600 text-[10px] font-bold text-white ring-2 ring-black animate-in zoom-in duration-300">
+                              {messageUnreadCount > 9 ? '9+' : messageUnreadCount}
+                            </span>
+                          )}
+                        </button>
+                      </Link>
+
+                      {/* Notification Dropdown */}
+                      <NotificationDropdown />
+                    </div>
+
+                    <div className="relative inline-flex items-center justify-center ml-2">
+                      {saveCount >= 3 && (
+                        <div className="absolute -top-1.5 -right-6 z-50 rounded-full bg-blue-600 px-1.5 py-0.5 text-[9px] font-bold text-white shadow-xl ring-2 ring-[#0b0f1a] animate-in zoom-in duration-500 whitespace-nowrap pointer-events-none">
+                          {saveCount} sauvegardés
+                        </div>
+                      )}
                     <UserDropdown
                     user={{
                       name: user.user_metadata?.full_name || user.email || 'User',

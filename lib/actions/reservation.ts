@@ -14,10 +14,25 @@ export type BookingRow = Database['public']['Tables']['bookings']['Row'];
 export async function createBooking(data: Omit<BookingInsert, 'booking_number' | 'status' | 'customer_id'>) {
   const supabase = createClient();
   
-  // Get current session
+  // 1. Get current session
   const { data: { user }, error: authError } = await supabase.auth.getUser();
   if (authError || !user) {
     throw new Error('Vous devez être connecté pour réserver.');
+  }
+
+  // 2. Check if the user is the owner of the store
+  const { data: store, error: storeError } = await (supabase
+    .from('stores') as any)
+    .select('owner_id')
+    .eq('id', data.store_id)
+    .single();
+
+  if (storeError || !store) {
+    throw new Error('Store non trouvé.');
+  }
+
+  if (store.owner_id === user.id) {
+    throw new Error('Vous ne pouvez pas réserver dans votre propre boutique.');
   }
 
   // Generate a unique booking number: BK-XXXXXX-XXXX

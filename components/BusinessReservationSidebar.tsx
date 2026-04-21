@@ -14,7 +14,7 @@ interface WorkingHours {
   closed: boolean;
 }
 
-interface Props {
+export interface Props {
   businessId: string;
   businessName: string;
   rating: number;
@@ -26,9 +26,10 @@ interface Props {
   isLinkedToStore?: boolean;
   hasProducts?: boolean;
   items?: Item[];
+  isOwner?: boolean;
 }
 
-export default function BusinessReservationSidebar({
+export function BusinessReservationSidebar({
   businessId,
   businessName,
   rating,
@@ -40,6 +41,7 @@ export default function BusinessReservationSidebar({
   isLinkedToStore = true,
   hasProducts = false,
   items = [],
+  isOwner = false,
 }: Props) {
   const [showReservation, setShowReservation] = useState(false);
   const [confirmedData,   setConfirmedData]   = useState<ReservationData | null>(null);
@@ -140,37 +142,45 @@ export default function BusinessReservationSidebar({
           </div>
 
           {/* ── Action buttons ────────────────────────────────────────────── */}
-          <div className="mt-8 space-y-3">
-            <button className="w-full bg-red-500 hover:bg-red-600 text-white font-bold py-3 rounded-lg flex items-center justify-center gap-2 transition-all shadow-md active:scale-[0.98]">
-              <MessageCircle className="w-4 h-4" />
-              Envoyer un message
-            </button>
-
-            {isLinkedToStore && (
-              <button
-                type="button"
-                onClick={() => {
-                  setShowReservation(!showReservation);
-                }}
-                className={`w-full font-bold py-3 rounded-lg flex items-center justify-center gap-2 transition-all border-2 active:scale-[0.98] ${
-                  showReservation
-                    ? 'bg-slate-100 border-slate-200 text-slate-700'
-                    : 'bg-white border-gray-200 text-gray-900 hover:bg-gray-50'
-                }`}
-              >
-                {showReservation ? <><X className="w-4 h-4" /> Fermer</> : 'Réserver'}
+          {!isOwner ? (
+            <div className="mt-8 space-y-3">
+              <button className="w-full bg-red-500 hover:bg-red-600 text-white font-bold py-3 rounded-lg flex items-center justify-center gap-2 transition-all shadow-md active:scale-[0.98]">
+                <MessageCircle className="w-4 h-4" />
+                Envoyer un message
               </button>
-            )}
 
-            {hasProducts && (
-              <BusinessCommandSidebar
-                businessName={businessName}
-                items={items}
-                storeId={items[0]?.store_id}
-                isLinkedToStore={isLinkedToStore}
-              />
-            )}
-          </div>
+              {isLinkedToStore && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowReservation(!showReservation);
+                  }}
+                  className={`w-full font-bold py-3 rounded-lg flex items-center justify-center gap-2 transition-all border-2 active:scale-[0.98] ${
+                    showReservation
+                      ? 'bg-slate-100 border-slate-200 text-slate-700'
+                      : 'bg-white border-gray-200 text-gray-900 hover:bg-gray-50'
+                  }`}
+                >
+                  {showReservation ? <><X className="w-4 h-4" /> Fermer</> : 'Réserver'}
+                </button>
+              )}
+
+              {hasProducts && (
+                <BusinessCommandSidebar
+                  businessName={businessName}
+                  items={items}
+                  storeId={items[0]?.store_id ?? undefined}
+                  isLinkedToStore={isLinkedToStore}
+                />
+              )}
+            </div>
+          ) : (
+            <div className="mt-8 p-4 bg-blue-50 border border-blue-100 rounded-lg">
+              <p className="text-blue-700 text-sm font-medium text-center">
+                Vous visualisez votre propre établissement.
+              </p>
+            </div>
+          )}
         </div>
 
         {/* ── Reservation card (slides in below) ────────────────────────── */}
@@ -184,7 +194,7 @@ export default function BusinessReservationSidebar({
               reservationFee={0}
               currency="TND "
               service={items.find(i => i.item_type === 'SERVICE')}
-              storeId={items[0]?.store_id} // Taking store_id from any item if available
+              storeId={items[0]?.store_id ?? undefined} // Taking store_id from any item if available
               workingHours={workingHours}
               onConfirm={(data: ReservationData) => {
                 setConfirmedData(data);

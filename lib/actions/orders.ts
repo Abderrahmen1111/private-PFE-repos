@@ -4,6 +4,24 @@ import { createClient } from '@/lib/supabase/server';
 import { Database } from '@/types/supabase';
 import { revalidatePath } from 'next/cache';
 import { syncOrderTransaction } from './transactions';
+import { createNotification } from './notifications';
+import { Client as QStashClient } from '@upstash/qstash';
+
+const qstash = process.env.QSTASH_TOKEN ? new QStashClient({ token: process.env.QSTASH_TOKEN }) : null;
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+
+const publishQStashEvent = async (endpoint: string, payload: any, delay: number = 0) => {
+  if (!qstash) return;
+  try {
+    await qstash.publishJSON({
+      url: `${siteUrl}/api/workers/${endpoint}`,
+      body: payload,
+      delay
+    });
+  } catch (err) {
+    console.error(`[QStash] Failed to publish ${endpoint}:`, err);
+  }
+};
 
 export type OrderInsert = Database['public']['Tables']['orders']['Insert'];
 export type OrderRow = Database['public']['Tables']['orders']['Row'];
@@ -13,12 +31,27 @@ export type OrderRow = Database['public']['Tables']['orders']['Row'];
  * Called when user clicks "Order" on a product page
  */
 export async function createOrder(data: Omit<OrderInsert, 'order_number' | 'status' | 'customer_id'>) {
-  const supabase = createClient();
+  const supabase = createClient() as any;
   
-  // Get current session
+  // 1. Get current session
   const { data: { user }, error: authError } = await supabase.auth.getUser();
   if (authError || !user) {
     throw new Error('Vous devez être connecté pour commander.');
+  }
+
+  // 2. Check if the user is the owner of the store
+  const { data: store, error: storeError } = await supabase
+    .from('stores')
+    .select('owner_id')
+    .eq('id', data.store_id)
+    .single();
+
+  if (storeError || !store) {
+    throw new Error('Store non trouvé.');
+  }
+
+  if (store.owner_id === user.id) {
+    throw new Error('Vous ne pouvez pas commander dans votre propre boutique.');
   }
 
   // Generate a unique order number: ORD-XXXXXX-XXXX
@@ -42,6 +75,18 @@ export async function createOrder(data: Omit<OrderInsert, 'order_number' | 'stat
 
   if (order) {
     await syncOrderTransaction(order, supabase);
+    // Automatically schedule a background job to check against payment failure (2 mins default delay)
+    await publishQStashEvent('payment-retry', { orderId: order.id }, 120);
+
+    // Notify Store Owner
+    await createNotification({
+      userId: store.owner_id,
+      title: 'Nouvelle commande !',
+      description: `Vous avez reçu une nouvelle commande ${orderNumber} pour ${data.quantity}x ${data.unit_price} DT.`,
+      type: 'ORDER',
+      link: `/dashboard/${data.store_id}/leads`,
+      metadata: { orderId: order.id, storeId: data.store_id }
+    });
   }
 
   revalidatePath(`/merchants/business/${data.store_id}`);
@@ -53,7 +98,7 @@ export async function createOrder(data: Omit<OrderInsert, 'order_number' | 'stat
  * Displayed in user profile under "Commands" section
  */
 export async function getUserOrders(customerId: string) {
-  const supabase = createClient();
+  const supabase = createClient() as any;
 
   const { data, error } = await supabase
     .from('orders')
@@ -108,7 +153,7 @@ export async function getStoreOrders(storeId: number, status?: string) {
     .eq('store_id', storeId);
 
   if (status) {
-    query = query.eq('status', status);
+    query = query.eq('status', status as any);
   }
 
   const { data, error } = await query.order('created_at', { ascending: false });
@@ -181,6 +226,20 @@ export async function validateOrder(orderId: number) {
 
   if (data) {
     await syncOrderTransaction(data, supabase);
+    // Dispatch an asynchronous job to sync with external systems (e.g. ERP) after validation
+    await publishQStashEvent('sync-orders', { orderId: data.id });
+
+    // Notify Customer
+    if (data.customer_id) {
+       await createNotification({
+         userId: data.customer_id,
+         title: 'Commande validée !',
+         description: `Votre commande ${data.order_number} a été validée par le vendeur.`,
+         type: 'ORDER',
+         link: `/profile/user?view=commands`,
+         metadata: { orderId: data.id }
+       });
+    }
   }
 
   // Revalidate both dashboard and user profile
@@ -197,7 +256,7 @@ export async function validateOrder(orderId: number) {
  */
 export async function updateOrderStatus(
   orderId: number,
-  status: 'PENDING' | 'VALIDATED' | 'SHIPPED' | 'COMPLETED' | 'CANCELLED'
+  status: 'PENDING' | 'VALIDATED' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED'
 ) {
   const supabase = createClient();
 
@@ -219,6 +278,25 @@ export async function updateOrderStatus(
 
   if (data) {
     await syncOrderTransaction(data, supabase);
+
+    // Notify Customer
+    if (data.customer_id) {
+       const statusMap: Record<string, string> = {
+         'IN_PROGRESS': 'est en cours de livraison',
+         'COMPLETED': 'est maintenant terminée',
+         'CANCELLED': 'a été annulée'
+       };
+       const statusText = statusMap[status] || `est passée en statut ${status}`;
+
+       await createNotification({
+         userId: data.customer_id,
+         title: `Commande ${status}`,
+         description: `Votre commande ${data.order_number} ${statusText}.`,
+         type: 'ORDER',
+         link: `/profile/user?view=commands`,
+         metadata: { orderId: data.id, status }
+       });
+    }
   }
 
   // Revalidate affected pages
@@ -255,6 +333,15 @@ export async function cancelOrder(orderId: number, reason?: string) {
   revalidatePath(`/profile/user`);
 
   return data;
+}
+
+/**
+ * Initiates an asynchronous refund process via Upstash QStash.
+ * This offloads the heavy external API communication from the main server thread.
+ */
+export async function initiateAsyncRefund(orderId: number, reason?: string) {
+  await publishQStashEvent('process-refund', { orderId, reason });
+  return { success: true, message: 'Refund processing started asynchronously' };
 }
 
 /**

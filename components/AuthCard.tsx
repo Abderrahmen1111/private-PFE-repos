@@ -5,7 +5,6 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import {
   Eye, EyeOff, Mail, Info, Sparkles, ArrowRight, Loader2, CheckCircle2,
 } from 'lucide-react';
-import { login, signup, sendLoginMagicLink, sendSignupMagicLink } from '@/lib/actions/auth';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // TYPES
@@ -146,19 +145,26 @@ export function AuthCard({ defaultFlipped = false }: AuthCardProps) {
     }
 
     startLoginTransition(async () => {
-      const formData = new FormData();
-      formData.append('email', loginData.email);
-      formData.append('password', loginData.password);
-      if (redirectTo) {
-        formData.append('redirectTo', redirectTo);
-      }
-      const result = await login(formData);
-      if (result && 'error' in result) {
-        setLoginError(result.error);
-      } else if (result && 'success' in result) {
-        // Login successful - redirect to dashboard or specified URL
-        const destination = redirectTo || '/';
-        router.push(destination);
+      try {
+        const res = await fetch('/api/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email: loginData.email,
+            password: loginData.password
+          })
+        });
+        const result = await res.json();
+
+        if (!res.ok) {
+          setLoginError(result.error || 'Invalid credentials');
+        } else {
+          // Login successful - redirect to dashboard or specified URL
+          const destination = redirectTo || '/';
+          router.push(destination);
+        }
+      } catch (err) {
+        setLoginError('An unexpected error occurred');
       }
     });
   };
@@ -170,18 +176,22 @@ export function AuthCard({ defaultFlipped = false }: AuthCardProps) {
       return;
     }
     startLoginMagicTransition(async () => {
-      const formData = new FormData();
-      formData.append('email', loginData.email);
-      if (redirectTo) {
-        formData.append('redirectTo', redirectTo);
-      }
-      // Reuses magic link — sends a login link that acts as password reset
-      const result = await sendLoginMagicLink(formData);
-      if (result && 'error' in result) {
-        setLoginError(result.error);
-      } else {
-        setForgotSent(true);
-        setLoginError(null);
+      try {
+        const res = await fetch('/api/auth/magic-link', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: loginData.email })
+        });
+        const result = await res.json();
+        
+        if (!res.ok) {
+          setLoginError(result.error || 'Failed to send link');
+        } else {
+          setForgotSent(true);
+          setLoginError(null);
+        }
+      } catch (err) {
+        setLoginError('An unexpected error occurred');
       }
     });
   };
@@ -191,14 +201,19 @@ export function AuthCard({ defaultFlipped = false }: AuthCardProps) {
     e.preventDefault();
     setLoginMagicError(null);
     startLoginMagicTransition(async () => {
-      const formData = new FormData();
-      formData.append('email', loginData.email);
-      if (redirectTo) {
-        formData.append('redirectTo', redirectTo);
+      try {
+        const res = await fetch('/api/auth/magic-link', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: loginData.email })
+        });
+        const result = await res.json();
+        
+        if (!res.ok) setLoginMagicError(result.error || 'Failed to send link');
+        else setLoginMagicSent(true);
+      } catch (err) {
+        setLoginMagicError('An unexpected error occurred');
       }
-      const result = await sendLoginMagicLink(formData);
-      if (result && 'error' in result) setLoginMagicError(result.error);
-      else setLoginMagicSent(true);
     });
   };
 
@@ -219,23 +234,29 @@ export function AuthCard({ defaultFlipped = false }: AuthCardProps) {
     }
 
     startSignUpTransition(async () => {
-      const formData = new FormData();
-      formData.append('fullName', signUpData.fullName);
-      formData.append('email', signUpData.email);
-      formData.append('password', signUpData.password);
-      formData.append('confirmPassword', signUpData.confirmPassword);
-      if (redirectTo) {
-        formData.append('redirectTo', redirectTo);
-      }
-      const result = await signup(formData);
-      if (result && 'error' in result) {
-        setSignUpError(result.error);
-      } else if (result && 'success' in result) {
-        setSignUpSuccess(result.message ?? 'Account created! Check your email.');
-        // FIX: Don't redirect — flip to login side so user can sign in
-        setTimeout(() => {
-          flipToLogin();
-        }, 2500);
+      try {
+        const res = await fetch('/api/auth/signup', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            fullName: signUpData.fullName,
+            email: signUpData.email,
+            password: signUpData.password
+          })
+        });
+        const result = await res.json();
+
+        if (!res.ok) {
+          setSignUpError(result.error || 'Failed to sign up');
+        } else {
+          setSignUpSuccess(result.message ?? 'Account created! Check your email.');
+          // FIX: Don't redirect — flip to login side so user can sign in
+          setTimeout(() => {
+            flipToLogin();
+          }, 2500);
+        }
+      } catch (err) {
+        setSignUpError('An unexpected error occurred');
       }
     });
   };
@@ -245,15 +266,22 @@ export function AuthCard({ defaultFlipped = false }: AuthCardProps) {
     e.preventDefault();
     setSignupMagicError(null);
     startSignupMagicTransition(async () => {
-      const formData = new FormData();
-      formData.append('fullName', signUpData.fullName);
-      formData.append('email', signUpData.email);
-      if (redirectTo) {
-        formData.append('redirectTo', redirectTo);
+      try {
+        const res = await fetch('/api/auth/magic-link', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email: signUpData.email,
+            fullName: signUpData.fullName
+          })
+        });
+        const result = await res.json();
+        
+        if (!res.ok) setSignupMagicError(result.error || 'Failed to send link');
+        else setSignupMagicSent(true);
+      } catch (err) {
+        setSignupMagicError('An unexpected error occurred');
       }
-      const result = await sendSignupMagicLink(formData);
-      if (result && 'error' in result) setSignupMagicError(result.error);
-      else setSignupMagicSent(true);
     });
   };
 

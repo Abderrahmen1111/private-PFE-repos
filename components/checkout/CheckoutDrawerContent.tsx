@@ -16,10 +16,11 @@ interface Props {
     discount_percent?: number;
     discount_text?: string;
   };
+  isOwner?: boolean;
   onConfirm?: (orderData: any) => void;
 }
 
-export function CheckoutDrawerContent({ item, businessName, storeId, promotion, onConfirm }: Props) {
+export function CheckoutDrawerContent({ item, businessName, storeId, promotion, isOwner = false, onConfirm }: Props) {
   const [quantity, setQuantity] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
@@ -104,6 +105,28 @@ export function CheckoutDrawerContent({ item, businessName, storeId, promotion, 
       setIsLoading(false);
     }
   };
+
+  if (isOwner) {
+    return (
+      <div className="py-12 space-y-6 text-center">
+        <div className="w-16 h-16 bg-blue-50 rounded-full flex items-center justify-center mx-auto border border-blue-100 shadow-sm">
+          <Package className="w-8 h-8 text-blue-500" />
+        </div>
+        <div className="space-y-2">
+          <h3 className="text-xl font-black text-slate-800 tracking-tight">Votre propre article</h3>
+          <p className="text-sm text-slate-500 max-w-[280px] mx-auto">
+            Vous ne pouvez pas passer de commande dans votre propre boutique.
+          </p>
+        </div>
+        <button
+          onClick={() => closeDrawer()}
+          className="px-8 py-3 bg-slate-900 text-white rounded-xl font-black text-[12px] uppercase tracking-widest hover:bg-slate-800 transition-all active:scale-95"
+        >
+          Fermer
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 pb-20">

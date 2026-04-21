@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import ProfileHeader from '@/components/profile/profile-header';
@@ -13,7 +13,7 @@ import ActivityItem from '@/components/profile/activity-item';
 import UserReservationsList from '@/components/profile/UserReservationsList';
 import { Save, Lock, Trash2, Loader2, ShoppingBag, Star, Heart, Activity as ActivityIcon, CalendarDays } from 'lucide-react';
 import { getUserProfileData } from '@/lib/actions/profile';
-import { updateProfile, deleteAccount } from '@/lib/actions/users';
+import { updateProfile, updateAvatar, deleteAccount } from '@/lib/actions/users';
 import { sendPasswordResetEmail } from '@/lib/actions/auth';
 import { toggleSaveAction } from '@/lib/actions/favorites';
 import { toast } from 'sonner';
@@ -145,14 +145,14 @@ function SettingsTab({ user, onUpdate }: { user: any, onUpdate: () => void }) {
 }
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
-
-export default function ProfilePage() {
+function ProfileContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const initialTab = (searchParams.get('tab') as TabId) || 'reservations';
   const [activeTab, setActiveTab] = useState<TabId>(initialTab);
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [isUpdatingAvatar, setIsUpdatingAvatar] = useState(false);
 
   const fetchData = async () => {
     try {
@@ -199,6 +199,21 @@ export default function ProfilePage() {
     }
   };
 
+  const handleAvatarUpdate = async (file: File) => {
+    if (!user?.id) return;
+    setIsUpdatingAvatar(true);
+    try {
+      const { error } = await updateAvatar(user.id, file);
+      if (error) throw new Error(typeof error === 'string' ? error : (error as any).message);
+      toast.success('Photo de profil mise à jour');
+      fetchData(); // Refresh to show new avatar
+    } catch (err: any) {
+      toast.error(err.message || "Erreur lors de la mise à jour de l'image");
+    } finally {
+      setIsUpdatingAvatar(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-50/30 selection:bg-indigo-100 selection:text-indigo-900">
       <div className="max-w-5xl mx-auto px-4 sm:px-10 py-10 space-y-8">
@@ -213,6 +228,8 @@ export default function ProfilePage() {
           avatarUrl={user.profile?.avatar_url}
           onEditProfile={() => setActiveTab('settings')}
           userUrl={typeof window !== 'undefined' ? `${window.location.origin}/profile/user` : ''}
+          onAvatarUpdate={handleAvatarUpdate}
+          isUpdatingAvatar={isUpdatingAvatar}
         />
 
         {/* Stats */}
@@ -315,7 +332,7 @@ export default function ProfilePage() {
                                src={place.businessImage} 
                                alt={place.businessName} 
                                className="w-full h-full object-cover transition-transform group-hover:scale-110" 
-                               onError={(e) => { (e.target as any).src = '/placeholder-business.png' }}
+                               onError={(e) => { (e.target as any).src = '/placeholder-business.svg' }}
                              />
                           </div>
                           <div className="flex-1 min-w-0">
@@ -391,5 +408,20 @@ export default function ProfilePage() {
         </main>
       </div>
     </div>
+  );
+}
+
+export default function ProfilePage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center bg-gray-50/50">
+        <div className="flex flex-col items-center gap-4">
+          <Loader2 className="w-10 h-10 animate-spin text-indigo-600" />
+          <span className="text-[10px] uppercase font-black tracking-widest text-indigo-400">Chargement du profil</span>
+        </div>
+      </div>
+    }>
+      <ProfileContent />
+    </Suspense>
   );
 }

@@ -8,7 +8,7 @@ export async function getOwnerProfileData(businessId?: number | string) {
 
     // 1. Authenticate user
     const { data: { user }, error: authError } = await supabase.auth.getUser()
-    
+
     if (authError || !user) {
         redirect('/login')
     }
@@ -19,7 +19,7 @@ export async function getOwnerProfileData(businessId?: number | string) {
         .select('*')
         .eq('id', user.id)
         .single();
-        
+
     const userError = userRes.error;
     const userData = userRes.data as any;
 
@@ -29,7 +29,7 @@ export async function getOwnerProfileData(businessId?: number | string) {
 
     // 3. Fetch primary Store owned by this user
     let storeRes;
-    
+
     if (businessId) {
         // Try getting by id_business first (the foreign key)
         storeRes = await supabase
@@ -37,10 +37,10 @@ export async function getOwnerProfileData(businessId?: number | string) {
             .select('*')
             .eq('id_business', businessId)
             .single();
-            
+
         // Fallback to primary key id if id_business not found
         if (storeRes.error || !storeRes.data) {
-             storeRes = await supabase
+            storeRes = await supabase
                 .from('stores' as any)
                 .select('*')
                 .eq('id', businessId)
@@ -55,12 +55,12 @@ export async function getOwnerProfileData(businessId?: number | string) {
             .limit(1)
             .single();
     }
-        
+
     const storeError = storeRes.error;
     const storeData = storeRes.data as any;
 
     if (storeError && storeError.code !== 'PGRST116') { // PGRST116 is "no rows returned"
-       console.error("Error fetching store data:", storeError)
+        console.error("Error fetching store data:", storeError)
     }
 
     // 4. Fetch metrics (derived or direct from store)
@@ -87,16 +87,16 @@ export async function getOwnerProfileData(businessId?: number | string) {
             `)
             .eq('store_id', storeData.id)
             .order('created_at', { ascending: false });
-            
+
         const reviewsError = reviewsRes.error;
         const storeReviews = reviewsRes.data as any[] | null;
-        
+
         if (!reviewsError && storeReviews) {
             reviewsCount = storeReviews.length;
-            avgRating = reviewsCount > 0 
+            avgRating = reviewsCount > 0
                 ? Number((storeReviews.reduce((sum: number, r: any) => sum + r.rating, 0) / reviewsCount).toFixed(1))
                 : 0;
-            
+
             // Get top 5 recent reviews for the widget
             recentReviews = storeReviews.slice(0, 5).map((r: any) => ({
                 id: r.id.toString(),
@@ -114,7 +114,7 @@ export async function getOwnerProfileData(businessId?: number | string) {
             .from('bookings' as any)
             .select('*', { count: 'exact', head: true })
             .eq('store_id', storeData.id);
-            
+
         if (!countRes.error) {
             bookingsCount = countRes.count || 0;
         }
@@ -124,7 +124,7 @@ export async function getOwnerProfileData(businessId?: number | string) {
             .from('orders' as any)
             .select('*', { count: 'exact', head: true })
             .eq('store_id', storeData.id);
-        
+
         const ordersCount = ordersRes.count || 0;
 
         // Fetch Analytics Data
@@ -162,21 +162,21 @@ export async function getOwnerProfileData(businessId?: number | string) {
                 }
             });
 
-            const sessionDurations = Object.values(sessions).map(s => 
+            const sessionDurations = Object.values(sessions).map(s =>
                 (s.end.getTime() - s.start.getTime()) / 1000
             );
-            
+
             uniqueSessionsCount = Object.keys(sessions).length;
             avgSessionTime = sessionDurations.length > 0
                 ? sessionDurations.reduce((a, b) => a + b, 0) / sessionDurations.length
                 : 0;
-            
+
             returnVisitorsCount = Object.values(userHistory).filter(s => s.size > 1).length;
         }
 
         // Final Metrics Assembly
-        const ctr = uniqueSessionsCount > 0 
-            ? ((bookingsCount + ordersCount) / uniqueSessionsCount) * 100 
+        const ctr = uniqueSessionsCount > 0
+            ? ((bookingsCount + ordersCount) / uniqueSessionsCount) * 100
             : 0;
 
         return {
@@ -237,7 +237,7 @@ export async function getUserProfileData() {
 
     // 1. Authenticate user
     const { data: { user }, error: authError } = await supabase.auth.getUser()
-    
+
     if (authError || !user) {
         redirect('/login')
     }
@@ -248,7 +248,7 @@ export async function getUserProfileData() {
         .select('*')
         .eq('id', user.id)
         .single() as any;
-        
+
     if (userError) {
         console.error("Error fetching user data:", userError)
     }
@@ -360,7 +360,7 @@ export async function getUserProfileData() {
     // 7. Fetch Activity (Latest 10 items from Reviews, Bookings, Orders)
     // Combine and sort by date for a unified feed
     const activityItems: any[] = [];
-    
+
     if (userReviews) {
         userReviews.slice(0, 3).forEach((r: any) => {
             activityItems.push({
@@ -406,9 +406,9 @@ export async function getUserProfileData() {
         .sort((a, b) => b.dateObj.getTime() - a.dateObj.getTime())
         .map(({ dateObj, ...rest }) => ({
             ...rest,
-            timestamp: new Date(rest.timestamp).toLocaleString('en-US', { 
-                month: 'long', 
-                day: 'numeric', 
+            timestamp: new Date(rest.timestamp).toLocaleString('en-US', {
+                month: 'long',
+                day: 'numeric',
                 year: 'numeric',
                 hour: 'numeric',
                 minute: 'numeric'
@@ -427,14 +427,14 @@ export async function getUserProfileData() {
             bookingsCount: bookingsCount || 0,
             ordersCount: ordersCount || 0,
             savedCount: savedCount || 0,
-            citiesCount: 1, 
+            citiesCount: 1,
             helpfulVotes: 0,
         },
         savedPlaces: (userSavedPlaces || []).map((s: any) => ({
             id: s.id.toString(),
             storeId: s.stores?.id,
             businessName: s.stores?.name || 'Unknown Business',
-            businessImage: s.stores?.logo_url || '/placeholder-business.png',
+            businessImage: s.stores?.logo_url || '/placeholder-business.svg',
             businessCategory: s.stores?.category || 'General',
             address: s.stores?.address || '',
             rating: s.stores?.rating_average || 0,
@@ -443,7 +443,7 @@ export async function getUserProfileData() {
         reviews: (userReviews || []).map((r: any) => ({
             id: r.id.toString(),
             businessName: r.stores?.name || 'Unknown Business',
-            businessImage: r.stores?.logo_url || '/placeholder-business.png',
+            businessImage: r.stores?.logo_url || '/placeholder-business.svg',
             businessCategory: r.stores?.category || 'General',
             rating: r.rating,
             reviewText: r.comment,

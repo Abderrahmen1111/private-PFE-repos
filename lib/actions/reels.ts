@@ -4,7 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 
 export interface ReelInput {
     storeId: number
-    mediaUrl: string | string[]
+    mediaPath: string | string[]
     mediaType: 'image' | 'video'
     title: string
     subtitle?: string
@@ -13,6 +13,7 @@ export interface ReelInput {
     ctaType?: 'call' | 'whatsapp' | 'view'
     ctaValue?: string
     category?: string
+    itemId?: number
 }
 
 // Helper to parse media_url (handles single string or JSON array)
@@ -75,15 +76,14 @@ export async function getBusinessReels(storeId: number) {
         
         return {
             ...reel,
-            media_urls: parseMediaUrls(reel.media_url),
-            is_gallery: parseMediaUrls(reel.media_url).length > 1,
+            media_urls: parseMediaUrls(reel.media_path),
+            is_gallery: parseMediaUrls(reel.media_path).length > 1,
             stats: {
                 ...(reel.reel_stats || {}),
                 views_count: reel.reel_stats?.views_count || 0,
-                // Override with granular interaction counts
                 likes_count: reelInteractions.filter((i: any) => i.type === 'like').length,
-                saves_count: reelInteractions.filter((i: any) => i.type === 'save').length,
-                completions_count: reelInteractions.filter((i: any) => i.type === 'completion').length,
+                clicks_count: reel.reel_stats?.clicks_count || 0,
+                contact_count: reel.reel_stats?.contact_count || 0,
                 comments_count: (commentsData?.filter((c: any) => c.reel_id === reel.id) || []).length,
             }
         };
@@ -91,7 +91,7 @@ export async function getBusinessReels(storeId: number) {
 }
 
 // Track a user interaction with a reel
-export async function trackReelInteraction(reelId: number, type: 'like' | 'save' | 'completion') {
+export async function trackReelInteraction(reelId: number, type: 'like' | 'save' | 'completion' | 'view') {
     const supabase = createClient()
     const { data: { user }, error: authError } = await supabase.auth.getUser()
     if (authError || !user) return { success: false, error: 'Non authentifié.' }
@@ -130,34 +130,21 @@ export async function trackReelInteraction(reelId: number, type: 'like' | 'save'
 }
 
 /**
- * Record weight for visiting a business page.
- * Uses user_interactions table with a custom type 'store_visit'.
+ * Record visit to a business page.
+ * Uses store_analytics table for better tracking.
  */
 export async function recordStoreView(storeId: number) {
     const supabase = createClient()
     const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return;
-
-    // We use a debounce-like check: only log visit if not logged in the last 1 hour
-    const oneHourAgo = new Date(Date.now() - 3600000).toISOString();
     
-    const { data: recent } = await (supabase as any)
-        .from('user_interactions')
-        .select('id')
-        .eq('user_id', user.id)
-        .eq('store_id', storeId) // Use store_id instead of reel_id for this interaction type
-        .eq('type', 'store_visit')
-        .gt('created_at', oneHourAgo)
-        .limit(1);
-
-    if (recent && recent.length > 0) return;
-
+    // We use store_analytics for business page views
     await (supabase as any)
-        .from('user_interactions')
+        .from('store_analytics')
         .insert({
-            user_id: user.id,
+            user_id: user?.id || null,
             store_id: storeId,
-            type: 'store_visit'
+            session_id: crypto.randomUUID(), 
+            type: 'view'
         });
 }
 
@@ -167,15 +154,15 @@ export async function publishReel(input: ReelInput) {
     const { data: { user }, error: authError } = await supabase.auth.getUser()
     if (authError || !user) return { success: false, error: 'Non authentifié.' }
 
-    const finalMediaUrl = Array.isArray(input.mediaUrl) 
-        ? JSON.stringify(input.mediaUrl) 
-        : input.mediaUrl;
+    const finalMediaPath = Array.isArray(input.mediaPath) 
+        ? JSON.stringify(input.mediaPath) 
+        : input.mediaPath;
 
     const { data, error } = await (supabase as any)
         .from('reels')
         .insert({
             store_id: input.storeId,
-            media_url: finalMediaUrl,
+            media_path: finalMediaPath,
             media_type: input.mediaType,
             title: input.title,
             subtitle: input.subtitle || null,
@@ -184,6 +171,7 @@ export async function publishReel(input: ReelInput) {
             cta_type: input.ctaType || 'view',
             cta_value: input.ctaValue || null,
             category: input.category || null,
+            item_id: input.itemId || null,
             status: 'active'
         })
         .select('id')
@@ -218,7 +206,14 @@ export async function uploadReelMedia(formData: FormData): Promise<string | null
 
     if (error) {
         console.error('Upload error (reels bucket):', error)
-        // Fallback to 'stories' bucket if 'reels' doesn't exist yet
+        
+        // If it's an RLS error (403), don't fallback to stories bucket
+        if ((error as any).statusCode === '403' || (error as any).status === 403) {
+            console.error('RLS policy violation: please ensure your account has upload permissions for the "reels" bucket.')
+            return null
+        }
+
+        // Only fallback to 'stories' bucket if 'reels' doesn't exist (e.g. 404)
         const { error: fallbackError } = await supabase.storage
             .from('stories')
             .upload(filename, file, { contentType: file.type, upsert: false })

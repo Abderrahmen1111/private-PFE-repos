@@ -110,11 +110,13 @@ export async function getLatestItems(limit: number = 10) {
         .from('items')
         .select(`
             *,
-            stores (
+            stores!inner (
                 name,
-                logo_url
+                logo_url,
+                status
             )
         `)
+        .eq('stores.status', 'PUBLISHED')
         .eq('status', 'AVAILABLE')
         .order('created_at', { ascending: false })
         .limit(limit)

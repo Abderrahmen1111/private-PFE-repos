@@ -1,4 +1,8 @@
+'use client';
+
+import { useState, useEffect } from "react";
 import { OfferCarousel, type Offer } from "@/components/ui/offer-carousel-products";
+import { hasUserInteractions } from "@/lib/actions/user-activity";
 
 // Sample data for the carousel
 const sampleOffers: Offer[] = [
@@ -66,10 +70,24 @@ const sampleOffers: Offer[] = [
 
 // The demo component
 export default function OfferCarouselDemo() {
+  const [hasInteractions, setHasInteractions] = useState(false);
+
+  useEffect(() => {
+    async function checkInteractions() {
+      const result = await hasUserInteractions();
+      setHasInteractions(result);
+    }
+    checkInteractions();
+  }, []);
+
+  const title = hasInteractions 
+    ? "On commence à vous connaître ❤️" 
+    : "Populaire près de vous";
+
   return (
     <div className="w-full min-h-[500px] bg-[#F9F8F6] flex flex-col items-center justify-center p-4 md:p-10">
       <div className="w-full max-w-6xl">
-        <h2 className="text-3xl font-bold mb-6 text-[#111111]">On commence à vous connaître ❤️</h2>
+        <h2 className="text-3xl font-bold mb-6 text-[#111111]">{title}</h2>
         <OfferCarousel offers={sampleOffers} />
       </div>
     </div>
