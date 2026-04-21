@@ -25,17 +25,32 @@ export function useMessaging() {
     setIsMinimized,
     isNearEdge,
     setIsNearEdge,
-    updateMessage
+    updateMessage,
+    removeMessage
   } = useMessagingStore();
 
-  // Initialize User
+  // Initialize & Listen to User Auth State
   useEffect(() => {
-    const getUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      setCurrentUser(user);
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      setCurrentUser(session?.user ?? null);
+      
+      if (event === 'SIGNED_OUT') {
+        // Clear all messaging state immediately
+        setConversations([]);
+        setMessages([]);
+        setActivePartnerId(null);
+      }
+    });
+
+    // Initial check
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (user) setCurrentUser(user);
+    });
+
+    return () => {
+      subscription.unsubscribe();
     };
-    getUser();
-  }, [supabase]);
+  }, [supabase, setConversations, setMessages, setActivePartnerId]);
 
 
 
@@ -64,6 +79,9 @@ export function useMessaging() {
       const conversationMap = new Map<string, Conversation>();
 
       allMessages?.forEach((msg: any) => {
+        // Skip messages deleted for the current user
+        if (msg.metadata?.deleted_for?.includes(currentUser.id)) return;
+
         const partnerId = msg.sender_id === currentUser.id ? msg.receiver_id : msg.sender_id;
         const partnerData = msg.sender_id === currentUser.id ? msg.receiver : msg.sender;
 
@@ -82,7 +100,14 @@ export function useMessaging() {
         }
       });
 
-      setConversations(Array.from(conversationMap.values()));
+      // Force current active partner to 0 unread locally
+      const activeId = useMessagingStore.getState().activePartnerId;
+      const updatedConversations = Array.from(conversationMap.values()).map(conv => ({
+        ...conv,
+        unread_count: conv.user_id === activeId ? 0 : conv.unread_count
+      }));
+
+      setConversations(updatedConversations);
     } catch (error) {
       console.error('Error fetching conversations:', error);
     }
@@ -95,7 +120,6 @@ export function useMessaging() {
     }
   }, [currentUser, fetchConversations]);
 
-  // Fetch Messages for a specific partner
   const fetchMessages = useCallback(async (partnerId: string) => {
     if (!currentUser) return;
 
@@ -107,18 +131,33 @@ export function useMessaging() {
         .order('created_at', { ascending: true });
 
       if (error) throw error;
-      setMessages(data || []);
+      const filteredMessages = data?.filter((msg: any) => 
+        !msg.metadata?.deleted_for?.includes(currentUser.id)
+      ) || [];
+      setMessages(filteredMessages);
 
-      // Mark messages as read
+      // Optimistic local update
+      const currentConversations = useMessagingStore.getState().conversations;
+      useMessagingStore.getState().setConversations(
+        currentConversations.map(c => 
+          c.user_id === partnerId ? { ...c, unread_count: 0 } : c
+        )
+      );
+
+      // Mark messages as read in DB
       await (supabase as any)
         .from('messages')
         .update({ is_read: true })
         .match({ sender_id: partnerId, receiver_id: currentUser.id, is_read: false });
 
+      // Ensure background sync later with a delay to allow DB indexing/update to reflect
+      setTimeout(() => {
+        fetchConversations();
+      }, 500);
     } catch (error) {
       console.error('Error fetching messages:', error);
     }
-  }, [currentUser, setMessages]);
+  }, [currentUser, setMessages, fetchConversations]);
 
   const uploadFile = async (file: File, folder: string = 'others') => {
     if (!currentUser) return null;
@@ -143,6 +182,51 @@ export function useMessaging() {
       console.error('Error uploading file:', error);
       toast.error('Erreur lors du téléchargement du fichier');
       return null;
+    }
+  };
+
+  const deleteMessage = async (messageId: string, mode: 'me' | 'everyone' = 'me') => {
+    if (!currentUser) return;
+    
+    // Optimistic remove from UI
+    removeMessage(messageId);
+    
+    try {
+      if (mode === 'everyone') {
+        await (supabase as any)
+          .from('messages')
+          .delete()
+          .eq('id', messageId);
+      } else {
+        // Mode 'me': Update metadata to include current user in deleted_for list
+        const { data: msg } = await (supabase as any)
+          .from('messages')
+          .select('metadata')
+          .eq('id', messageId)
+          .single();
+        
+        const metadata = msg?.metadata || {};
+        const deletedFor = metadata.deleted_for || [];
+        
+        if (!deletedFor.includes(currentUser.id)) {
+          await (supabase as any)
+            .from('messages')
+            .update({ 
+              metadata: { 
+                ...metadata, 
+                deleted_for: [...deletedFor, currentUser.id] 
+              } 
+            })
+            .eq('id', messageId);
+        }
+      }
+      // Refresh conversations to update last_message preview
+      fetchConversations();
+    } catch (error) {
+      console.error('Error deleting message:', error);
+      toast.error('Erreur lors de la suppression du message');
+      // Re-fetch messages to restore if it failed
+      if (activePartnerId) fetchMessages(activePartnerId);
     }
   };
 
@@ -265,6 +349,7 @@ export function useMessaging() {
     fetchConversations,
     fetchMessages,
     sendMessage,
+    deleteMessage,
     uploadFile
   };
 }

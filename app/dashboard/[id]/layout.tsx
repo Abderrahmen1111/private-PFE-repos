@@ -111,6 +111,17 @@ export default function DashboardLayout({
     
     initLayout();
     fetchStats();
+
+    // Add auth listener to react to logout instantly
+    const supabase = createClient();
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_OUT') {
+        setUser(null);
+        router.push('/');
+      }
+    });
+
+    return () => subscription.unsubscribe();
   }, [id]);
 
   interface NavItem {
@@ -216,6 +227,13 @@ export default function DashboardLayout({
         <div className={cn('p-4 border-t', sidebarOpen ? 'border-border' : 'border-border')}>
           <motion.button
             whileHover={{ scale: 1.1, rotate: -10 }}
+            onClick={async () => {
+              const supabase = createClient();
+              await supabase.auth.signOut();
+              await fetch('/api/auth/logout', { method: 'POST' });
+              router.push('/');
+              router.refresh();
+            }}
             title="Logout"
             className={cn(
               'flex items-center justify-center rounded-2xl transition-all',
@@ -298,9 +316,12 @@ export default function DashboardLayout({
               user={user || { name: 'Commerçant', username: '', initials: 'C' }}
               onAction={(action) => {
                 if (action === 'logout') {
-                  fetch('/api/auth/logout', { method: 'POST' }).then(() => {
-                    router.push('/login');
-                    router.refresh();
+                  const supabase = createClient();
+                  supabase.auth.signOut().then(() => {
+                    fetch('/api/auth/logout', { method: 'POST' }).then(() => {
+                      router.push('/');
+                      router.refresh();
+                    });
                   });
                 }
               }}

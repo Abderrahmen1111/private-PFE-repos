@@ -16,6 +16,7 @@ import {
   StoryTitle,
   StoryViews,
   StoryCard,
+  Story,
 } from '@/components/ui/stories-carousel';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -203,65 +204,54 @@ export default function ShortAdsSection() {
       </div>
 
       <div className="px-0.5">
-        <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 xl:grid-cols-6 gap-3">
-          {shortAds.map((ad) => (
-            <StoryCard
-              key={ad.id}
-              isNew={ad.isNew}
-              onClick={handleAdClick}
-              onKeyDown={(e) => e.key === 'Enter' && handleAdClick()}
-              className="w-full"
-            >
-                {/* ── Thumbnail ── */}
-                <StoryThumbnail>
-                  <StoryImage alt={`${ad.brand} short ad`} src={ad.image} />
+        <Stories>
+          <StoriesContent className="-ml-3">
+            {shortAds.map((ad) => (
+              <Story key={ad.id} isNew={ad.isNew} className="basis-[150px]">
+                <div onClick={handleAdClick} className="w-full">
+                  {/* ── Thumbnail ── */}
+                  <StoryThumbnail>
+                    <StoryImage alt={`${ad.brand} short ad`} src={ad.image} />
+                    <StoryOverlay side="top" className="h-14 from-black/60" />
+                    <StoryOverlay side="bottom" className="h-20 from-black/70" />
+                    <span className="absolute bottom-2 left-2 z-20 inline-block px-1.5 py-0.5 rounded-md text-[10px] font-black bg-[#22C55E] text-[#0A0A0A] shadow-md">
+                      {ad.discount}
+                    </span>
+                    <StoryDuration>{ad.duration}</StoryDuration>
+                  </StoryThumbnail>
 
-                  {/* Top + bottom gradients */}
-                  <StoryOverlay side="top" className="h-14 from-black/60" />
-                  <StoryOverlay side="bottom" className="h-20 from-black/70" />
-
-                  {/* Badge — top left (Shorts-style) */}
-
-
-                  {/* Discount pill — bottom left */}
-                  <span className="absolute bottom-2 left-2 z-20 inline-block px-1.5 py-0.5 rounded-md text-[10px] font-black bg-[#22C55E] text-[#0A0A0A] shadow-md">
-                    {ad.discount}
-                  </span>
-
-                  {/* Duration — bottom right (YouTube convention) */}
-                  <StoryDuration>{ad.duration}</StoryDuration>
-                </StoryThumbnail>
-
-                {/* ── Info below thumbnail ── */}
-                <StoryInfo>
-                  <StoryAvatar
-                    src={ad.avatar}
-                    name={ad.brand}
-                    fallback={ad.brand[0]}
-                  />
-                  <StoryMeta>
-                    <StoryTitle className="text-[11px] leading-tight">{ad.tagline}</StoryTitle>
-                    <StoryViews className="text-[10px]">
-                      <span className={`font-semibold ${ad.textColor}`}>{ad.brand}</span>
-                      {' · '}{ad.views}
-                    </StoryViews>
-                  </StoryMeta>
-                </StoryInfo>
-              </StoryCard>
+                  {/* ── Info below thumbnail ── */}
+                  <StoryInfo className="mt-2">
+                    <StoryAvatar
+                      src={ad.avatar}
+                      name={ad.brand}
+                      fallback={ad.brand[0]}
+                    />
+                    <StoryMeta>
+                      <StoryTitle className="text-[11px] leading-tight">{ad.tagline}</StoryTitle>
+                      <StoryViews className="text-[10px]">
+                        <span className={`font-semibold ${ad.textColor}`}>{ad.brand}</span>
+                        {' · '}{ad.views}
+                      </StoryViews>
+                    </StoryMeta>
+                  </StoryInfo>
+                </div>
+              </Story>
             ))}
 
-          {/* ── "See all" ghost card at the end ── */}
-          <div className="flex items-stretch">
-            <button
-              onClick={() => router.push('/discover')}
-              className="w-full rounded-xl border border-dashed border-[#2A2A2A] bg-[#1A1A1A] flex flex-col items-center justify-center gap-2 text-[#A1A1AA] hover:text-[#FFFFFF] hover:bg-[#222222] transition-colors hover:scale-105 active:scale-95"
-              style={{ aspectRatio: '9/16' }}
-            >
-              <span className="text-2xl">→</span>
-              <span className="text-[11px] font-semibold text-center leading-tight px-2">See all shorts</span>
-            </button>
-          </div>
-        </div>
+            {/* ── "See all" ghost card at the end ── */}
+            <Story className="basis-[150px]">
+              <button
+                onClick={() => router.push('/discover')}
+                className="w-full rounded-xl border border-dashed border-[#2A2A2A] bg-[#1A1A1A] flex flex-col items-center justify-center gap-2 text-[#A1A1AA] hover:text-[#FFFFFF] hover:bg-[#222222] transition-colors hover:scale-105 active:scale-95"
+                style={{ aspectRatio: '9/16' }}
+              >
+                <span className="text-2xl">→</span>
+                <span className="text-[11px] font-semibold text-center leading-tight px-2">See all shorts</span>
+              </button>
+            </Story>
+          </StoriesContent>
+        </Stories>
       </div>
     </section>
   );

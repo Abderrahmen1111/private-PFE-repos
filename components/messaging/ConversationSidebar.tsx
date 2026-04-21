@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
 import { fr } from "date-fns/locale";
 import { useState, useEffect } from "react";
-import { Search, Users, UserPlus, Check, X, Bell } from "lucide-react";
+import { Search, Users, Check, X, Bell } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import Link from "next/link";
 import { Conversation } from "@/types/messaging";
@@ -14,14 +14,23 @@ import { getPendingRequests, acceptFriendRequest, declineFriendRequest, getFrien
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import { useMessagingStore } from "@/lib/store/use-messaging-store";
 
 interface ConversationSidebarProps {
-  conversations: Conversation[];
+  conversations?: Conversation[];
   activeId?: string;
   onSelect: (id: string, partnerData?: { full_name?: string; avatar_url?: string }) => void;
 }
 
-export function ConversationSidebar({ conversations, activeId, onSelect }: ConversationSidebarProps) {
+export function ConversationSidebar({ activeId: propsActiveId, onSelect }: ConversationSidebarProps) {
+  // Read directly from the Zustand store so updates are immediate
+  const { 
+    conversations, 
+    setConversations, 
+    activePartnerId: storeActiveId 
+  } = useMessagingStore();
+  
+  const activeId = propsActiveId || storeActiveId;
   const [pendingRequests, setPendingRequests] = useState<any[]>([]);
   const [friends, setFriends] = useState<any[]>([]);
   const [showRequests, setShowRequests] = useState(false);
@@ -146,7 +155,15 @@ export function ConversationSidebar({ conversations, activeId, onSelect }: Conve
               conversations.map((conv) => (
                 <button
                   key={conv.user_id}
-                  onClick={() => onSelect(conv.user_id)}
+                  onClick={() => {
+                    // Immediately clear unread badge (optimistic update)
+                    setConversations(
+                      conversations.map(c =>
+                        c.user_id === conv.user_id ? { ...c, unread_count: 0 } : c
+                      )
+                    );
+                    onSelect(conv.user_id);
+                  }}
                   className={cn(
                     "flex items-center gap-3 w-full p-3 rounded-xl transition-all duration-200 group relative",
                     activeId === conv.user_id 
@@ -177,14 +194,13 @@ export function ConversationSidebar({ conversations, activeId, onSelect }: Conve
                       "text-xs truncate transition-colors",
                       conv.unread_count > 0 ? "text-primary font-bold" : "text-muted-foreground"
                     )}>
-                      {(() => {
-                        if (conv.unread_count > 1) return `${conv.unread_count} nouveaux messages`;
-                        if (conv.unread_count === 1) {
+                        {(() => {
+                          if (conv.unread_count > 0) {
+                            return `${conv.unread_count} ${conv.unread_count > 1 ? 'nouveaux messages' : 'nouveau message'}`;
+                          }
                           const words = conv.last_message?.split(' ') || [];
                           return words.slice(0, 5).join(' ') + (words.length > 5 ? '...' : '');
-                        }
-                        return conv.last_message;
-                      })()}
+                        })()}
                     </p>
                   </div>
 

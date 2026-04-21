@@ -86,7 +86,7 @@ export default function AccountPage() {
     if (success) {
       toast.success("Votre compte a été supprimé avec succès. Redirection...");
       setTimeout(() => {
-        window.location.href = '/';
+        router.push('/');
       }, 1500);
     } else {
       toast.error("Erreur lors de la suppression du compte: " + error);
@@ -100,9 +100,9 @@ export default function AccountPage() {
       const { success, error } = await deleteStore(storeId);
       if (success) {
           toast.success("Votre boutique et toutes ses données ont été supprimées. Votre compte est maintenant un compte 'Client'. Redirection...");
-          // Using window.location.href to ensure a full reload and clear any dashboard-specific state
+          // Using router.push for seamless navigation
           setTimeout(() => {
-            window.location.href = '/';
+            router.push('/');
           }, 2000);
       } else {
           toast.error("Erreur lors de la suppression de la boutique: " + error);

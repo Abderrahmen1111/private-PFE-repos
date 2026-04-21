@@ -61,17 +61,18 @@ export default function Home() {
         <div className={`transition-all duration-300 ${isFiltering ? 'opacity-40 blur-[2px] scale-[0.98]' : 'opacity-100 blur-0 scale-100'}`}>
           <div className="max-w-[1600px] mx-auto grid grid-cols-1 lg:grid-cols-4 gap-8 px-4 md:px-6 py-6">
             <div className="lg:col-span-1">
-              <SmartStrip
+              {/*<SmartStrip
                 items={STRIP_ITEMS}
                 title="Trending & Offers"
                 onSelect={handleFilterSelect}
               />
+              */}
             </div>
-            <div className="lg:col-span-3">
-              <ShortAdsSection />
-            </div>
+            
+            
           </div>
 
+              <ShortAdsSection />
           <Offers />
           <OffersCarouselDemo />
         

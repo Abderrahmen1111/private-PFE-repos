@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { MessageCircle, X, Maximize2, Minimize2 } from "lucide-react";
 import { useMessaging } from "@/hooks/useMessaging";
@@ -11,6 +12,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { Message, Conversation } from "@/types/messaging";
 
 export function MessageBubble() {
+  const router = useRouter();
   const { 
     currentUser, 
     messages, 
@@ -79,7 +81,7 @@ export function MessageBubble() {
                           <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setIsMinimized(true)}>
                             <Minimize2 className="h-3.5 w-3.5" />
                           </Button>
-                          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => window.location.href = '/messages'}>
+                          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => router.push('/messages')}>
                             <Maximize2 className="h-3.5 w-3.5" />
                           </Button>
                           <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setIsOpen(false)}>

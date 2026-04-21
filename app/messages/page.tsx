@@ -21,9 +21,11 @@ function MessagesContent() {
     messages, 
     conversations, 
     fetchConversations, 
-    fetchMessages, 
+    fetchMessages,
+    setActivePartnerId: setStorePartnerId,
     sendMessage 
   } = useMessaging();
+
 
 
 
@@ -34,9 +36,13 @@ function MessagesContent() {
         setFriendshipStatus(res);
       };
       fetchStatus();
+
       fetchMessages(activePartnerId);
+      // Sync the Zustand store so realtime knows which chat is open
+      setStorePartnerId(activePartnerId);
     }
-  }, [activePartnerId, fetchMessages]);
+  }, [activePartnerId, fetchMessages, setStorePartnerId]);
+
 
   useEffect(() => {
     if (partnerIdFromUrl) {
@@ -46,6 +52,7 @@ function MessagesContent() {
 
   const handleSelectPartner = (id: string, partnerData?: any) => {
     setActivePartnerId(id);
+    setStorePartnerId(id); // sync store for realtime subscription
     if (partnerData) {
       setSelectedNewPartner({ 
         user_id: id, 
@@ -56,6 +63,7 @@ function MessagesContent() {
     }
     fetchMessages(id);
   };
+
 
   const activePartner = conversations.find((c) => c.user_id === activePartnerId) 
     || (selectedNewPartner?.user_id === activePartnerId ? selectedNewPartner : null);
@@ -77,11 +85,17 @@ function MessagesContent() {
 
           {/* Main Chat Area */}
           <div className="flex-1 hidden md:flex flex-col h-full min-h-0 border-l border-border/50">
-            <ChatWindow 
+             <ChatWindow 
               partner={activePartner}
               messages={messages}
               currentUserId={currentUser?.id}
               friendshipStatus={friendshipStatus}
+              onFriendshipUpdate={async () => {
+                if (activePartnerId) {
+                  const res = await getFriendshipStatus(activePartnerId);
+                  setFriendshipStatus(res);
+                }
+              }}
               onSendMessage={(content, type, url, meta) => activePartnerId && sendMessage(activePartnerId, content, type, url, meta)}
             />
           </div>
@@ -101,6 +115,12 @@ function MessagesContent() {
                   messages={messages}
                   currentUserId={currentUser?.id}
                   friendshipStatus={friendshipStatus}
+                  onFriendshipUpdate={async () => {
+                    if (activePartnerId) {
+                      const res = await getFriendshipStatus(activePartnerId);
+                      setFriendshipStatus(res);
+                    }
+                  }}
                   onSendMessage={(content, type, url, meta) => activePartnerId && sendMessage(activePartnerId, content, type, url, meta)}
                 />
               </div>

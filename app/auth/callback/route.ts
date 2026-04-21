@@ -71,14 +71,28 @@ export async function GET(request: NextRequest) {
   const role = profile.role as string
 
   // ── Determine redirect path based on role ──────────────────────────────────
-  function getDefaultRedirect(role: string): string {
-    if (role === 'admin') return '/admin/dashboard'
-    return '/'
+  let defaultRedirect = '/'
+  
+  if (role === 'admin') {
+    defaultRedirect = '/admin/dashboard'
+  } else if (role?.toLowerCase() === 'pro' || role?.toLowerCase() === 'business_owner' || role?.toLowerCase() === 'business owner') {
+    const { data: store } = await (supabase
+      .from('stores')
+      .select('id')
+      .eq('owner_id', data.user.id)
+      .limit(1)
+      .maybeSingle() as any)
+
+    if (store) {
+      defaultRedirect = `/dashboard/${store.id}`
+    } else {
+      defaultRedirect = '/merchants/business/add'
+    }
   }
 
   // If a `next` param was passed (e.g. from a protected route redirect), use it.
   // Otherwise fall back to the role-based default.
-  const redirectPath = getSafeRedirect(next, getDefaultRedirect(role))
+  const redirectPath = getSafeRedirect(next, defaultRedirect)
 
   return NextResponse.redirect(new URL(redirectPath, origin))
 }

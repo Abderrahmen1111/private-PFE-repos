@@ -11,6 +11,7 @@ const PROTECTED_ROUTES: Record<string, string[]> = {
   '/account': ['admin', 'business_owner', 'PRO', 'client'],
   '/checkout': ['admin', 'business_owner', 'PRO', 'client'],
   '/orders': ['admin', 'business_owner', 'PRO', 'client'],
+  '/messages': ['admin', 'business_owner', 'PRO', 'client'],
 }
 
 const AUTH_ROUTES = ['/login', '/signup', '/auth']

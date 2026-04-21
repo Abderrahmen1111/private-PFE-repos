@@ -4,37 +4,51 @@ import { createClient } from '@/lib/supabase/server'
 import { 
   DARIJA_TUNISIAN_DICTIONARY,
   extractDarijaWords,
-  normalizeDarijaWord 
 } from '@/lib/darija-dictionary'
 
 const gemini = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '')
 
+// ─── In-memory cache for AI-processed queries ────────────────────────────────
+// TTL: 1 hour — avoids hitting Gemini for repeated identical queries
+interface CacheEntry { normalized: string; enriched: string; ts: number }
+const aiCache = new Map<string, CacheEntry>()
+const CACHE_TTL_MS = 60 * 60 * 1000 // 1 hour
+
+function getCached(key: string): CacheEntry | null {
+  const entry = aiCache.get(key)
+  if (!entry) return null
+  if (Date.now() - entry.ts > CACHE_TTL_MS) { aiCache.delete(key); return null }
+  return entry
+}
+
+function setCache(key: string, value: Omit<CacheEntry, 'ts'>) {
+  // Evict oldest entry if cache exceeds 500 items
+  if (aiCache.size >= 500) aiCache.delete(aiCache.keys().next().value!)
+  aiCache.set(key, { ...value, ts: Date.now() })
+}
+// ─────────────────────────────────────────────────────────────────────────────
+
 export async function POST(req: NextRequest) {
   try {
     const { query } = await req.json()
+    if (!query || typeof query !== 'string') {
+      return NextResponse.json({ results: [], processing: null })
+    }
 
     console.log('🔍 Original:', query)
 
-    // ========== ÉTAPE 1: PRÉ-NORMALISATION AVEC DICTIONNAIRE ==========
+    // ===== ÉTAPE 1: PRÉ-NORMALISATION AVEC DICTIONNAIRE ==========
     const preNormalized = preNormalizeWithDictionary(query)
     console.log('📖 Pre-normalized:', preNormalized)
 
-    // ========== ÉTAPE 2: NORMALISATION IA AVANCÉE ==========
-    const normalized = await normalizeDarijaAdvanced(preNormalized)
-    console.log('🇹🇳 Normalized:', normalized)
-
-    // ========== ÉTAPE 3: CORRECTION + ENRICHISSEMENT ==========
-    const corrected = await correctSpelling(normalized)
-    const enriched = await enrichContext(corrected)
-    
+    // ===== ÉTAPE 2: TRAITEMENT IA CONSOLIDÉ (avec cache) ==========
+    const { normalized, enriched } = await processQueryWithAI(preNormalized)
     console.log('✅ Final query:', enriched)
 
-    // ========== ÉTAPE 4: RECHERCHE ==========
-    const embedding = await generateEmbedding(enriched)
+    // ===== ÉTAPE 3: RECHERCHE ==========
     const results = await hybridSearch({
       originalQuery: query,
       enrichedQuery: enriched,
-      embedding,
     })
 
     return NextResponse.json({
@@ -43,7 +57,6 @@ export async function POST(req: NextRequest) {
         original: query,
         preNormalized,
         normalized,
-        corrected,
         enriched,
         darijaWordsFound: extractDarijaWords(query),
       },
@@ -76,77 +89,70 @@ function preNormalizeWithDictionary(query: string): string {
 }
 
 /**
- * NORMALISATION IA AVANCÉE (Gemini)
- * Pour gérer cas complexes que le dictionnaire ne couvre pas
+ * TRAITEMENT IA CONSOLIDÉ (Gemini 1.5 Flash)
+ * - Vérifie le cache avant d'appeler l'IA (évite les appels redondants)
+ * - Fallback gracieux si quota 429 ou erreur réseau
  */
-async function normalizeDarijaAdvanced(query: string): Promise<string> {
-  const model = gemini.getGenerativeModel({ model: 'gemini-2.5-flash' })
+async function processQueryWithAI(query: string): Promise<{ normalized: string, enriched: string }> {
+  const cacheKey = query.toLowerCase().trim()
 
-  // Extraire mots darija détectés
+  // ── Cache hit ──────────────────────────────────────────────────────────────
+  const cached = getCached(cacheKey)
+  if (cached) {
+    console.log('⚡ Cache hit for:', query)
+    return { normalized: cached.normalized, enriched: cached.enriched }
+  }
+
   const darijaWords = extractDarijaWords(query)
-  
-  const prompt = `Tu es un expert en darija tunisien.
+  const model = gemini.getGenerativeModel({ model: 'gemini-1.5-flash' })
 
-REQUÊTE: "${query}"
+  const prompt = `Tu es un expert en darija tunisien et en recherche sémantique SEO.
 
-${darijaWords.length > 0 ? 
-'MOTS DARIJA DÉTECTÉS:\n' + darijaWords.map(w => '- ' + w.original + ' -> ' + w.french + ' (' + w.category + ')').join('\n') 
+REQUÊTE À TRAITER: "${query}"
+
+${darijaWords.length > 0 ?
+'MOTS DARIJA DÉTECTÉS:\n' + darijaWords.map(w => '- ' + w.original + ' -> ' + w.french).join('\n')
 : ''}
 
-TÂCHE:
-1. Confirme les traductions ci-dessus
-2. Détecte d'autres mots darija non répertoriés
-3. Corrige variantes phonétiques (ex: "maftouh" → "ouvert")
-4. Traduis TOUT vers français
-5. Garde structure logique de la phrase
-6. Réponds UNIQUEMENT avec la traduction française, sans aucun texte additionnel ni explication.
+TON RÔLE:
+1. Traduis la requête en français correct (Normalisation).
+2. Génère une version enrichie avec 4-5 mots-clés sémantiques associés.
 
-CONTEXTE: Recherche marketplace (commerces, produits, services, villes Tunisie)`
+FORMAT (UNIQUEMENT DU JSON):
+{"normalized": "traduction simple", "enriched": "traduction + mots clés"}
+
+Exemple:
+Requête: "n7eb plombier taw"
+Réponse: {"normalized": "je veux un plombier maintenant", "enriched": "plombier plomberie dépannage urgence réparation"}
+
+Réponds UNIQUEMENT le JSON.`
 
   try {
     const result = await model.generateContent(prompt)
-    return result.response.text().trim()
-  } catch(e) {
-    console.error('Gemini error:', e)
-    return query // fallback to original if LLM fails
+    const text = result.response.text()
+    const jsonStr = text.substring(text.indexOf('{'), text.lastIndexOf('}') + 1)
+    const parsed = JSON.parse(jsonStr)
+
+    const output = {
+      normalized: parsed.normalized || query,
+      enriched: parsed.enriched || parsed.normalized || query,
+    }
+    // Store in cache
+    setCache(cacheKey, output)
+    return output
+  } catch (e: any) {
+    // Graceful fallback on 429 (quota) or any other error
+    const is429 = e?.status === 429 || String(e).includes('429')
+    if (is429) {
+      console.warn('⚠️ Gemini quota exceeded — using pre-normalized query as fallback')
+    } else {
+      console.error('Gemini error:', e)
+    }
+    return { normalized: query, enriched: query }
   }
 }
 
-/**
- * Mocks & Helpers for remaining processes
- */
-async function correctSpelling(text: string): Promise<string> {
-    // Basic fallback, ideally you'd use a spell-checking library or another prompt
-    return text.trim();
-}
-
-async function enrichContext(text: string): Promise<string> {
-    const model = gemini.getGenerativeModel({ model: 'gemini-2.5-flash' })
-    const prompt = `Tu es un expert SEO et recherche sémantique.
-Prends cette recherche traduite : "${text}"
-
-TÂCHE: Enrichis-la avec 4 ou 5 mots-clés hyper-pertinents (synonymes, concepts associés, termes de métier) pour améliorer la recherche dans une base de données (marketplace/services). 
-Exemple: "je veux plombier ouvert maintenant" -> "plombier plomberie dépannage urgence disponible ouvert maintenant 24h immédiat"
-
-Réponds UNIQUEMENT avec la chaîne de mots-clés mise bout à bout, sans phrases explicatives. Ne change pas le contexte.`;
-
-    try {
-      const result = await model.generateContent(prompt)
-      return result.response.text().replace(/\n/g, ' ').trim()
-    } catch(e) {
-      console.error('Gemini enrich error:', e)
-      return text;
-    }
-}
-
-async function generateEmbedding(text: string): Promise<number[] | null> {
-    // Without an actual embedding model key, we can't reliably generate pgvector embeddings here.
-    // If you use OpenAI / google embeddings, you would call that SDK instead.
-    // Returning dummy / null
-    return null;
-}
-
-async function hybridSearch(params: { originalQuery: string, enrichedQuery: string, embedding: number[] | null }) {
+async function hybridSearch(params: { originalQuery: string, enrichedQuery: string }) {
     const supabase = createClient()
 
     const rawQuery = params.enrichedQuery || params.originalQuery;

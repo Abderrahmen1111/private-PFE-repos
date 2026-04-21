@@ -20,6 +20,7 @@ interface MessagingState {
   // Utils
   addMessage: (message: Message) => void;
   updateMessage: (id: string, updates: Partial<Message>) => void;
+  removeMessage: (id: string) => void;
 }
 
 export const useMessagingStore = create<MessagingState>((set) => ({
@@ -43,5 +44,9 @@ export const useMessagingStore = create<MessagingState>((set) => ({
   
   updateMessage: (id: string, updates: Partial<Message>) => set((state) => ({
     messages: state.messages.map(m => m.id === id ? { ...m, ...updates } : m)
+  })),
+
+  removeMessage: (id: string) => set((state) => ({
+    messages: state.messages.filter(m => m.id !== id)
   })),
 }));

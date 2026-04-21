@@ -160,7 +160,11 @@ export function AuthCard({ defaultFlipped = false }: AuthCardProps) {
           setLoginError(result.error || 'Invalid credentials');
         } else {
           // Login successful - redirect to dashboard or specified URL
-          const destination = redirectTo || '/';
+          let destination = result.redirectUrl;
+          if (!destination || destination === '/') {
+            destination = redirectTo || '/';
+          }
+          console.log('[AuthCard] Redirecting to:', destination);
           router.push(destination);
         }
       } catch (err) {

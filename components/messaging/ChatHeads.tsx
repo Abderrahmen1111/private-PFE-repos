@@ -36,6 +36,7 @@ export function ChatHeads() {
     isOpen
   } = useMessaging();
   
+  
   const x = useMotionValue(0);
   const y = useMotionValue(0);
   const springX = useSpring(x, { stiffness: 400, damping: 40 });
@@ -226,26 +227,26 @@ export function ChatHeads() {
                       <MessageCircle className="w-4 h-4" />
                       Messages
                     </button>
-                    <button
-                      onClick={() => setViewMode('discover')}
-                      className={cn(
-                        "px-4 py-2 rounded-xl text-sm font-bold transition-all flex items-center gap-2",
-                        viewMode === 'discover' ? "bg-white text-black shadow-xl scale-[1.02]" : "text-zinc-500 hover:text-white"
-                      )}
-                    >
-                      <Video className="w-4 h-4" />
-                      Découverte
-                    </button>
-                    <button
-                      onClick={() => setViewMode('shop')}
-                      className={cn(
-                        "px-4 py-2 rounded-xl text-sm font-bold transition-all flex items-center gap-2",
-                        viewMode === 'shop' ? "bg-white text-black shadow-xl scale-[1.02]" : "text-zinc-500 hover:text-white"
-                      )}
-                    >
-                      <ShoppingBag className="w-4 h-4" />
-                      Boutique
-                    </button>
+                        <button
+                          onClick={() => setViewMode('discover')}
+                          className={cn(
+                            "px-4 py-2 rounded-xl text-sm font-bold transition-all flex items-center gap-2",
+                            viewMode === 'discover' ? "bg-white text-black shadow-xl scale-[1.02]" : "text-zinc-500 hover:text-white"
+                          )}
+                        >
+                          <Video className="w-4 h-4" />
+                          Découverte
+                        </button>
+                        <button
+                          onClick={() => setViewMode('shop')}
+                          className={cn(
+                            "px-4 py-2 rounded-xl text-sm font-bold transition-all flex items-center gap-2",
+                            viewMode === 'shop' ? "bg-white text-black shadow-xl scale-[1.02]" : "text-zinc-500 hover:text-white"
+                          )}
+                        >
+                          <ShoppingBag className="w-4 h-4" />
+                          Boutique
+                        </button>
                   </div>
                   <div className="flex items-center gap-1">
                     <Tooltip>
@@ -316,7 +317,43 @@ export function ChatHeads() {
               {/* Main Content Area */}
               <div className="flex-1 overflow-hidden flex min-h-0 bg-black">
                 <AnimatePresence mode="wait">
-                  {viewMode === 'messages' ? (
+                  {viewMode === 'messages' && !currentUser ? (
+                    <motion.div 
+                      key="auth-required"
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -20 }}
+                      className="w-full h-full flex flex-col items-center justify-center p-8 text-center space-y-6"
+                    >
+                      <div className="w-20 h-20 bg-white/5 rounded-full flex items-center justify-center ring-1 ring-white/10">
+                        <MessageCircle className="w-10 h-10 text-white/40" />
+                      </div>
+                      <div className="space-y-2">
+                        <h3 className="text-xl font-bold text-white">Connexion requise</h3>
+                        <p className="text-zinc-500 text-sm">
+                          Connectez-vous pour discuter avec vos amis et accéder à votre messagerie privée.
+                        </p>
+                      </div>
+                      <Button 
+                        onClick={() => {
+                          router.push('/login');
+                          setIsOpen(false);
+                        }}
+                        className="w-full bg-white text-black hover:bg-zinc-200 font-bold py-6 rounded-2xl"
+                      >
+                        Se connecter
+                      </Button>
+                      <button 
+                        onClick={() => {
+                          router.push('/register');
+                          setIsOpen(false);
+                        }}
+                        className="text-zinc-500 hover:text-white text-sm font-medium transition-colors"
+                      >
+                        Créer un compte
+                      </button>
+                    </motion.div>
+                  ) : viewMode === 'messages' ? (
                     <motion.div 
                       key="chat-view"
                       initial={{ opacity: 0, x: -20 }}
@@ -325,7 +362,7 @@ export function ChatHeads() {
                       className="w-full h-full flex flex-col"
                     >
                       {!activePartnerId ? (
-                        <ConversationSidebar conversations={conversations} onSelect={handleSelectPartner} />
+                        <ConversationSidebar activeId={activePartnerId || undefined} onSelect={handleSelectPartner} />
                       ) : (
                         <div className="flex-1 flex flex-col h-full relative min-h-0">
                           {currentUser && (

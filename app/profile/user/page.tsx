@@ -20,7 +20,7 @@ import { toast } from 'sonner';
 
 // ─── Settings Tab ─────────────────────────────────────────────────────────────
 
-function SettingsTab({ user, onUpdate }: { user: any, onUpdate: () => void }) {
+function SettingsTab({ user, onUpdate, router }: { user: any, onUpdate: () => void, router: any }) {
   const [loading, setLoading] = useState(false);
   const [resetLoading, setResetLoading] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
@@ -68,7 +68,7 @@ function SettingsTab({ user, onUpdate }: { user: any, onUpdate: () => void }) {
         const { error } = await deleteAccount(user.id);
         if (error) throw new Error(error);
         toast.success('Compte supprimé avec succès');
-        window.location.href = '/';
+        router.push('/');
       } catch (err: any) {
         toast.error(err.message || 'Erreur lors de la suppression du compte');
       } finally {
@@ -402,7 +402,7 @@ function ProfileContent() {
               )}
 
               {/* Settings */}
-              {activeTab === 'settings' && <SettingsTab user={user} onUpdate={fetchData} />}
+              {activeTab === 'settings' && <SettingsTab user={user} onUpdate={fetchData} router={router} />}
             </motion.div>
           </AnimatePresence>
         </main>

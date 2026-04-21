@@ -53,8 +53,25 @@ async function getRoleFromDB(userId: string): Promise<string> {
   return data?.role ?? 'client'
 }
 
-function redirectPathForRole(role: string): string {
+async function redirectPathForRole(role: string, userId: string): Promise<string> {
   if (role === 'admin') return '/admin/dashboard'
+  
+  if (role?.toLowerCase() === 'pro' || role?.toLowerCase() === 'business_owner' || role?.toLowerCase() === 'business owner') {
+    const supabase = createClient()
+    const { data: store } = await (supabase
+      .from('stores')
+      .select('id')
+      .eq('owner_id', userId)
+      .limit(1)
+      .maybeSingle() as any)
+
+    if (store) {
+      return `/dashboard/${store.id}`
+    } else {
+      return '/merchants/business/add'
+    }
+  }
+
   return '/'
 }
 
@@ -93,8 +110,9 @@ export async function login(formData: FormData): Promise<ActionResult> {
   if (!authData.user) return { error: 'Authentication failed. Please try again.' }
 
   const role = await getRoleFromDB(authData.user.id)
+  const path = await redirectPathForRole(role, authData.user.id)
   revalidatePath('/', 'layout')
-  redirect(redirectPathForRole(role))
+  redirect(path)
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

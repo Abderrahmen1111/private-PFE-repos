@@ -810,6 +810,8 @@ export default function Navbar() {
   };
 
   const handleSignOut = async () => {
+    const supabase = createClient();
+    await supabase.auth.signOut();
     await fetch('/api/auth/logout', { method: 'POST' });
     router.push('/');
     router.refresh();
@@ -952,10 +954,7 @@ export default function Navbar() {
                   {/* Dashboard/Add Business - ONLY FOR PRO/BUSINESS OWNER */}
                   {(() => {
                     const effectiveRole = userRole?.toLowerCase() || user.user_metadata?.role?.toLowerCase();
-                    const isBusiness = effectiveRole === 'pro' || effectiveRole === 'business_owner' || effectiveRole === 'admin';
                     
-                    if (!isBusiness) return null;
-
                     return storeId ? (
                       <Link href={`/dashboard/${storeId}`}>
                         <button className="flex items-center gap-2 px-4 py-2 rounded-xl bg-red-600 hover:shadow-lg hover:shadow-red-600/20 text-sm font-bold text-white transition-all ring-1 ring-white/10">

@@ -21,12 +21,13 @@ interface ChatWindowProps {
   partner: Conversation | null;
   messages: Message[];
   currentUserId?: string;
-  onSendMessage: (content: string, type?: 'text' | 'image' | 'audio', url?: string, metadata?: any) => void;
+   onSendMessage: (content: string, type?: 'text' | 'image' | 'audio', url?: string, metadata?: any) => void;
+  onFriendshipUpdate?: () => void;
   isLoading?: boolean;
   friendshipStatus?: { status: string | null, direction: string | null };
 }
 
-export function ChatWindow({ partner, messages, currentUserId, onSendMessage, isLoading, friendshipStatus }: ChatWindowProps) {
+export function ChatWindow({ partner, messages, currentUserId, onSendMessage, onFriendshipUpdate, isLoading, friendshipStatus }: ChatWindowProps) {
   const [inputValue, setInputValue] = useState("");
   const [isRecording, setIsRecording] = useState(false);
   const [recordingDuration, setRecordingDuration] = useState(0);
@@ -41,7 +42,7 @@ export function ChatWindow({ partner, messages, currentUserId, onSendMessage, is
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
-  const { uploadFile } = useMessaging();
+  const { uploadFile, deleteMessage } = useMessaging();
   const { startCall } = useWebRTCCall();
 
   const scrollToBottom = () => {
@@ -226,6 +227,7 @@ export function ChatWindow({ partner, messages, currentUserId, onSendMessage, is
           {messages.map((msg) => (
             <ChatMessage
               key={msg.id}
+              id={msg.id}
               content={msg.content}
               timestamp={msg.created_at}
               isSender={msg.sender_id === currentUserId}
@@ -235,6 +237,7 @@ export function ChatWindow({ partner, messages, currentUserId, onSendMessage, is
               attachmentUrl={msg.attachment_url}
               metadata={msg.metadata}
               isRead={msg.is_read}
+              onDelete={deleteMessage}
             />
           ))}
           {isLoading && (
@@ -434,7 +437,7 @@ export function ChatWindow({ partner, messages, currentUserId, onSendMessage, is
                     const { error } = await sendFriendRequest(partner.user_id);
                     if (!error) {
                       toast.success("Invitation envoyée !");
-                      window.location.reload(); // Refresh to update status
+                      onFriendshipUpdate?.();
                     }
                   }
                 }}
@@ -453,7 +456,7 @@ export function ChatWindow({ partner, messages, currentUserId, onSendMessage, is
                     const { error } = await acceptFriendRequest(partner.user_id);
                     if (!error) {
                       toast.success("Invitation acceptée !");
-                      window.location.reload();
+                      onFriendshipUpdate?.();
                     }
                   }
                 }}
