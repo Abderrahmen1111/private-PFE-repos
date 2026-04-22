@@ -4,7 +4,9 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useParams } from 'next/navigation';
 import { 
   getBusinessReels, 
-  deleteReel, 
+  deleteReel,
+  publishReel,
+  uploadReelMedia
 } from '@/lib/actions/reels';
 import { getAdminItemsByStoreId, Item } from '@/lib/actions/items';
 import { Card, CardContent } from '@/components/ui/card';
@@ -165,16 +167,24 @@ export default function ReelsPage() {
     setIsUploading(true);
     try {
       // determine file to upload (support recorded files which set selectedFiles)
-      const uploadFile = file ?? selectedFiles[0] ?? null;
-      if (!uploadFile) {
+      const filesToUpload = selectedFiles.length > 0 ? selectedFiles : (file ? [file] : []);
+      if (filesToUpload.length === 0) {
         toast.error('Aucun fichier à uploader');
         setIsUploading(false);
         return;
       }
 
+      const uploadPromises = filesToUpload.map(async (f) => {
+        const formData = new FormData();
+        formData.append('file', f);
+        const url = await uploadReelMedia(formData);
+        if (!url) throw new Error('Échec du téléchargement du fichier.');
+        return url;
+      });
+
       const mediaUrls = await Promise.all(uploadPromises);
       
-      const isVideo = selectedFiles[0].type.startsWith('video/');
+      const isVideo = filesToUpload[0].type.startsWith('video/');
       
       const result = await publishReel({
         storeId,
