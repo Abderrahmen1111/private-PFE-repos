@@ -33,7 +33,8 @@ export function ChatHeads() {
     totalUnreadCount,
     fetchMessages,
     sendMessage,
-    isOpen
+    isOpen,
+    isAuthLoading
   } = useMessaging();
   
   
