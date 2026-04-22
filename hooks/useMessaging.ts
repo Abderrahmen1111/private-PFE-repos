@@ -10,6 +10,7 @@ import { createNotification } from '@/lib/actions/notifications';
 export function useMessaging() {
   const supabase = useMemo(() => createClient(), []);
   const [currentUser, setCurrentUser] = useState<any>(null);
+  const [isAuthLoading, setIsAuthLoading] = useState(true);
   
   const { 
     conversations, 
@@ -31,20 +32,22 @@ export function useMessaging() {
 
   // Initialize & Listen to User Auth State
   useEffect(() => {
+    // Initial check
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      setCurrentUser(user);
+      setIsAuthLoading(false);
+    });
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      setCurrentUser(session?.user ?? null);
+      const user = session?.user ?? null;
+      setCurrentUser(user);
+      setIsAuthLoading(false);
       
       if (event === 'SIGNED_OUT') {
-        // Clear all messaging state immediately
         setConversations([]);
         setMessages([]);
         setActivePartnerId(null);
       }
-    });
-
-    // Initial check
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      if (user) setCurrentUser(user);
     });
 
     return () => {
@@ -346,6 +349,7 @@ export function useMessaging() {
     setIsMinimized,
     setIsNearEdge,
     setActivePartnerId,
+    isAuthLoading,
     fetchConversations,
     fetchMessages,
     sendMessage,
