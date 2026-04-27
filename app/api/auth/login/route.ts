@@ -29,7 +29,7 @@ export async function POST(request: Request) {
 
     // Fetch user role
     const { data: profile, error: profileError } = await supabase
-      .from('profiles')
+      .from('users')
       .select('role')
       .eq('id', data.user.id)
       .single<{ role: string }>()
@@ -38,14 +38,14 @@ export async function POST(request: Request) {
       console.error('[auth/login] Error fetching profile:', profileError.message)
     }
 
-    const role = profile?.role || 'client'
+    const role = profile?.role || 'CLIENT'
     let redirectUrl = '/'
     
     console.log('[auth/login] User ID:', data.user.id, '| Role:', role);
 
-    if (role === 'admin') {
+    if (role?.toUpperCase() === 'ADMIN') {
       redirectUrl = '/admin/dashboard'
-    } else if (role.toLowerCase() === 'pro' || role.toLowerCase() === 'business_owner' || role.toLowerCase() === 'business owner') {
+    } else if (role?.toUpperCase() === 'PRO' || role.toLowerCase() === 'business_owner' || role.toLowerCase() === 'business owner') {
       const { data: store, error: storeError } = await (supabase
         .from('stores')
         .select('id')

@@ -10,7 +10,7 @@ import { NextResponse, type NextRequest } from 'next/server'
  *
  * Security measures:
  * - Validates the `code` param before exchanging
- * - Fetches role from the server-controlled `profiles` table (never user_metadata)
+ * - Fetches role from the server-controlled `users` table (never user_metadata)
  * - Validates the `next` redirect param to prevent open redirect attacks
  * - Logs errors for monitoring (replace console.error with your logger)
  */
@@ -48,7 +48,7 @@ export async function GET(request: NextRequest) {
 
   // ── Fetch role from DB — never trust user_metadata ─────────────────────────
   const { data: profile, error: profileError } = await supabase
-    .from('profiles')
+    .from('users')
     .select('role')
     .eq('id', data.user.id)
     .single<{ role: string }>()
@@ -60,7 +60,7 @@ export async function GET(request: NextRequest) {
      * the middleware will enforce access on the next request.
      */
     console.warn(
-      '[auth/callback] Profile not found for user:',
+      '[auth/callback] User record not found for user:',
       data.user.id,
       profileError?.message
     )
@@ -73,9 +73,9 @@ export async function GET(request: NextRequest) {
   // ── Determine redirect path based on role ──────────────────────────────────
   let defaultRedirect = '/'
   
-  if (role === 'admin') {
+  if (role?.toUpperCase() === 'ADMIN') {
     defaultRedirect = '/admin/dashboard'
-  } else if (role?.toLowerCase() === 'pro' || role?.toLowerCase() === 'business_owner' || role?.toLowerCase() === 'business owner') {
+  } else if (role?.toUpperCase() === 'PRO' || role?.toLowerCase() === 'business_owner' || role?.toLowerCase() === 'business owner') {
     const { data: store } = await (supabase
       .from('stores')
       .select('id')

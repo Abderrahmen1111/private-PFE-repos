@@ -1,8 +1,12 @@
 'use client';
 
-import { Phone, Globe, MapPin, Clock, MessageCircle } from 'lucide-react';
+import { Phone, Globe, MapPin, Clock, MessageCircle, CalendarCheck, CheckCircle2 } from 'lucide-react';
 import { ReservationCard } from '@/components/reservation/reservation-card';
 import { ReservationData } from '@/components/reservation/types';
+import { useState, useEffect } from 'react';
+import { createClient } from '@/lib/supabase/client';
+import { getUserBookings } from '@/lib/actions/reservation';
+import ReservationHistoryCard from '@/components/profile/ReservationHistoryCard';
 
 interface WorkingHours {
   open: string;
@@ -19,6 +23,8 @@ interface Props {
   website?: string | null;
   address: string;
   workingHours: Record<string, WorkingHours> | null;
+  service?: any;
+  storeId?: number;
   onConfirm?: (data: ReservationData) => void;
 }
 
@@ -31,10 +37,44 @@ export function ReservationDrawerContent({
   website,
   address,
   workingHours,
+  service,
+  storeId,
   onConfirm,
 }: Props) {
+  const [activeBookings, setActiveBookings] = useState<any[]>([]);
+
+  useEffect(() => {
+    const loadData = async () => {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const bookings = await getUserBookings(user.id);
+        const businessBookings = bookings.filter((b: any) => b.store_id.toString() === businessId.toString() && (b.status === 'PENDING' || b.status === 'CONFIRMED' || b.status === 'VALIDATED'));
+        setActiveBookings(businessBookings);
+      }
+    };
+    loadData();
+  }, [businessId]);
+
   return (
-    <div className="space-y-6 pb-20">
+    <div className="space-y-8 pb-20">
+      {/* Existing Reservations Section */}
+      {activeBookings.length > 0 && (
+        <div className="space-y-4">
+          <div className="flex items-center gap-2 text-stone-900">
+            <CalendarCheck className="w-5 h-5 text-indigo-600" />
+            <h4 className="text-sm font-black uppercase tracking-tight">Vos réservations en cours</h4>
+          </div>
+          <div className="space-y-4">
+            {activeBookings.map((booking) => (
+              <div key={booking.id} className="scale-[0.9] origin-top -mb-10">
+                <ReservationHistoryCard booking={booking} />
+              </div>
+            ))}
+          </div>
+          <div className="h-px bg-stone-100 my-8" />
+        </div>
+      )}
       <div className="bg-white rounded-xl p-4 border border-gray-100">
         <h3 className="text-gray-900 font-bold text-xl mb-4">Informations</h3>
         <div className="space-y-4">
@@ -83,6 +123,9 @@ export function ReservationDrawerContent({
         reviewCount={reviewCount}
         reservationFee={0}
         currency="TND "
+        service={service}
+        storeId={storeId}
+        workingHours={workingHours}
         onConfirm={onConfirm}
       />
       

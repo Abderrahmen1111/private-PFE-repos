@@ -1,6 +1,6 @@
 'use client';
 
-import { Calendar, Clock, ExternalLink } from 'lucide-react';
+import { Calendar, Clock, ExternalLink, XCircle, Loader2 } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import ReservationStatusBadge from './ReservationStatusBadge';
@@ -12,10 +12,12 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 
 interface Props {
   booking: any;
+  onCancel?: (id: string) => Promise<void>;
 }
 
-export default function ReservationHistoryCard({ booking }: Props) {
+export default function ReservationHistoryCard({ booking, onCancel }: Props) {
   const {
+    id,
     booking_number,
     booking_date,
     start_time,
@@ -30,12 +32,16 @@ export default function ReservationHistoryCard({ booking }: Props) {
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [qrCodeDataUrl, setQrCodeDataUrl] = useState('');
+  const [isCancelling, setIsCancelling] = useState(false);
 
   const isConfirmed = ['CONFIRMED', 'VALIDATED'].includes(status?.toUpperCase());
 
   useEffect(() => {
     if (isModalOpen && booking_number) {
-      QRCode.toDataURL(booking_number, {
+      const baseUrl = typeof window !== 'undefined' ? window.location.origin : 'https://ro2ya.tn';
+      const qrValue = `${baseUrl}/valider?code=${booking_number}`;
+      
+      QRCode.toDataURL(qrValue, {
         width: 300,
         margin: 1,
         color: {
@@ -46,6 +52,19 @@ export default function ReservationHistoryCard({ booking }: Props) {
       .catch(err => console.error(err));
     }
   }, [isModalOpen, booking_number]);
+
+  const handleCancel = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!onCancel) return;
+    if (window.confirm('Voulez-vous vraiment annuler cette réservation ?')) {
+      setIsCancelling(true);
+      try {
+        await onCancel(id.toString());
+      } finally {
+        setIsCancelling(false);
+      }
+    }
+  };
 
   return (
     <motion.div 
@@ -115,12 +134,22 @@ export default function ReservationHistoryCard({ booking }: Props) {
       </div>
       
       {/* Alert if pending */}
-      {status === 'PENDING' && (
-        <div className="px-8 py-3 bg-indigo-50/30 border-t border-indigo-100/20 flex items-center gap-3">
-          <div className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse" />
-          <p className="text-[9px] font-black text-indigo-600/60 uppercase tracking-[0.2em]">
-            En attente de confirmation par l'établissement
-          </p>
+      {status?.toUpperCase() === 'PENDING' && (
+        <div className="px-8 py-4 bg-indigo-50/30 border-t border-indigo-100/20 flex items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse" />
+            <p className="text-[9px] font-black text-indigo-600/60 uppercase tracking-[0.2em]">
+              En attente de confirmation par l'établissement
+            </p>
+          </div>
+          <button
+            onClick={handleCancel}
+            disabled={isCancelling}
+            className="px-6 py-2.5 bg-rose-50 text-rose-600 hover:bg-rose-100 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all active:scale-95 disabled:opacity-50 flex items-center gap-2"
+          >
+            {isCancelling ? <Loader2 className="w-3 h-3 animate-spin" /> : <XCircle className="w-3 h-3" />}
+            Annuler
+          </button>
         </div>
       )}
 

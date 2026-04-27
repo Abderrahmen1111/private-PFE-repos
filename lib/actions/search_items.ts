@@ -52,13 +52,25 @@ export async function searchItems(query?: string, category?: string) {
         const noiseWords = new Set(['je', 'tu', 'il', 'elle', 'un', 'une', 'des', 'le', 'la', 'les', 'de', 'du', 'au', 'aux', 'mon', 'ma', 'mes', 'pour', 'trouver', 'veux', 'où', 'a', 'à', 'est', 'sont', 'y', 'dans', 'avec', 'et', 'ou', 'moi', 'toi']);
         
         let targetString = translatedQuery !== query ? translatedQuery : query;
-        let keywords = targetString.toLowerCase().split(/\s+/).filter(w => w.length > 2 && !noiseWords.has(w));
+        // Clean: remove ALL special chars that break PostgREST (commas, parens, dots, etc.)
+        let keywords = targetString
+            .replace(/[^\w\s\u0600-\u06FF\u0750-\u077F]/g, '') // keep only letters, digits, spaces, Arabic
+            .toLowerCase()
+            .split(/\s+/)
+            .filter(w => w.length > 1 && !noiseWords.has(w));
+        
+        // Also add original query as a keyword for direct Arabic matching
+        if (translatedQuery !== query) {
+            keywords.push(query.toLowerCase());
+        }
         
         if (keywords.length === 0) keywords = [query.toLowerCase()];
 
-        keywords.forEach(keyword => {
-            request = request.or(`name.ilike.%${keyword}%,description.ilike.%${keyword}%`);
-        });
+        // Build OR filters for each keyword
+        const orFilters = keywords.map(keyword => 
+            `name.ilike.%${keyword}%,description.ilike.%${keyword}%`
+        ).join(',');
+        request = request.or(orFilters);
     }
 
     const { data, error } = await request.order('created_at', { ascending: false })

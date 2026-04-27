@@ -54,6 +54,19 @@ export async function createOrder(data: Omit<OrderInsert, 'order_number' | 'stat
     throw new Error('Vous ne pouvez pas commander dans votre propre boutique.');
   }
 
+  // 3. Check for existing PENDING order for this specific item (Prevent duplicates)
+  const { data: existingPending, error: checkError } = await supabase
+    .from('orders')
+    .select('id, order_number')
+    .eq('customer_id', user.id)
+    .eq('item_id', data.item_id)
+    .eq('status', 'PENDING')
+    .maybeSingle();
+
+  if (existingPending) {
+    throw new Error(`Une commande est déjà en attente pour cet article (${existingPending.order_number}). Veuillez attendre la validation du commerçant.`);
+  }
+
   // Generate a unique order number: ORD-XXXXXX-XXXX
   const orderNumber = `ORD-${Date.now().toString().slice(-6)}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
 
@@ -74,7 +87,8 @@ export async function createOrder(data: Omit<OrderInsert, 'order_number' | 'stat
   }
 
   if (order) {
-    await syncOrderTransaction(order, supabase);
+    // We don't sync to transactions yet because it's still PENDING
+    // Sync will happen in validateOrder() when the owner accepts
     // Automatically schedule a background job to check against payment failure (2 mins default delay)
     await publishQStashEvent('payment-retry', { orderId: order.id }, 120);
 
@@ -90,6 +104,9 @@ export async function createOrder(data: Omit<OrderInsert, 'order_number' | 'stat
   }
 
   revalidatePath(`/merchants/business/${data.store_id}`);
+  revalidatePath(`/profile/user`);
+  revalidatePath(`/profile/cart`);
+  
   return { success: true, order };
 }
 
@@ -311,26 +328,74 @@ export async function updateOrderStatus(
  * Changes status to CANCELLED
  * Can be called by customer or owner
  */
+import { createAdminClient } from '../supabase/admin';
+
 export async function cancelOrder(orderId: number, reason?: string) {
   const supabase = createClient();
+  const adminSupabase = createAdminClient();
+  
+  // 1. Get current user
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
+    throw new Error('Vous devez être connecté pour annuler une commande.');
+  }
 
-  const { data, error } = await (supabase
-    .from('orders') as any)
+  console.log('[cancelOrder] Received orderId:', orderId, 'User:', user.id);
+
+  if (!orderId || isNaN(orderId)) {
+    throw new Error(`ID de commande invalide: ${orderId}`);
+  }
+
+  // 2. Fetch order to verify ownership
+  const { data: order, error: fetchError } = await adminSupabase
+    .from('orders')
+    .select('customer_id, status')
+    .eq('id', orderId)
+    .single();
+
+  if (fetchError || !order) {
+    console.error('[cancelOrder] Order not found or fetch error:', fetchError);
+    throw new Error(`Commande non trouvée.`);
+  }
+
+  if (order.customer_id !== user.id) {
+    console.error('[cancelOrder] Unauthorized attempt by user:', user.id, 'for order owner:', order.customer_id);
+    throw new Error('Vous n\'êtes pas autorisé à annuler cette commande.');
+  }
+
+  if (order.status !== 'PENDING') {
+    throw new Error('Seules les commandes en attente peuvent être annulées.');
+  }
+
+  // 3. Perform cancellation using admin client to bypass RLS restrictions
+  const { data: results, error } = await adminSupabase
+    .from('orders')
     .update({
       status: 'CANCELLED',
-      vendor_notes: reason || 'Commande annulée',
+      vendor_notes: reason || 'Commande annulée par le client',
       updated_at: new Date().toISOString(),
     })
     .eq('id', orderId)
-    .select()
-    .single();
+    .select();
+
+  if (error) {
+    console.error('[cancelOrder] Admin update error:', error);
+    throw new Error(`Erreur lors de l'annulation : ${error.message}`);
+  }
+
+  if (!results || results.length === 0) {
+    throw new Error(`Échec de l'annulation de la commande.`);
+  }
+
+  const data = results[0];
 
   if (data) {
-    await syncOrderTransaction(data, supabase);
+    await syncOrderTransaction(data, adminSupabase as any);
   }
 
   revalidatePath(`/dashboard`);
   revalidatePath(`/profile/user`);
+  revalidatePath(`/profile/cart`);
 
   return data;
 }

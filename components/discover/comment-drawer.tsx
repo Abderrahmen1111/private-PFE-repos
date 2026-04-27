@@ -47,7 +47,8 @@ export function CommentDrawer({ isOpen, onClose, reelId }: CommentDrawerProps) {
   const scrollRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    if (isOpen) {
+    if (isOpen && reelId) {
+      console.log('Opening comments for reel:', reelId)
       fetchComments()
     }
   }, [isOpen, reelId])
@@ -59,6 +60,7 @@ export function CommentDrawer({ isOpen, onClose, reelId }: CommentDrawerProps) {
   }, [comments])
 
   const fetchComments = async () => {
+    if (!reelId) return
     setLoading(true)
     try {
       const data = await getReelComments(reelId)
@@ -232,7 +234,7 @@ export function CommentDrawer({ isOpen, onClose, reelId }: CommentDrawerProps) {
             </div>
           )}
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3">
             <input 
               type="file" 
               ref={fileInputRef} 
@@ -240,26 +242,29 @@ export function CommentDrawer({ isOpen, onClose, reelId }: CommentDrawerProps) {
               accept="image/*" 
               onChange={handleFileSelect} 
             />
-            <Button 
-               variant="ghost" 
-               size="icon" 
-               className="rounded-full shrink-0 text-white/50 hover:text-white"
-               onClick={() => fileInputRef.current?.click()}
-            >
-              <ImageIcon className="w-5 h-5" />
-            </Button>
-            <Button 
-               variant="ghost" 
-               size="icon" 
-               className={cn("rounded-full shrink-0 transition-colors", showStickers ? "text-primary" : "text-white/50 hover:text-white")}
-               onClick={() => setShowStickers(!showStickers)}
-            >
-              <Sticker className="w-5 h-5" />
-            </Button>
-            <div className="flex-1 relative">
+            <div className="flex items-center gap-1">
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className="rounded-full shrink-0 text-white/40 hover:text-white hover:bg-white/10 transition-all"
+                onClick={() => fileInputRef.current?.click()}
+              >
+                <ImageIcon className="w-5 h-5" />
+              </Button>
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className={cn("rounded-full shrink-0 transition-all", showStickers ? "text-primary bg-primary/10" : "text-white/40 hover:text-white hover:bg-white/10")}
+                onClick={() => setShowStickers(!showStickers)}
+              >
+                <Sticker className="w-5 h-5" />
+              </Button>
+            </div>
+            
+            <div className="flex-1 relative group/input">
               <Input 
                 placeholder="Ajouter un commentaire..." 
-                className="bg-white/5 border-white/10 text-white rounded-full pr-10 focus:ring-primary h-12"
+                className="bg-white/10 border-white/20 text-white rounded-full pr-12 focus:ring-primary focus:border-primary/50 h-12 transition-all group-hover/input:border-white/30"
                 value={newComment}
                 onChange={(e) => setNewComment(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handlePost()}
@@ -267,11 +272,18 @@ export function CommentDrawer({ isOpen, onClose, reelId }: CommentDrawerProps) {
               <Button 
                 variant="ghost" 
                 size="icon" 
-                className="absolute right-1 top-1/2 -translate-y-1/2 rounded-full text-primary disabled:opacity-50"
+                className={cn(
+                  "absolute right-1 top-1/2 -translate-y-1/2 rounded-full transition-all",
+                  (newComment || selectedFile) ? "text-primary hover:bg-primary/10 scale-100" : "text-white/20 scale-90"
+                )}
                 onClick={handlePost}
                 disabled={isPosting || (!newComment && !selectedFile)}
               >
-                {isPosting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                {isPosting ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Send className={cn("w-5 h-5", (newComment || selectedFile) && "fill-primary/20")} />
+                )}
               </Button>
             </div>
           </div>

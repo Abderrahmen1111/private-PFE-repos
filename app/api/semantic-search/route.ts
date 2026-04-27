@@ -6,6 +6,7 @@ import {
   extractDarijaWords,
   normalizeDarijaWord 
 } from '@/lib/darija-dictionary'
+import { generateQueryEmbedding } from '@/lib/jina-embeddings'
 
 const gemini = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '')
 
@@ -19,32 +20,69 @@ export async function POST(req: NextRequest) {
     const preNormalized = preNormalizeWithDictionary(query)
     console.log('📖 Pre-normalized:', preNormalized)
 
-    // ========== ÉTAPE 2: NORMALISATION IA AVANCÉE ==========
-    const normalized = await normalizeDarijaAdvanced(preNormalized)
-    console.log('🇹🇳 Normalized:', normalized)
+    // ========== ÉTAPE 2: NORMALISATION IA (optionnelle, graceful degradation) ==========
+    let normalized = preNormalized
+    try {
+      normalized = await normalizeDarijaAdvanced(preNormalized)
+      console.log('🇹🇳 Normalized:', normalized)
+    } catch(e) {
+      console.warn('⚠️ Gemini normalization skipped:', (e as Error).message?.substring(0, 80))
+    }
 
-    // ========== ÉTAPE 3: CORRECTION + ENRICHISSEMENT ==========
-    const corrected = await correctSpelling(normalized)
-    const enriched = await enrichContext(corrected)
+    // ========== ÉTAPE 3: RECHERCHE VECTORIELLE JINA AI ==========
+    // On utilise la query normalisée + l'originale pour l'embedding
+    const searchText = normalized !== preNormalized ? normalized : query
     
-    console.log('✅ Final query:', enriched)
+    let vectorResults: any[] = []
+    let embedding: number[] | null = null
+    
+    try {
+      embedding = await generateQueryEmbedding(searchText)
+      console.log('🧠 Jina embedding generated:', embedding?.length, 'dims')
+      
+      // Recherche vectorielle via pgvector
+      const supabase = createClient()
+      const { data, error } = await supabase.rpc('search_items_semantic', {
+        query_embedding: `[${embedding.join(',')}]`,
+        item_type_filter: undefined,
+        city_filter: undefined,
+        match_threshold: 0.3,
+        match_count: 20,
+      })
+      
+      if (error) {
+        console.error('pgvector RPC error:', error)
+      } else {
+        vectorResults = data || []
+        console.log('✅ Vector search results:', vectorResults.length)
+      }
+    } catch(e) {
+      console.error('Jina/vector search error:', (e as Error).message?.substring(0, 120))
+    }
 
-    // ========== ÉTAPE 4: RECHERCHE ==========
-    const embedding = await generateEmbedding(enriched)
-    const results = await hybridSearch({
-      originalQuery: query,
-      enrichedQuery: enriched,
-      embedding,
-    })
+    // ========== ÉTAPE 4: FALLBACK ILIKE SI PAS DE RÉSULTATS VECTORIELS ==========
+    let fallbackResults: any[] = []
+    if (vectorResults.length === 0) {
+      console.log('🔄 Falling back to ilike search...')
+      fallbackResults = await fallbackIlikeSearch(query, normalized)
+    }
+
+    // Merge results: vector first, then fallback (deduplicated)
+    const seenIds = new Set(vectorResults.map(r => r.id))
+    const mergedResults = [
+      ...vectorResults,
+      ...fallbackResults.filter(r => !seenIds.has(r.id))
+    ]
 
     return NextResponse.json({
-      results,
+      results: mergedResults,
       processing: {
         original: query,
         preNormalized,
         normalized,
-        corrected,
-        enriched,
+        searchMethod: vectorResults.length > 0 ? 'vector' : 'ilike_fallback',
+        vectorResultCount: vectorResults.length,
+        fallbackResultCount: fallbackResults.length,
         darijaWordsFound: extractDarijaWords(query),
       },
     })
@@ -76,13 +114,11 @@ function preNormalizeWithDictionary(query: string): string {
 }
 
 /**
- * NORMALISATION IA AVANCÉE (Gemini)
- * Pour gérer cas complexes que le dictionnaire ne couvre pas
+ * NORMALISATION IA AVANCÉE (Gemini) - graceful degradation si quota dépassé
  */
 async function normalizeDarijaAdvanced(query: string): Promise<string> {
   const model = gemini.getGenerativeModel({ model: 'gemini-2.5-flash' })
 
-  // Extraire mots darija détectés
   const darijaWords = extractDarijaWords(query)
   
   const prompt = `Tu es un expert en darija tunisien.
@@ -103,81 +139,51 @@ TÂCHE:
 
 CONTEXTE: Recherche marketplace (commerces, produits, services, villes Tunisie)`
 
-  try {
-    const result = await model.generateContent(prompt)
-    return result.response.text().trim()
-  } catch(e) {
-    console.error('Gemini error:', e)
-    return query // fallback to original if LLM fails
-  }
+  const result = await model.generateContent(prompt)
+  return result.response.text().trim()
 }
 
 /**
- * Mocks & Helpers for remaining processes
+ * FALLBACK: Recherche ilike quand les embeddings ne donnent rien
  */
-async function correctSpelling(text: string): Promise<string> {
-    // Basic fallback, ideally you'd use a spell-checking library or another prompt
-    return text.trim();
-}
+async function fallbackIlikeSearch(originalQuery: string, normalizedQuery: string): Promise<any[]> {
+  const supabase = createClient()
+  const rawQuery = normalizedQuery || originalQuery
 
-async function enrichContext(text: string): Promise<string> {
-    const model = gemini.getGenerativeModel({ model: 'gemini-2.5-flash' })
-    const prompt = `Tu es un expert SEO et recherche sémantique.
-Prends cette recherche traduite : "${text}"
+  const noiseWords = new Set(['je', 'tu', 'il', 'elle', 'un', 'une', 'des', 'le', 'la', 'les', 'de', 'du',
+    'au', 'aux', 'mon', 'ma', 'mes', 'pour', 'trouver', 'veux', 'où', 'a', 'à', 'est', 'sont', 'y',
+    'dans', 'avec', 'et', 'ou', 'moi', 'toi', 'en', 'par', 'sur', 'qui'])
 
-TÂCHE: Enrichis-la avec 4 ou 5 mots-clés hyper-pertinents (synonymes, concepts associés, termes de métier) pour améliorer la recherche dans une base de données (marketplace/services). 
-Exemple: "je veux plombier ouvert maintenant" -> "plombier plomberie dépannage urgence disponible ouvert maintenant 24h immédiat"
+  const keywords = rawQuery
+    .replace(/[^\w\s\u0600-\u06FF\u0750-\u077F]/g, '') // strip commas, parens, etc.
+    .toLowerCase()
+    .split(/\s+/)
+    .filter(w => w.length > 1 && !noiseWords.has(w))
 
-Réponds UNIQUEMENT avec la chaîne de mots-clés mise bout à bout, sans phrases explicatives. Ne change pas le contexte.`;
+  // Also add original query for Arabic matching
+  if (normalizedQuery !== originalQuery) {
+    const cleanOriginal = originalQuery.replace(/[^\w\s\u0600-\u06FF\u0750-\u077F]/g, '').trim()
+    if (cleanOriginal.length > 1) keywords.push(cleanOriginal.toLowerCase())
+  }
 
-    try {
-      const result = await model.generateContent(prompt)
-      return result.response.text().replace(/\n/g, ' ').trim()
-    } catch(e) {
-      console.error('Gemini enrich error:', e)
-      return text;
-    }
-}
+  const effectiveKeywords = keywords.length > 0 ? keywords : [rawQuery.toLowerCase()]
 
-async function generateEmbedding(text: string): Promise<number[] | null> {
-    // Without an actual embedding model key, we can't reliably generate pgvector embeddings here.
-    // If you use OpenAI / google embeddings, you would call that SDK instead.
-    // Returning dummy / null
-    return null;
-}
+  // Build one OR filter with all keywords
+  const orFilters = effectiveKeywords.map(keyword =>
+    `name.ilike.%${keyword}%,description.ilike.%${keyword}%`
+  ).join(',')
 
-async function hybridSearch(params: { originalQuery: string, enrichedQuery: string, embedding: number[] | null }) {
-    const supabase = createClient()
+  const { data, error } = await supabase
+    .from('items')
+    .select('*, stores(name, rating_average)')
+    .eq('status', 'AVAILABLE')
+    .or(orFilters)
+    .limit(20)
 
-    const rawQuery = params.enrichedQuery || params.originalQuery;
+  if (error) {
+    console.error('ilike fallback error:', error)
+    return []
+  }
 
-    // Split enriched query into individual keywords and filter noise words
-    const noiseWords = new Set(['je', 'tu', 'il', 'elle', 'un', 'une', 'des', 'le', 'la', 'les', 'de', 'du',
-        'au', 'aux', 'mon', 'ma', 'mes', 'pour', 'trouver', 'veux', 'où', 'a', 'à', 'est', 'sont', 'y',
-        'dans', 'avec', 'et', 'ou', 'moi', 'toi', 'en', 'par', 'sur', 'qui']);
-    const keywords = rawQuery
-        .toLowerCase()
-        .split(/\s+/)
-        .filter(w => w.length > 2 && !noiseWords.has(w));
-
-    const effectiveKeywords = keywords.length > 0 ? keywords : [rawQuery.toLowerCase()];
-
-    // Chain one .or() per keyword so ANY keyword that matches surfaces the item
-    let request = supabase
-        .from('items')
-        .select('*, stores(name, rating_average)')
-        .eq('status', 'AVAILABLE')
-
-    effectiveKeywords.forEach(keyword => {
-        request = (request as any).or(`name.ilike.%${keyword}%,description.ilike.%${keyword}%`)
-    })
-
-    const { data, error } = await (request as any).limit(20)
-
-    if (error) {
-        console.error('hybrid search fallback error:', error)
-        return []
-    }
-
-    return data;
+  return data || []
 }

@@ -34,12 +34,12 @@ export async function POST(request: Request) {
 
     // Check if user is PRO or ADMIN
     const { data: profile } = await supabase
-      .from('profiles')
+      .from('users')
       .select('role')
       .eq('id', user.id)
       .single()
 
-    if (!profile || !['PRO', 'ADMIN', 'business_owner'].includes(profile.role)) {
+    if (!profile || !['PRO', 'ADMIN', 'BUSINESS_OWNER', 'BUSINESS OWNER'].includes(profile.role?.toUpperCase())) {
       return NextResponse.json({ error: 'Forbidden: Professional account required' }, { status: 403 })
     }
 

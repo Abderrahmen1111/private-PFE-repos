@@ -109,7 +109,9 @@ export async function updateOrderStatus(
 
     revalidatePath(`/dashboard/${(data as any).store_id}/leads`)
     revalidatePath(`/dashboard/${(data as any).store_id}/transactions`)
-    if (data) {
+    
+    if (data && (status === 'VALIDATED' || status === 'COMPLETED' || status === 'CANCELLED')) {
+        // Only sync if it's being validated or was already validated
         await syncOrderTransaction(data, supabase);
     }
     

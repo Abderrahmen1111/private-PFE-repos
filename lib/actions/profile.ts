@@ -415,12 +415,21 @@ export async function getUserProfileData() {
             })
         }));
 
+    // 8. Fetch owned store ID if applicable
+    const { data: ownedStore } = await (supabase
+        .from('stores' as any)
+        .select('id')
+        .eq('owner_id', user.id)
+        .limit(1)
+        .single() as any);
+
     return {
         user: {
             ...user,
             profile: userData,
             avatar: userData?.avatar_url || null,
             email: user.email,
+            ownedStoreId: ownedStore?.id || null,
         },
         stats: {
             reviewsCount: reviewsCount || 0,

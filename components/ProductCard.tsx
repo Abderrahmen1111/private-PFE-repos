@@ -2,8 +2,9 @@
 
 import React, { useState } from 'react';
 import { Item } from '@/lib/actions/items';
-import { Star, Package, ShoppingCart, Scale, Heart, Zap, Calendar } from 'lucide-react';
+import { Star, Package, ShoppingCart, Scale, Heart, Zap, Calendar, ShoppingBag } from 'lucide-react';
 import { useActionDrawer } from '@/hooks/useActionDrawer';
+import { useCartStore } from '@/lib/store/use-cart-store';
 
 interface ServiceCardProps {
     item: Item;
@@ -59,8 +60,33 @@ function Stars({ n }: { n: number }) {
 export function ProductCard({ item, businessName, compared, promotion, onCompare, onViewDetails, onBuy, hideBuyButton, isOwner = false }: ProductCardProps) {
     const { openDrawer } = useActionDrawer();
     const [isWished, setIsWished] = useState(false);
+    const addItem = useCartStore((state) => state.addItem);
     
     const bName = businessName || (item as any).stores?.name || 'Commerce';
+
+    const handleAddToCart = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        const bName = businessName || (item as any).stores?.name || 'Commerce';
+        const hasDiscount = !!promotion?.discount_percent;
+        const discountedPrice = hasDiscount
+            ? item.price * (1 - (promotion.discount_percent! / 100))
+            : item.price;
+
+        addItem({
+            id: item.id.toString(),
+            name: item.name,
+            price: item.price,
+            discountedPrice: hasDiscount ? discountedPrice : undefined,
+            image: item.main_image,
+            quantity: 1,
+            store_id: item.store_id?.toString() || '',
+            store_name: bName,
+            item_type: item.item_type as 'PRODUCT' | 'SERVICE',
+        });
+        
+        // Optional: show feedback
+        // alert('Ajouté au panier !');
+    };
 
     const handleOpenBuy = () => {
         if (onBuy) {
@@ -202,9 +228,17 @@ export function ProductCard({ item, businessName, compared, promotion, onCompare
                                 {item.item_type === 'SERVICE' ? (
                                     <Calendar className="w-4 h-4 mb-0.5" />
                                 ) : (
-                                    <ShoppingCart className="w-4 h-4 mb-0.5" />
+                                    <ShoppingBag className="w-4 h-4 mb-0.5" />
                                 )}
-                                {item.item_type === 'SERVICE' ? 'Réserver' : 'Acheter'}
+                                {item.item_type === 'SERVICE' ? 'Réserver' : 'Commander'}
+                            </button>
+
+                            <button
+                                onClick={handleAddToCart}
+                                className="w-11 h-11 flex items-center justify-center rounded-2xl bg-white border border-stone-100 text-stone-900 hover:border-red-400 hover:text-red-600 transition-all active:scale-95 shadow-sm"
+                                title="Ajouter au panier"
+                            >
+                                <ShoppingCart className="w-4.5 h-4.5" />
                             </button>
 
                             <button

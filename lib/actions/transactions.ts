@@ -11,7 +11,8 @@ export type Transaction = {
   status: 'pending' | 'completed' | 'failed' | 'refunded';
   created_at: string;
   details?: string;
-  original_id?: number; // The numeric ID from orders or bookings table
+  original_id?: number;
+  qr_code_token?: string | null;
 };
 
 const STATUS_MAP: Record<string, 'pending' | 'completed' | 'failed' | 'refunded'> = {
@@ -41,8 +42,7 @@ export async function syncOrderTransaction(order: any, supabaseClient?: any) {
     merchant_name: store?.name || null,
     merchant_number: store?.phone || null,
     amount: order.total_price,
-    status: STATUS_MAP[order.status] || 'pending',
-    type: 'payment',
+    status: (STATUS_MAP[order.status] || 'pending') as any,
     date: order.created_at,
     time_created: order.created_at,
     qr_code_token: order.tracking_code || null
@@ -76,10 +76,10 @@ export async function syncBookingTransaction(booking: any, supabaseClient?: any)
     merchant_name: store?.name || null,
     merchant_number: store?.phone || null,
     amount: booking.price,
-    status: STATUS_MAP[booking.status] || 'pending',
-    type: 'payment',
+    status: (STATUS_MAP[booking.status] || 'pending') as any,
     date: booking.created_at,
-    time_created: booking.created_at
+    time_created: booking.created_at,
+    qr_code_token: booking.booking_number
   };
 
   const { error } = await supabase
@@ -106,17 +106,17 @@ export async function getStoreTransactions(storeId: number): Promise<Transaction
   }
 
   const transactionsData = (data as any[]) || [];
-  
+
   // To get original_id for orders, we need to match order_number with orders table IDs
   const orderNumbers = transactionsData.filter((t: any) => !t.booking_id).map((t: any) => t.order_number);
-  
+
   let orderMap = new Map<string, number>();
   if (orderNumbers.length > 0) {
     const { data: orders } = await supabase
       .from('orders')
       .select('id, order_number')
       .in('order_number', orderNumbers);
-    
+
     (orders || []).forEach((o: any) => orderMap.set(o.order_number, o.id));
   }
 
@@ -131,6 +131,7 @@ export async function getStoreTransactions(storeId: number): Promise<Transaction
       created_at: t.time_created || new Date().toISOString(),
       details: t.booking_id ? 'Réservation de service' : 'Vente de produit(s)',
       original_id: t.booking_id || orderMap.get(t.order_number) || undefined,
+      qr_code_token: t.qr_code_token || null,
     };
   });
 }

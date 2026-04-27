@@ -3,7 +3,10 @@
  * Inclut: Arabe, Phonétique (français/chiffres), Variations régionales
  */
 
+import corpus100k from './darija-corpus.json';
+
 export const DARIJA_TUNISIAN_DICTIONARY: Record<string, { french: string; category: string }> = {
+  ...corpus100k,
   // ========== VERBES COURANTS ==========
   
   // "Vouloir" (toutes variantes)
