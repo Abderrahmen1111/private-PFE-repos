@@ -24,12 +24,12 @@ export async function GET(
       return NextResponse.json({ error: 'Store not found or forbidden' }, { status: 403 })
     }
 
-    const { data: refunds, error } = await supabase
-      .from('orders')
+    const { data: refunds, error } = await (supabase
+      .from('orders' as any)
       .select('*')
       .eq('store_id', storeId)
       .in('status', ['refund_requested', 'refunded'])
-      .order('created_at', { ascending: false })
+      .order('created_at', { ascending: false }) as any);
 
     if (error) return NextResponse.json({ error: error.message }, { status: 400 })
 
