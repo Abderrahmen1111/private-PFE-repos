@@ -25,11 +25,11 @@ export async function GET(
     }
 
     // Transactions could map to orders where payment is successful or a specific transactions table
-    const { data: transactions, error } = await supabase
-      .from('orders')
+    const { data: transactions, error } = await (supabase
+      .from('orders' as any)
       .select('id, created_at, status, total_amount, payment_status, payment_method')
       .eq('store_id', storeId)
-      .order('created_at', { ascending: false })
+      .order('created_at', { ascending: false }) as any);
 
     if (error) return NextResponse.json({ error: error.message }, { status: 400 })
 
