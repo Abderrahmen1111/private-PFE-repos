@@ -60,6 +60,7 @@ sequenceDiagram
     participant Gemini
     participant Supabase
     participant pgVector
+    participant GoogleMaps as "Google Maps API"
 
     Client->>Browser: 1. Tape recherche<br/>(Darija/Arabic/French/Image)
     
@@ -100,8 +101,15 @@ sequenceDiagram
     API->>Supabase: 13. Get extended data<br/>store_id, images, ratings
     Supabase-->>API: 14. Full item metadata
     
-    API-->>Browser: 15. JSON {results[], total}
-    Browser-->>Client: 16. Display 20 results<br/>+ filters + pagination
+    rect rgb(255, 255, 150)
+        Note over API,GoogleMaps: ÉTAPE 5: Géolocalisation (Si recherche locale)
+    end
+    
+    API->>GoogleMaps: 15. Search nearby stores/places
+    GoogleMaps-->>API: 16. Coordinates + Place IDs
+    
+    API-->>Browser: 17. JSON {results[], total, map_data}
+    Browser-->>Client: 18. Display 20 results<br/>+ filters + Map View
     
     Client->>Browser: 17a. Click product OR<br/>17b. Refine search OR<br/>17c. Change filters
     
@@ -324,29 +332,19 @@ sequenceDiagram
         API-->>Browser: 10. {error: reason}
         Browser-->>Client: 11. Show error message
     else Validation passed
-        API->>Supabase: 12. INSERT INTO orders<br/>{order_number, store_id,<br/>customer_id, items, total_price,<br/>status: 'PENDING',<br/>payment_status: 'PENDING'}
+        API->>Supabase: 12. INSERT INTO orders<br/>{order_number, store_id,<br/>customer_id, items, total_price,<br/>status: 'PENDING',<br/>payment_method: 'CASH_ON_DELIVERY'}
         Supabase-->>API: 13. order_id + order_number
         
-        rect rgb(255, 200, 150)
-            Note over API,Supabase: ÉTAPE 3: Créer transaction
-        end
-        
-        API->>Supabase: 14. INSERT INTO transactions<br/>{order_id, customer_id,<br/>merchant_id, amount, currency,<br/>status: 'PENDING'}
-        Supabase-->>API: 15. transaction_id
-        
         rect rgb(200, 200, 255)
-            Note over API,QStash: ÉTAPE 4: Queue async jobs
+            Note over API,QStash: ÉTAPE 3: Notifications
         end
         
-        API->>QStash: 16. Schedule /workers/payment-retry<br/>delay=120s, max_retries=3
-        QStash-->>API: 17. Job ID returned
+        API->>QStash: 14. Schedule send notification<br/>to merchant
+        QStash-->>API: 15. Job queued
         
-        API->>QStash: 18. Schedule send notification<br/>to merchant
-        QStash-->>API: 19. Job queued
+        API-->>Browser: 16. {status: success,<br/>order_id, order_number,<br/>tracking_code}
         
-        API-->>Browser: 20. {status: success,<br/>order_id, order_number,<br/>tracking_code}
-        
-        Browser-->>Client: 21. Show confirmation<br/>+ order number<br/>+ tracking page
+        Browser-->>Client: 17. Show confirmation<br/>+ order number<br/>+ tracking page
     end
 ```
 
@@ -397,124 +395,21 @@ sequenceDiagram
         API->>Supabase: 19. INSERT INTO bookings<br/>{booking_number, store_id,<br/>item_id, customer_id,<br/>booking_date, start_time,<br/>status: 'PENDING'}
         Supabase-->>API: 20. booking_id
         
-        API->>Supabase: 21. INSERT INTO transactions<br/>{booking_id, customer_id,<br/>merchant_id, amount,<br/>status: 'PENDING'}
-        Supabase-->>API: 22. transaction_id
-        
         rect rgb(150, 200, 150)
             Note over API,QStash: ÉTAPE 2: Queue notifications
         end
         
-        API->>QStash: 23. Send confirmation to customer
-        API->>QStash: 24. Send notification to merchant
-        QStash-->>API: 25. Jobs queued
+        API->>QStash: 21. Send confirmation to customer
+        API->>QStash: 22. Send notification to merchant
+        QStash-->>API: 23. Jobs queued
         
-        API-->>Browser: 26. {status: success,<br/>booking_number, booking_date, time}
-        Browser-->>Client: 27. Confirmation + receipt
+        API-->>Browser: 24. {status: success,<br/>booking_number, booking_date, time}
+        Browser-->>Client: 25. Confirmation de réservation
     end
 ```
 
 ---
 
-## 7. Paiement (Stripe/Telnet)
-
-```mermaid
-sequenceDiagram
-    participant Client
-    participant Browser
-    participant API
-    participant Stripe as "Stripe API"
-    participant Telnet as "Telnet<br/>Gateway"
-    participant Supabase
-    participant QStash
-
-    Client->>Browser: 1. Go to checkout
-    Browser->>API: 2. GET /api/checkout/init<br/>{order_id OR booking_id}
-    
-    API->>Supabase: 3. SELECT transaction + order/booking
-    Supabase-->>API: 4. Transaction data
-    
-    API-->>Browser: 5. {order_summary, amount,<br/>payment_methods: ['card','telnet']}
-    Browser-->>Client: 6. Show payment methods
-    
-    Client->>Browser: 7. Select payment method
-    
-    alt Stripe (Card)
-        Browser->>Browser: 8. Initialize Stripe Elements
-        Client->>Browser: 9. Enter card details
-        Browser->>Stripe: 10. POST /v1/payment_intents<br/>{amount, currency,<br/>statement_descriptor}
-        Stripe-->>Browser: 11. payment_intent with client_secret
-        
-        rect rgb(200, 150, 255)
-            Note over Browser,Stripe: ÉTAPE 1: Card Processing
-        end
-        
-        Browser->>Stripe: 12. confirmCardPayment<br/>with client_secret
-        Stripe-->>Browser: 13. Status: succeeded OR failed
-        
-        alt Payment Succeeded
-            Browser->>API: 14. POST /api/payments/confirm<br/>{payment_intent_id,<br/>order_id, status: 'COMPLETED'}
-            
-            rect rgb(150, 200, 150)
-                Note over API,Supabase: ÉTAPE 2: Update transaction
-            end
-            
-            API->>Supabase: 15. UPDATE transactions<br/>SET status='COMPLETED',<br/>payment_method='stripe',<br/>payment_reference=intent_id
-            Supabase-->>API: 16. Updated ✓
-            
-            API->>Supabase: 17. UPDATE orders<br/>SET payment_status='COMPLETED',<br/>status='VALIDATED'
-            Supabase-->>API: 18. Updated ✓
-            
-            rect rgb(255, 200, 150)
-                Note over API,QStash: ÉTAPE 3: Queue jobs
-            end
-            
-            API->>QStash: 19. Schedule generateQRCode
-            API->>QStash: 20. Send confirmation email
-            QStash-->>API: 21. Jobs queued
-            
-            API-->>Browser: 22. {status: success}
-            Browser-->>Client: 23. ✅ Payment confirmed<br/>order active
-            
-        else Payment Failed
-            Browser->>API: 24. POST /api/payments/confirm<br/>{status: 'FAILED'}
-            API->>Supabase: 25. UPDATE transactions<br/>SET status='FAILED'
-            Supabase-->>API: 26. Updated
-            
-            API-->>Browser: 27. {error: reason}
-            Browser-->>Client: 28. ❌ Payment failed<br/>retry option
-        end
-        
-    else Telnet (Local)
-        Browser->>API: 14. POST /api/payments/telnet/init<br/>{order_id, amount}
-        
-        rect rgb(200, 150, 255)
-            Note over API,Telnet: ÉTAPE 1: Initiate Telnet
-        end
-        
-        API->>Telnet: 15. Create payment request
-        Telnet-->>API: 16. Payment reference
-        
-        API->>Supabase: 17. INSERT INTO transactions<br/>SET status='PENDING',<br/>payment_method='telnet',<br/>payment_reference=ref
-        Supabase-->>API: 18. Updated
-        
-        API-->>Browser: 19. Show reference<br/>+ instructions
-        Browser-->>Client: 20. "Wait for confirmation"
-        
-        rect rgb(150, 200, 150)
-            Note over API,Telnet: ÉTAPE 2: Webhook de confirmation
-        end
-        
-        Telnet->>API: 21. POST /webhooks/telnet<br/>{reference, status}
-        API->>Supabase: 22. UPDATE transactions<br/>SET status=status
-        Supabase-->>API: 23. Updated
-        
-        API->>QStash: 24. Send confirmation/failure
-        QStash-->>API: 25. Queued
-        
-        API->>Browser: 26. Realtime update (websocket)
-        Browser-->>Client: 27. Show result
-    end
-```
 
 ---
 

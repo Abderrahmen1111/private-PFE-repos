@@ -1,26 +1,26 @@
 /**
- * Seed Embeddings — Génère les embeddings Jina AI pour tous les items
+ * Seed Embeddings — Génère les embeddings via OpenRouter (BGE-M3) pour tous les items
  * 
  * Usage: node scratch/seed_embeddings.mjs
  * 
  * Prérequis: 
  *   1. Exécuter la migration SQL 20240427000000_jina_embedding_1024.sql dans Supabase
- *   2. Avoir JINA_API_KEY et SUPABASE_SERVICE_ROLE_KEY dans .env.local
+ *   2. Avoir OPENROUTER_API_KEY et SUPABASE_SERVICE_ROLE_KEY dans .env.local
  */
 
 import dotenv from 'dotenv'
 dotenv.config({ path: '.env.local' })
 
-const JINA_API_URL = 'https://api.jina.ai/v1/embeddings'
-const JINA_MODEL = 'jina-embeddings-v3'
+const OPENROUTER_API_URL = 'https://openrouter.ai/api/v1/embeddings'
+const EMBEDDING_MODEL = 'baai/bge-m3'
 const DIMENSIONS = 1024
-const BATCH_SIZE = 50 // items per Jina API call
+const BATCH_SIZE = 50 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY
-const JINA_KEY = process.env.JINA_API_KEY
+const OPENROUTER_KEY = process.env.OPENROUTER_API_KEY
 
-if (!SUPABASE_URL || !SUPABASE_KEY || !JINA_KEY) {
-  console.error('❌ Missing env vars. Need: NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, JINA_API_KEY')
+if (!SUPABASE_URL || !SUPABASE_KEY || !OPENROUTER_KEY) {
+  console.error('❌ Missing env vars. Need: NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, OPENROUTER_API_KEY')
   process.exit(1)
 }
 
@@ -46,23 +46,23 @@ async function supabaseQuery(path, options = {}) {
 }
 
 async function generateEmbeddingsBatch(texts) {
-  const res = await fetch(JINA_API_URL, {
+  const res = await fetch(OPENROUTER_API_URL, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${JINA_KEY}`,
+      'Authorization': `Bearer ${OPENROUTER_KEY}`,
+      'HTTP-Referer': process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000',
+      'X-Title': 'Seed Embeddings Tool',
     },
     body: JSON.stringify({
-      model: JINA_MODEL,
-      task: 'retrieval.passage',
-      dimensions: DIMENSIONS,
+      model: EMBEDDING_MODEL,
       input: texts,
     }),
   })
 
   if (!res.ok) {
     const err = await res.text()
-    throw new Error(`Jina API error (${res.status}): ${err}`)
+    throw new Error(`OpenRouter API error (${res.status}): ${err}`)
   }
 
   const data = await res.json()
@@ -70,7 +70,7 @@ async function generateEmbeddingsBatch(texts) {
 }
 
 async function main() {
-  console.log('🚀 Seed Embeddings — Jina AI jina-embeddings-v3')
+  console.log(`🚀 Seed Embeddings — OpenRouter ${EMBEDDING_MODEL}`)
   console.log('================================================\n')
 
   // 1. Fetch all items without embeddings

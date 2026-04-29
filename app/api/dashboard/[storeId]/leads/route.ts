@@ -25,16 +25,23 @@ export async function GET(
       return NextResponse.json({ error: 'Store not found or forbidden' }, { status: 403 })
     }
 
-    // Fetch leads (bookings)
-    const { data: leads, error } = await supabase
-      .from('bookings')
-      .select('*')
-      .eq('store_id', storeId)
-      .order('created_at', { ascending: false })
+    // Fetch leads (orders and bookings)
+    const [
+      { data: orders, error: ordersError },
+      { data: bookings, error: bookingsError }
+    ] = await Promise.all([
+      supabase.from('orders' as any).select('*').eq('store_id', storeId).order('created_at', { ascending: false }),
+      supabase.from('bookings' as any).select('*').eq('store_id', storeId).order('created_at', { ascending: false })
+    ]);
 
-    if (error) return NextResponse.json({ error: error.message }, { status: 400 })
+    if (ordersError || bookingsError) {
+      return NextResponse.json({ error: (ordersError || bookingsError)?.message }, { status: 400 });
+    }
 
-    return NextResponse.json(leads)
+    return NextResponse.json({
+      orders: orders || [],
+      bookings: bookings || []
+    });
   } catch (error: any) {
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }

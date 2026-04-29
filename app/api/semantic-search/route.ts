@@ -6,7 +6,7 @@ import {
   extractDarijaWords,
   normalizeDarijaWord 
 } from '@/lib/darija-dictionary'
-import { generateQueryEmbedding } from '@/lib/jina-embeddings'
+import { generateQueryEmbedding } from '@/lib/openrouter-embeddings'
 
 const gemini = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '')
 
@@ -29,7 +29,7 @@ export async function POST(req: NextRequest) {
       console.warn('⚠️ Gemini normalization skipped:', (e as Error).message?.substring(0, 80))
     }
 
-    // ========== ÉTAPE 3: RECHERCHE VECTORIELLE JINA AI ==========
+    // ========== ÉTAPE 3: RECHERCHE VECTORIELLE (OPENROUTER) ==========
     // On utilise la query normalisée + l'originale pour l'embedding
     const searchText = normalized !== preNormalized ? normalized : query
     
@@ -38,7 +38,7 @@ export async function POST(req: NextRequest) {
     
     try {
       embedding = await generateQueryEmbedding(searchText)
-      console.log('🧠 Jina embedding generated:', embedding?.length, 'dims')
+      console.log('🧠 Vectorial embedding generated:', embedding?.length, 'dims')
       
       // Recherche vectorielle via pgvector
       const supabase = createClient()
@@ -57,7 +57,7 @@ export async function POST(req: NextRequest) {
         console.log('✅ Vector search results:', vectorResults.length)
       }
     } catch(e) {
-      console.error('Jina/vector search error:', (e as Error).message?.substring(0, 120))
+      console.error('Vector search error:', (e as Error).message?.substring(0, 120))
     }
 
     // ========== ÉTAPE 4: FALLBACK ILIKE SI PAS DE RÉSULTATS VECTORIELS ==========
