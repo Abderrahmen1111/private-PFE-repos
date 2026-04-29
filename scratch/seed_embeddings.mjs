@@ -4,7 +4,7 @@
  * Usage: node scratch/seed_embeddings.mjs
  * 
  * Prérequis: 
- *   1. Exécuter la migration SQL 20240427000000_jina_embedding_1024.sql dans Supabase
+ *   1. Vérifier que la colonne 'embedding' (vector 1024) existe dans la table 'items'
  *   2. Avoir OPENROUTER_API_KEY et SUPABASE_SERVICE_ROLE_KEY dans .env.local
  */
 

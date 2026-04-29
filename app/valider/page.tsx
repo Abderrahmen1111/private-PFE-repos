@@ -43,7 +43,7 @@ function ValiderContent() {
       const { data, error } = await supabase
         .from('transactions')
         .select('*')
-        .eq('transaction_code', ref)
+        .eq('transaction_code', ref!)
         .single();
 
       if (error || !data) {
