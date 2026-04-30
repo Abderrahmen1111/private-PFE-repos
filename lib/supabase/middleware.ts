@@ -6,12 +6,12 @@ import { NextResponse, type NextRequest } from 'next/server'
  * Define which routes require authentication and which roles can access them.
  */
 const PROTECTED_ROUTES: Record<string, string[]> = {
-  '/admin': ['admin'],
-  '/dashboard': ['admin', 'business_owner', 'PRO', 'client'],
-  '/account': ['admin', 'business_owner', 'PRO', 'client'],
-  '/checkout': ['admin', 'business_owner', 'PRO', 'client'],
-  '/orders': ['admin', 'business_owner', 'PRO', 'client'],
-  '/messages': ['admin', 'business_owner', 'PRO', 'client'],
+  '/admin': ['ADMIN'],
+  '/dashboard': ['ADMIN', 'BUSINESS_OWNER', 'BUSINESS OWNER', 'PRO', 'CLIENT'],
+  '/account': ['ADMIN', 'BUSINESS_OWNER', 'BUSINESS OWNER', 'PRO', 'CLIENT'],
+  '/checkout': ['ADMIN', 'BUSINESS_OWNER', 'BUSINESS OWNER', 'PRO', 'CLIENT'],
+  '/orders': ['ADMIN', 'BUSINESS_OWNER', 'BUSINESS OWNER', 'PRO', 'CLIENT'],
+  '/messages': ['ADMIN', 'BUSINESS_OWNER', 'BUSINESS OWNER', 'PRO', 'CLIENT'],
 }
 
 const AUTH_ROUTES = ['/login', '/signup', '/auth']
@@ -72,7 +72,7 @@ export async function updateSession(request: NextRequest) {
   // ── 2. AUTHENTICATED USER — fetch role from DB (never trust user_metadata) ──
   if (user) {
     const { data: profile, error: profileError } = await supabase
-      .from('profiles')
+      .from('users')
       .select('role')
       .eq('id', user.id)
       .single()
@@ -90,9 +90,12 @@ export async function updateSession(request: NextRequest) {
 
     // ── 3. ROLE-BASED ACCESS CONTROL on every request ───────────────────────
     for (const [prefix, allowedRoles] of Object.entries(PROTECTED_ROUTES)) {
-      if (pathname.startsWith(prefix) && !allowedRoles.includes(userRole)) {
+      const normalizedUserRole = userRole.toUpperCase()
+      const normalizedAllowedRoles = allowedRoles.map(r => r.toUpperCase())
+
+      if (pathname.startsWith(prefix) && !normalizedAllowedRoles.includes(normalizedUserRole)) {
         // Redirect to appropriate fallback based on role
-        const fallback = userRole === 'admin' ? '/admin/dashboard' : '/'
+        const fallback = normalizedUserRole === 'ADMIN' ? '/admin/dashboard' : '/'
         return NextResponse.redirect(new URL(fallback, request.url))
       }
     }

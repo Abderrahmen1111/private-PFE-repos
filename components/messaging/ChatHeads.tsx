@@ -33,7 +33,8 @@ export function ChatHeads() {
     totalUnreadCount,
     fetchMessages,
     sendMessage,
-    isOpen
+    isOpen,
+    isAuthLoading
   } = useMessaging();
   
   
@@ -317,7 +318,17 @@ export function ChatHeads() {
               {/* Main Content Area */}
               <div className="flex-1 overflow-hidden flex min-h-0 bg-black">
                 <AnimatePresence mode="wait">
-                  {viewMode === 'messages' && !currentUser ? (
+                  {viewMode === 'messages' && isAuthLoading ? (
+                    <motion.div 
+                      key="auth-loading"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      className="w-full h-full flex items-center justify-center"
+                    >
+                      <div className="h-8 w-8 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+                    </motion.div>
+                  ) : viewMode === 'messages' && !currentUser ? (
                     <motion.div 
                       key="auth-required"
                       initial={{ opacity: 0, y: 20 }}

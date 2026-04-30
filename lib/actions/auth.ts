@@ -46,11 +46,11 @@ function getIpFromHeaders(): string {
 async function getRoleFromDB(userId: string): Promise<string> {
   const supabase = createClient()
   const { data } = await supabase
-    .from('profiles')
+    .from('users')
     .select('role')
     .eq('id', userId)
     .single<{ role: string }>()
-  return data?.role ?? 'client'
+  return data?.role ?? 'CLIENT'
 }
 
 async function redirectPathForRole(role: string, userId: string): Promise<string> {

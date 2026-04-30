@@ -1,406 +1,174 @@
--- ============================================================================
--- Migration: 20240103000000_rls_policies.sql
--- Description: Row Level Security (RLS) - Politiques de sécurité
--- ============================================================================
-
--- ============================================================================
--- 1. ACTIVER RLS SUR TOUTES LES TABLES
--- ============================================================================
-
-ALTER TABLE public.users ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.stores ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.items ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.service_schedules ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.orders ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.bookings ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.reviews ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.subscriptions ENABLE ROW LEVEL SECURITY;
-
--- ============================================================================
--- 2. POLICIES POUR LA TABLE USERS
--- ============================================================================
-
--- Lecture: Tout le monde peut voir les profils publics
-CREATE POLICY "Users are viewable by everyone"
-  ON public.users FOR SELECT
-  USING (true);
-
--- Insertion: Seulement lors de la création du compte (via trigger auth)
-CREATE POLICY "Users can insert their own profile"
-  ON public.users FOR INSERT
-  WITH CHECK (auth.uid() = id);
-
--- Mise à jour: Seulement son propre profil
-CREATE POLICY "Users can update own profile"
-  ON public.users FOR UPDATE
-  USING (auth.uid() = id)
-  WITH CHECK (auth.uid() = id);
-
--- Suppression: Interdit (utiliser soft delete si nécessaire)
-CREATE POLICY "Users cannot delete profiles"
-  ON public.users FOR DELETE
-  USING (false);
-
--- ============================================================================
--- 3. POLICIES POUR LA TABLE STORES
--- ============================================================================
-
--- Lecture: Tout le monde peut voir les stores ACTIFS
-CREATE POLICY "Stores are viewable by everyone"
-  ON public.stores FOR SELECT
-  USING (
-    status = 'ACTIVE' 
-    OR owner_id = auth.uid() 
-    OR EXISTS (
-      SELECT 1 FROM public.users 
-      WHERE id = auth.uid() AND role = 'ADMIN'
-    )
-  );
-
--- Insertion: Seulement les PRO peuvent créer des stores
-CREATE POLICY "PRO users can create stores"
-  ON public.stores FOR INSERT
-  WITH CHECK (
-    owner_id = auth.uid() 
-    AND EXISTS (
-      SELECT 1 FROM public.users 
-      WHERE id = auth.uid() AND role IN ('PRO', 'ADMIN')
-    )
-  );
-
--- Mise à jour: Propriétaire ou admin
-CREATE POLICY "Store owners can update their stores"
-  ON public.stores FOR UPDATE
-  USING (
-    owner_id = auth.uid() 
-    OR EXISTS (
-      SELECT 1 FROM public.users 
-      WHERE id = auth.uid() AND role = 'ADMIN'
-    )
-  )
-  WITH CHECK (
-    owner_id = auth.uid() 
-    OR EXISTS (
-      SELECT 1 FROM public.users 
-      WHERE id = auth.uid() AND role = 'ADMIN'
-    )
-  );
-
--- Suppression: Seulement admin
-CREATE POLICY "Only admins can delete stores"
-  ON public.stores FOR DELETE
-  USING (
-    EXISTS (
-      SELECT 1 FROM public.users 
-      WHERE id = auth.uid() AND role = 'ADMIN'
-    )
-  );
-
--- ============================================================================
--- 4. POLICIES POUR LA TABLE ITEMS
--- ============================================================================
-
--- Lecture: Tout le monde peut voir les items AVAILABLE
-CREATE POLICY "Items are viewable by everyone"
-  ON public.items FOR SELECT
-  USING (
-    status IN ('AVAILABLE', 'ON_DEMAND')
-    OR EXISTS (
-      SELECT 1 FROM public.stores 
-      WHERE id = items.store_id AND owner_id = auth.uid()
-    )
-    OR EXISTS (
-      SELECT 1 FROM public.users 
-      WHERE id = auth.uid() AND role = 'ADMIN'
-    )
-  );
-
--- Insertion: Propriétaire du store
-CREATE POLICY "Store owners can create items"
-  ON public.items FOR INSERT
-  WITH CHECK (
-    EXISTS (
-      SELECT 1 FROM public.stores 
-      WHERE id = store_id AND owner_id = auth.uid()
-    )
-  );
-
--- Mise à jour: Propriétaire du store
-CREATE POLICY "Store owners can update their items"
-  ON public.items FOR UPDATE
-  USING (
-    EXISTS (
-      SELECT 1 FROM public.stores 
-      WHERE id = items.store_id AND owner_id = auth.uid()
-    )
-  )
-  WITH CHECK (
-    EXISTS (
-      SELECT 1 FROM public.stores 
-      WHERE id = items.store_id AND owner_id = auth.uid()
-    )
-  );
-
--- Suppression: Propriétaire du store ou admin
-CREATE POLICY "Store owners can delete their items"
-  ON public.items FOR DELETE
-  USING (
-    EXISTS (
-      SELECT 1 FROM public.stores 
-      WHERE id = items.store_id AND owner_id = auth.uid()
-    )
-    OR EXISTS (
-      SELECT 1 FROM public.users 
-      WHERE id = auth.uid() AND role = 'ADMIN'
-    )
-  );
-
--- ============================================================================
--- 5. POLICIES POUR LA TABLE SERVICE_SCHEDULES
--- ============================================================================
-
--- Lecture: Tout le monde
-CREATE POLICY "Schedules are viewable by everyone"
-  ON public.service_schedules FOR SELECT
-  USING (true);
-
--- Insertion: Propriétaire du store
-CREATE POLICY "Store owners can create schedules"
-  ON public.service_schedules FOR INSERT
-  WITH CHECK (
-    EXISTS (
-      SELECT 1 FROM public.items 
-      JOIN public.stores ON items.store_id = stores.id
-      WHERE items.id = item_id AND stores.owner_id = auth.uid()
-    )
-  );
-
--- Mise à jour: Propriétaire du store
-CREATE POLICY "Store owners can update schedules"
-  ON public.service_schedules FOR UPDATE
-  USING (
-    EXISTS (
-      SELECT 1 FROM public.items 
-      JOIN public.stores ON items.store_id = stores.id
-      WHERE items.id = service_schedules.item_id AND stores.owner_id = auth.uid()
-    )
-  );
-
--- Suppression: Propriétaire du store
-CREATE POLICY "Store owners can delete schedules"
-  ON public.service_schedules FOR DELETE
-  USING (
-    EXISTS (
-      SELECT 1 FROM public.items 
-      JOIN public.stores ON items.store_id = stores.id
-      WHERE items.id = service_schedules.item_id AND stores.owner_id = auth.uid()
-    )
-  );
-
--- ============================================================================
--- 6. POLICIES POUR LA TABLE ORDERS
--- ============================================================================
-
--- Lecture: Client propriétaire, vendeur, ou admin
-CREATE POLICY "Orders viewable by customer, vendor, or admin"
-  ON public.orders FOR SELECT
-  USING (
-    customer_id = auth.uid()
-    OR EXISTS (
-      SELECT 1 FROM public.stores 
-      WHERE id = orders.store_id AND owner_id = auth.uid()
-    )
-    OR EXISTS (
-      SELECT 1 FROM public.users 
-      WHERE id = auth.uid() AND role = 'ADMIN'
-    )
-  );
-
--- Insertion: Clients authentifiés
-CREATE POLICY "Authenticated users can create orders"
-  ON public.orders FOR INSERT
-  WITH CHECK (
-    auth.uid() IS NOT NULL
-    AND customer_id = auth.uid()
-  );
-
--- Mise à jour: Vendeur peut modifier (statut, notes)
-CREATE POLICY "Vendors can update their orders"
-  ON public.orders FOR UPDATE
-  USING (
-    EXISTS (
-      SELECT 1 FROM public.stores 
-      WHERE id = orders.store_id AND owner_id = auth.uid()
-    )
-  );
-
--- Suppression: Interdit (garder l'historique)
-CREATE POLICY "Orders cannot be deleted"
-  ON public.orders FOR DELETE
-  USING (false);
-
--- ============================================================================
--- 7. POLICIES POUR LA TABLE BOOKINGS
--- ============================================================================
-
--- Lecture: Client propriétaire, vendeur, ou admin
-CREATE POLICY "Bookings viewable by customer, vendor, or admin"
-  ON public.bookings FOR SELECT
-  USING (
-    customer_id = auth.uid()
-    OR EXISTS (
-      SELECT 1 FROM public.stores 
-      WHERE id = bookings.store_id AND owner_id = auth.uid()
-    )
-    OR EXISTS (
-      SELECT 1 FROM public.users 
-      WHERE id = auth.uid() AND role = 'ADMIN'
-    )
-  );
-
--- Insertion: Clients authentifiés
-CREATE POLICY "Authenticated users can create bookings"
-  ON public.bookings FOR INSERT
-  WITH CHECK (
-    auth.uid() IS NOT NULL
-    AND customer_id = auth.uid()
-  );
-
--- Mise à jour: Vendeur peut modifier
-CREATE POLICY "Vendors can update their bookings"
-  ON public.bookings FOR UPDATE
-  USING (
-    EXISTS (
-      SELECT 1 FROM public.stores 
-      WHERE id = bookings.store_id AND owner_id = auth.uid()
-    )
-  );
-
--- Suppression: Interdit
-CREATE POLICY "Bookings cannot be deleted"
-  ON public.bookings FOR DELETE
-  USING (false);
-
--- ============================================================================
--- 8. POLICIES POUR LA TABLE REVIEWS
--- ============================================================================
-
--- Lecture: Avis approuvés visibles par tous, tous avis pour auteur/vendeur/admin
-CREATE POLICY "Reviews viewable based on approval"
-  ON public.reviews FOR SELECT
-  USING (
-    (is_approved = true AND is_spam = false)
-    OR author_id = auth.uid()
-    OR EXISTS (
-      SELECT 1 FROM public.stores 
-      WHERE id = reviews.store_id AND owner_id = auth.uid()
-    )
-    OR EXISTS (
-      SELECT 1 FROM public.users 
-      WHERE id = auth.uid() AND role = 'ADMIN'
-    )
-  );
-
--- Insertion: Clients authentifiés
-CREATE POLICY "Authenticated users can create reviews"
-  ON public.reviews FOR INSERT
-  WITH CHECK (
-    auth.uid() IS NOT NULL
-    AND author_id = auth.uid()
-  );
-
--- Mise à jour: Auteur (48h), vendeur (réponse), admin
-CREATE POLICY "Reviews can be updated by author, vendor, or admin"
-  ON public.reviews FOR UPDATE
-  USING (
-    (author_id = auth.uid() AND created_at > NOW() - INTERVAL '48 hours')
-    OR EXISTS (
-      SELECT 1 FROM public.stores 
-      WHERE id = reviews.store_id AND owner_id = auth.uid()
-    )
-    OR EXISTS (
-      SELECT 1 FROM public.users 
-      WHERE id = auth.uid() AND role = 'ADMIN'
-    )
-  );
-
--- Suppression: Seulement admin
-CREATE POLICY "Only admins can delete reviews"
-  ON public.reviews FOR DELETE
-  USING (
-    EXISTS (
-      SELECT 1 FROM public.users 
-      WHERE id = auth.uid() AND role = 'ADMIN'
-    )
-  );
-
--- ============================================================================
--- 9. POLICIES POUR LA TABLE SUBSCRIPTIONS
--- ============================================================================
-
--- Lecture: Propriétaire ou admin
-CREATE POLICY "Users can view their own subscriptions"
-  ON public.subscriptions FOR SELECT
-  USING (
-    user_id = auth.uid()
-    OR EXISTS (
-      SELECT 1 FROM public.users 
-      WHERE id = auth.uid() AND role = 'ADMIN'
-    )
-  );
-
--- Insertion: Admin seulement (créé via système de paiement)
-CREATE POLICY "Only admins can create subscriptions"
-  ON public.subscriptions FOR INSERT
-  WITH CHECK (
-    EXISTS (
-      SELECT 1 FROM public.users 
-      WHERE id = auth.uid() AND role = 'ADMIN'
-    )
-  );
-
--- Mise à jour: Admin seulement
-CREATE POLICY "Only admins can update subscriptions"
-  ON public.subscriptions FOR UPDATE
-  USING (
-    EXISTS (
-      SELECT 1 FROM public.users 
-      WHERE id = auth.uid() AND role = 'ADMIN'
-    )
-  );
-
--- Suppression: Admin seulement
-CREATE POLICY "Only admins can delete subscriptions"
-  ON public.subscriptions FOR DELETE
-  USING (
-    EXISTS (
-      SELECT 1 FROM public.users 
-      WHERE id = auth.uid() AND role = 'ADMIN'
-    )
-  );
-
--- ============================================================================
--- 10. VÉRIFICATION DES POLICIES
--- ============================================================================
-
--- Lister toutes les policies créées
-DO $$
-DECLARE
-  policy_count INTEGER;
-BEGIN
-  SELECT COUNT(*) INTO policy_count
-  FROM pg_policies
-  WHERE schemaname = 'public';
-  
-  RAISE NOTICE 'Nombre total de policies créées: %', policy_count;
-  
-  IF policy_count < 30 THEN
-    RAISE WARNING 'Nombre de policies inférieur à attendu (30+)';
-  END IF;
-END $$;
-
--- ============================================================================
--- FIN DE LA MIGRATION
--- ============================================================================
-
-COMMENT ON SCHEMA public IS 'RLS activé sur toutes les tables avec policies complètes';
+| ?column?                                                                                                                                                                                                                                                                                                                                                                                          |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| CREATE POLICY "Merchants can read their own transactions" ON "public"."transactions" AS PERMISSIVE FOR SELECT TO public USING ((EXISTS ( SELECT 1
+   FROM stores
+  WHERE ((stores.id = transactions.merchant_id) AND (stores.owner_id = auth.uid())))));                                                                                                                                          |
+| CREATE POLICY "Customers can read their own transactions" ON "public"."transactions" AS PERMISSIVE FOR SELECT TO public USING ((customer_id = auth.uid()));                                                                                                                                                                                                                                       |
+| CREATE POLICY "Les utilisateurs peuvent voir leurs propres favoris" ON "public"."saved_places" AS PERMISSIVE FOR SELECT TO public USING ((auth.uid() = user_id));                                                                                                                                                                                                                                 |
+| CREATE POLICY "Les utilisateurs peuvent ajouter des favoris" ON "public"."saved_places" AS PERMISSIVE FOR INSERT TO public WITH CHECK ((auth.uid() = user_id));                                                                                                                                                                                                                                   |
+| CREATE POLICY "Les utilisateurs peuvent supprimer leurs favoris" ON "public"."saved_places" AS PERMISSIVE FOR DELETE TO public USING ((auth.uid() = user_id));                                                                                                                                                                                                                                    |
+| CREATE POLICY "Admins can view all drivers" ON "public"."drivers" AS PERMISSIVE FOR SELECT TO public USING (((auth.jwt() ->> 'role'::text) = 'admin'::text));                                                                                                                                                                                                                                     |
+| CREATE POLICY "Drivers can view their own data" ON "public"."drivers" AS PERMISSIVE FOR SELECT TO public USING ((auth.uid() = id));                                                                                                                                                                                                                                                               |
+| CREATE POLICY "Admins can update drivers" ON "public"."drivers" AS PERMISSIVE FOR UPDATE TO public USING (((auth.jwt() ->> 'role'::text) = 'admin'::text));                                                                                                                                                                                                                                       |
+| CREATE POLICY "Users can view their own friendships" ON "public"."friendships" AS PERMISSIVE FOR SELECT TO public USING (((auth.uid() = user_id) OR (auth.uid() = friend_id)));                                                                                                                                                                                                                   |
+| CREATE POLICY "Users can send friendship requests" ON "public"."friendships" AS PERMISSIVE FOR INSERT TO public WITH CHECK ((auth.uid() = user_id));                                                                                                                                                                                                                                              |
+| CREATE POLICY "Users can update their own friendships" ON "public"."friendships" AS PERMISSIVE FOR UPDATE TO public USING (((auth.uid() = user_id) OR (auth.uid() = friend_id))) WITH CHECK (((auth.uid() = user_id) OR (auth.uid() = friend_id)));                                                                                                                                               |
+| CREATE POLICY "Users can view their own messages" ON "public"."messages" AS PERMISSIVE FOR SELECT TO public USING (((auth.uid() = sender_id) OR (auth.uid() = receiver_id)));                                                                                                                                                                                                                     |
+| CREATE POLICY "Users can send messages" ON "public"."messages" AS PERMISSIVE FOR INSERT TO public WITH CHECK ((auth.uid() = sender_id));                                                                                                                                                                                                                                                          |
+| CREATE POLICY "Users can upload chat attachments" ON "storage"."objects" AS PERMISSIVE FOR INSERT TO public WITH CHECK (((bucket_id = 'chat-attachments'::text) AND (auth.uid() IS NOT NULL) AND ((storage.foldername(name))[1] = (auth.uid())::text)));                                                                                                                                          |
+| CREATE POLICY "Users can delete their own chat attachments" ON "storage"."objects" AS PERMISSIVE FOR DELETE TO public USING (((bucket_id = 'chat-attachments'::text) AND (auth.uid() IS NOT NULL) AND ((storage.foldername(name))[1] = (auth.uid())::text)));                                                                                                                                     |
+| CREATE POLICY "Users can insert their own search history" ON "public"."user_search_history" AS PERMISSIVE FOR INSERT TO authenticated WITH CHECK ((auth.uid() = user_id));                                                                                                                                                                                                                        |
+| CREATE POLICY "Allow authenticated uploads to reels" ON "storage"."objects" AS PERMISSIVE FOR INSERT TO public WITH CHECK (((bucket_id = 'reels'::text) AND (auth.role() = 'authenticated'::text)));                                                                                                                                                                                              |
+| CREATE POLICY "Allow public view for reels" ON "storage"."objects" AS PERMISSIVE FOR SELECT TO public USING ((bucket_id = 'reels'::text));                                                                                                                                                                                                                                                        |
+| CREATE POLICY "Anyone can view active reels" ON "public"."reels" AS PERMISSIVE FOR SELECT TO public USING ((status = 'active'::text));                                                                                                                                                                                                                                                            |
+| CREATE POLICY "Store owners can insert their own reels" ON "public"."reels" AS PERMISSIVE FOR INSERT TO public WITH CHECK ((auth.uid() IN ( SELECT stores.owner_id
+   FROM stores
+  WHERE (stores.id = reels.store_id))));                                                                                                                                                                        |
+| CREATE POLICY "Product images are publicly accessible" ON "storage"."objects" AS PERMISSIVE FOR SELECT TO public USING ((bucket_id = 'product-images'::text));                                                                                                                                                                                                                                    |
+| CREATE POLICY "Store owners can upload product images" ON "storage"."objects" AS PERMISSIVE FOR INSERT TO public WITH CHECK (((bucket_id = 'product-images'::text) AND (auth.uid() IS NOT NULL) AND (((storage.foldername(name))[1])::bigint IN ( SELECT stores.id
+   FROM stores
+  WHERE (stores.owner_id = auth.uid())))));                                                                     |
+| CREATE POLICY "Store owners can update product images" ON "storage"."objects" AS PERMISSIVE FOR UPDATE TO public USING (((bucket_id = 'product-images'::text) AND (((storage.foldername(name))[1])::bigint IN ( SELECT stores.id
+   FROM stores
+  WHERE (stores.owner_id = auth.uid())))));                                                                                                       |
+| CREATE POLICY "Store owners can delete product images" ON "storage"."objects" AS PERMISSIVE FOR DELETE TO public USING (((bucket_id = 'product-images'::text) AND (((storage.foldername(name))[1])::bigint IN ( SELECT stores.id
+   FROM stores
+  WHERE (stores.owner_id = auth.uid())))));                                                                                                       |
+| CREATE POLICY "Store images are publicly accessible" ON "storage"."objects" AS PERMISSIVE FOR SELECT TO public USING ((bucket_id = 'store-images'::text));                                                                                                                                                                                                                                        |
+| CREATE POLICY "Store owners can upload store images" ON "storage"."objects" AS PERMISSIVE FOR INSERT TO public WITH CHECK (((bucket_id = 'store-images'::text) AND (auth.uid() IS NOT NULL) AND (((storage.foldername(name))[1])::bigint IN ( SELECT stores.id
+   FROM stores
+  WHERE (stores.owner_id = auth.uid())))));                                                                         |
+| CREATE POLICY "Store owners can update store images" ON "storage"."objects" AS PERMISSIVE FOR UPDATE TO public USING (((bucket_id = 'store-images'::text) AND (((storage.foldername(name))[1])::bigint IN ( SELECT stores.id
+   FROM stores
+  WHERE (stores.owner_id = auth.uid())))));                                                                                                           |
+| CREATE POLICY "Store owners can manage their own reels" ON "public"."reels" AS PERMISSIVE FOR ALL TO public USING ((auth.uid() IN ( SELECT stores.owner_id
+   FROM stores
+  WHERE (stores.id = reels.store_id))));                                                                                                                                                                                |
+| CREATE POLICY "Store owners can delete store images" ON "storage"."objects" AS PERMISSIVE FOR DELETE TO public USING (((bucket_id = 'store-images'::text) AND (((storage.foldername(name))[1])::bigint IN ( SELECT stores.id
+   FROM stores
+  WHERE (stores.owner_id = auth.uid())))));                                                                                                           |
+| CREATE POLICY "Store documents are private" ON "storage"."objects" AS PERMISSIVE FOR SELECT TO public USING (((bucket_id = 'store-documents'::text) AND ((((storage.foldername(name))[1])::bigint IN ( SELECT stores.id
+   FROM stores
+  WHERE (stores.owner_id = auth.uid()))) OR (EXISTS ( SELECT 1
+   FROM users
+  WHERE ((users.id = auth.uid()) AND (users.role = 'ADMIN'::user_role))))))); |
+| CREATE POLICY "Store owners can upload documents" ON "storage"."objects" AS PERMISSIVE FOR INSERT TO public WITH CHECK (((bucket_id = 'store-documents'::text) AND (auth.uid() IS NOT NULL) AND (((storage.foldername(name))[1])::bigint IN ( SELECT stores.id
+   FROM stores
+  WHERE (stores.owner_id = auth.uid())))));                                                                         |
+| CREATE POLICY "Store documents cannot be updated" ON "storage"."objects" AS PERMISSIVE FOR UPDATE TO public USING (false);                                                                                                                                                                                                                                                                        |
+| CREATE POLICY "Only admins can delete store documents" ON "storage"."objects" AS PERMISSIVE FOR DELETE TO public USING (((bucket_id = 'store-documents'::text) AND (EXISTS ( SELECT 1
+   FROM users
+  WHERE ((users.id = auth.uid()) AND (users.role = 'ADMIN'::user_role))))));                                                                                                                  |
+| CREATE POLICY "Review images are publicly accessible" ON "storage"."objects" AS PERMISSIVE FOR SELECT TO public USING ((bucket_id = 'review-images'::text));                                                                                                                                                                                                                                      |
+| CREATE POLICY "Users can upload review images" ON "storage"."objects" AS PERMISSIVE FOR INSERT TO public WITH CHECK (((bucket_id = 'review-images'::text) AND (auth.uid() IS NOT NULL)));                                                                                                                                                                                                         |
+| CREATE POLICY "Review images cannot be updated" ON "storage"."objects" AS PERMISSIVE FOR UPDATE TO public USING (false);                                                                                                                                                                                                                                                                          |
+| CREATE POLICY "subscriptions_delete" ON "public"."subscriptions" AS PERMISSIVE FOR DELETE TO public USING (is_admin());                                                                                                                                                                                                                                                                           |
+| CREATE POLICY "Authors can delete review images" ON "storage"."objects" AS PERMISSIVE FOR DELETE TO public USING (((bucket_id = 'review-images'::text) AND (((auth.uid())::text = (storage.foldername(name))[1]) OR (EXISTS ( SELECT 1
+   FROM users
+  WHERE ((users.id = auth.uid()) AND (users.role = 'ADMIN'::user_role)))))));                                                                |
+| CREATE POLICY "Avatars are publicly accessible" ON "storage"."objects" AS PERMISSIVE FOR SELECT TO public USING ((bucket_id = 'avatars'::text));                                                                                                                                                                                                                                                  |
+| CREATE POLICY "Users can upload their own avatar" ON "storage"."objects" AS PERMISSIVE FOR INSERT TO public WITH CHECK (((bucket_id = 'avatars'::text) AND (auth.uid() IS NOT NULL) AND ((auth.uid())::text = (storage.foldername(name))[1])));                                                                                                                                                   |
+| CREATE POLICY "Users can update their own avatar" ON "storage"."objects" AS PERMISSIVE FOR UPDATE TO public USING (((bucket_id = 'avatars'::text) AND ((auth.uid())::text = (storage.foldername(name))[1])));                                                                                                                                                                                     |
+| CREATE POLICY "Users can delete their own avatar" ON "storage"."objects" AS PERMISSIVE FOR DELETE TO public USING (((bucket_id = 'avatars'::text) AND ((auth.uid())::text = (storage.foldername(name))[1])));                                                                                                                                                                                     |
+| CREATE POLICY "Public Access to Reels" ON "storage"."objects" AS PERMISSIVE FOR SELECT TO public USING ((bucket_id = 'reels'::text));                                                                                                                                                                                                                                                             |
+| CREATE POLICY "Store owners can upload reels" ON "storage"."objects" AS PERMISSIVE FOR INSERT TO public WITH CHECK (((bucket_id = 'reels'::text) AND (auth.uid() IS NOT NULL)));                                                                                                                                                                                                                  |
+| CREATE POLICY "Business owner can create their store" ON "public"."stores" AS PERMISSIVE FOR INSERT TO authenticated WITH CHECK ((owner_id = auth.uid()));                                                                                                                                                                                                                                        |
+| CREATE POLICY "Allow public read access" ON "public"."business_directory_tunisia" AS PERMISSIVE FOR SELECT TO public USING (true);                                                                                                                                                                                                                                                                |
+| CREATE POLICY "Utilisateurs peuvent insérer leurs propres interactions" ON "public"."user_interactions" AS PERMISSIVE FOR INSERT TO public WITH CHECK ((auth.uid() = user_id));                                                                                                                                                                                                                   |
+| CREATE POLICY "Utilisateurs peuvent supprimer leurs propres interactions" ON "public"."user_interactions" AS PERMISSIVE FOR DELETE TO public USING ((auth.uid() = user_id));                                                                                                                                                                                                                      |
+| CREATE POLICY "Tout le monde peut voir les interactions" ON "public"."user_interactions" AS PERMISSIVE FOR SELECT TO public USING (true);                                                                                                                                                                                                                                                         |
+| CREATE POLICY "Utilisateurs authentifiés peuvent commenter" ON "public"."reel_comments" AS PERMISSIVE FOR INSERT TO public WITH CHECK ((auth.uid() = user_id));                                                                                                                                                                                                                                   |
+| CREATE POLICY "stories_bucket_public_read" ON "storage"."objects" AS PERMISSIVE FOR SELECT TO public USING ((bucket_id = 'stories'::text));                                                                                                                                                                                                                                                       |
+| CREATE POLICY "stories_bucket_authenticated_insert" ON "storage"."objects" AS PERMISSIVE FOR INSERT TO public WITH CHECK (((bucket_id = 'stories'::text) AND (auth.role() = 'authenticated'::text)));                                                                                                                                                                                             |
+| CREATE POLICY "stories_bucket_owner_delete" ON "storage"."objects" AS PERMISSIVE FOR DELETE TO public USING (((bucket_id = 'stories'::text) AND (owner = auth.uid())));                                                                                                                                                                                                                           |
+| CREATE POLICY "Utilisateurs peuvent supprimer leurs propres commentaires" ON "public"."reel_comments" AS PERMISSIVE FOR DELETE TO public USING ((auth.uid() = user_id));                                                                                                                                                                                                                          |
+| CREATE POLICY "Tout le monde peut voir les commentaires" ON "public"."reel_comments" AS PERMISSIVE FOR SELECT TO public USING (true);                                                                                                                                                                                                                                                             |
+| CREATE POLICY "Tout le monde peut voir les stats" ON "public"."reel_stats" AS PERMISSIVE FOR SELECT TO public USING (true);                                                                                                                                                                                                                                                                       |
+| CREATE POLICY "Le système peut mettre à jour les stats" ON "public"."reel_stats" AS PERMISSIVE FOR UPDATE TO public USING (true);                                                                                                                                                                                                                                                                 |
+| CREATE POLICY "promotions_owner_all" ON "public"."promotions" AS PERMISSIVE FOR ALL TO public USING ((EXISTS ( SELECT 1
+   FROM stores
+  WHERE ((stores.id = promotions.store_id) AND (stores.owner_id = auth.uid())))));                                                                                                                                                                         |
+| CREATE POLICY "Owners can manage items for their promotions" ON "public"."promotion_items" AS PERMISSIVE FOR ALL TO public USING ((EXISTS ( SELECT 1
+   FROM (promotions p
+     JOIN stores s ON ((p.store_id = s.id)))
+  WHERE ((p.id = promotion_items.promotion_id) AND (s.owner_id = auth.uid())))));                                                                                         |
+| CREATE POLICY "Public can read promotion items" ON "public"."promotion_items" AS PERMISSIVE FOR SELECT TO public USING (true);                                                                                                                                                                                                                                                                    |
+| CREATE POLICY "Store owners can manage their tickets" ON "public"."support_tickets" AS PERMISSIVE FOR ALL TO public USING ((EXISTS ( SELECT 1
+   FROM stores
+  WHERE ((stores.id = support_tickets.store_id) AND (stores.owner_id = auth.uid())))));                                                                                                                                              |
+| CREATE POLICY "Customers can view their own tickets" ON "public"."support_tickets" AS PERMISSIVE FOR SELECT TO public USING ((customer_id = auth.uid()));                                                                                                                                                                                                                                         |
+| CREATE POLICY "Users can view messages for tickets they have access to" ON "public"."support_messages" AS PERMISSIVE FOR SELECT TO public USING ((EXISTS ( SELECT 1
+   FROM support_tickets
+  WHERE (support_tickets.id = support_messages.ticket_id))));                                                                                                                                         |
+| CREATE POLICY "Users can send messages for tickets they have access to" ON "public"."support_messages" AS PERMISSIVE FOR INSERT TO public WITH CHECK ((EXISTS ( SELECT 1
+   FROM support_tickets
+  WHERE (support_tickets.id = support_messages.ticket_id))));                                                                                                                                    |
+| CREATE POLICY "Users can read own profile" ON "public"."profiles" AS PERMISSIVE FOR SELECT TO public USING ((auth.uid() = id));                                                                                                                                                                                                                                                                   |
+| CREATE POLICY "Users can update own profile (except role)" ON "public"."profiles" AS PERMISSIVE FOR UPDATE TO public USING ((auth.uid() = id)) WITH CHECK (((auth.uid() = id) AND (role = ( SELECT profiles_1.role
+   FROM profiles profiles_1
+  WHERE (profiles_1.id = auth.uid())))));                                                                                                          |
+| CREATE POLICY "Allow public read service_directory" ON "public"."service_directory" AS PERMISSIVE FOR SELECT TO anon, authenticated USING (true);                                                                                                                                                                                                                                                 |
+| CREATE POLICY "Users can update messages they are part of" ON "public"."messages" AS PERMISSIVE FOR UPDATE TO public USING (((auth.uid() = sender_id) OR (auth.uid() = receiver_id))) WITH CHECK (((auth.uid() = sender_id) OR (auth.uid() = receiver_id)));                                                                                                                                      |
+| CREATE POLICY "Users can delete their own sent messages" ON "public"."messages" AS PERMISSIVE FOR DELETE TO public USING ((auth.uid() = sender_id));                                                                                                                                                                                                                                              |
+| CREATE POLICY "users_select" ON "public"."users" AS PERMISSIVE FOR SELECT TO public USING (true);                                                                                                                                                                                                                                                                                                 |
+| CREATE POLICY "users_insert" ON "public"."users" AS PERMISSIVE FOR INSERT TO public WITH CHECK ((auth.uid() = id));                                                                                                                                                                                                                                                                               |
+| CREATE POLICY "users_update" ON "public"."users" AS PERMISSIVE FOR UPDATE TO public USING ((auth.uid() = id)) WITH CHECK ((auth.uid() = id));                                                                                                                                                                                                                                                     |
+| CREATE POLICY "users_delete" ON "public"."users" AS PERMISSIVE FOR DELETE TO public USING (false);                                                                                                                                                                                                                                                                                                |
+| CREATE POLICY "stores_select" ON "public"."stores" AS PERMISSIVE FOR SELECT TO public USING (((status = 'PUBLISHED'::store_status) OR (owner_id = auth.uid()) OR is_admin()));                                                                                                                                                                                                                    |
+| CREATE POLICY "stores_insert" ON "public"."stores" AS PERMISSIVE FOR INSERT TO public WITH CHECK (((owner_id = auth.uid()) AND (auth.uid() IS NOT NULL)));                                                                                                                                                                                                                                        |
+| CREATE POLICY "stores_update" ON "public"."stores" AS PERMISSIVE FOR UPDATE TO public USING (((owner_id = auth.uid()) OR is_admin())) WITH CHECK (((owner_id = auth.uid()) OR is_admin()));                                                                                                                                                                                                       |
+| CREATE POLICY "stores_delete" ON "public"."stores" AS PERMISSIVE FOR DELETE TO public USING (is_admin());                                                                                                                                                                                                                                                                                         |
+| CREATE POLICY "items_select" ON "public"."items" AS PERMISSIVE FOR SELECT TO public USING (((status = 'AVAILABLE'::item_status) OR (EXISTS ( SELECT 1
+   FROM stores
+  WHERE ((stores.id = items.store_id) AND (stores.owner_id = auth.uid())))) OR is_admin()));                                                                                                                                 |
+| CREATE POLICY "items_insert" ON "public"."items" AS PERMISSIVE FOR INSERT TO public WITH CHECK ((EXISTS ( SELECT 1
+   FROM stores
+  WHERE ((stores.id = items.store_id) AND (stores.owner_id = auth.uid())))));                                                                                                                                                                                   |
+| CREATE POLICY "items_update" ON "public"."items" AS PERMISSIVE FOR UPDATE TO public USING ((EXISTS ( SELECT 1
+   FROM stores
+  WHERE ((stores.id = items.store_id) AND (stores.owner_id = auth.uid()))))) WITH CHECK ((EXISTS ( SELECT 1
+   FROM stores
+  WHERE ((stores.id = items.store_id) AND (stores.owner_id = auth.uid())))));                                                             |
+| CREATE POLICY "items_delete" ON "public"."items" AS PERMISSIVE FOR DELETE TO public USING (((EXISTS ( SELECT 1
+   FROM stores
+  WHERE ((stores.id = items.store_id) AND (stores.owner_id = auth.uid())))) OR is_admin()));                                                                                                                                                                        |
+| CREATE POLICY "schedules_select" ON "public"."service_schedules" AS PERMISSIVE FOR SELECT TO public USING (true);                                                                                                                                                                                                                                                                                 |
+| CREATE POLICY "schedules_insert" ON "public"."service_schedules" AS PERMISSIVE FOR INSERT TO public WITH CHECK ((EXISTS ( SELECT 1
+   FROM (items
+     JOIN stores ON ((items.store_id = stores.id)))
+  WHERE ((items.id = service_schedules.item_id) AND (stores.owner_id = auth.uid())))));                                                                                                     |
+| CREATE POLICY "schedules_update" ON "public"."service_schedules" AS PERMISSIVE FOR UPDATE TO public USING ((EXISTS ( SELECT 1
+   FROM (items
+     JOIN stores ON ((items.store_id = stores.id)))
+  WHERE ((items.id = service_schedules.item_id) AND (stores.owner_id = auth.uid())))));                                                                                                          |
+| CREATE POLICY "schedules_delete" ON "public"."service_schedules" AS PERMISSIVE FOR DELETE TO public USING ((EXISTS ( SELECT 1
+   FROM (items
+     JOIN stores ON ((items.store_id = stores.id)))
+  WHERE ((items.id = service_schedules.item_id) AND (stores.owner_id = auth.uid())))));                                                                                                          |
+| CREATE POLICY "orders_select" ON "public"."orders" AS PERMISSIVE FOR SELECT TO public USING (((customer_id = auth.uid()) OR (EXISTS ( SELECT 1
+   FROM stores
+  WHERE ((stores.id = orders.store_id) AND (stores.owner_id = auth.uid())))) OR is_admin()));                                                                                                                                       |
+| CREATE POLICY "orders_insert" ON "public"."orders" AS PERMISSIVE FOR INSERT TO public WITH CHECK (((auth.uid() IS NOT NULL) AND (customer_id = auth.uid())));                                                                                                                                                                                                                                     |
+| CREATE POLICY "orders_update" ON "public"."orders" AS PERMISSIVE FOR UPDATE TO public USING (((EXISTS ( SELECT 1
+   FROM stores
+  WHERE ((stores.id = orders.store_id) AND (stores.owner_id = auth.uid())))) OR is_admin()));                                                                                                                                                                     |
+| CREATE POLICY "orders_delete" ON "public"."orders" AS PERMISSIVE FOR DELETE TO public USING (false);                                                                                                                                                                                                                                                                                              |
+| CREATE POLICY "bookings_select" ON "public"."bookings" AS PERMISSIVE FOR SELECT TO public USING (((customer_id = auth.uid()) OR (EXISTS ( SELECT 1
+   FROM stores
+  WHERE ((stores.id = bookings.store_id) AND (stores.owner_id = auth.uid())))) OR is_admin()));                                                                                                                                 |
+| CREATE POLICY "bookings_insert" ON "public"."bookings" AS PERMISSIVE FOR INSERT TO public WITH CHECK (((auth.uid() IS NOT NULL) AND (customer_id = auth.uid())));                                                                                                                                                                                                                                 |
+| CREATE POLICY "bookings_update" ON "public"."bookings" AS PERMISSIVE FOR UPDATE TO public USING (((EXISTS ( SELECT 1
+   FROM stores
+  WHERE ((stores.id = bookings.store_id) AND (stores.owner_id = auth.uid())))) OR is_admin()));                                                                                                                                                               |
+| CREATE POLICY "bookings_delete" ON "public"."bookings" AS PERMISSIVE FOR DELETE TO public USING (false);                                                                                                                                                                                                                                                                                          |
+| CREATE POLICY "reviews_select" ON "public"."reviews" AS PERMISSIVE FOR SELECT TO public USING ((((is_approved = true) AND (is_spam = false)) OR (author_id = auth.uid()) OR (EXISTS ( SELECT 1
+   FROM stores
+  WHERE ((stores.id = reviews.store_id) AND (stores.owner_id = auth.uid())))) OR is_admin()));                                                                                      |
+| CREATE POLICY "reviews_insert" ON "public"."reviews" AS PERMISSIVE FOR INSERT TO public WITH CHECK (((auth.uid() IS NOT NULL) AND (author_id = auth.uid())));                                                                                                                                                                                                                                     |
+| CREATE POLICY "reviews_update" ON "public"."reviews" AS PERMISSIVE FOR UPDATE TO public USING ((((author_id = auth.uid()) AND (created_at > (now() - '48:00:00'::interval))) OR (EXISTS ( SELECT 1
+   FROM stores
+  WHERE ((stores.id = reviews.store_id) AND (stores.owner_id = auth.uid())))) OR is_admin()));                                                                                  |
+| CREATE POLICY "reviews_delete" ON "public"."reviews" AS PERMISSIVE FOR DELETE TO public USING (is_admin());                                                                                                                                                                                                                                                                                       |
+| CREATE POLICY "subscriptions_select" ON "public"."subscriptions" AS PERMISSIVE FOR SELECT TO public USING (((user_id = auth.uid()) OR is_admin()));                                                                                                                                                                                                                                               |
+| CREATE POLICY "subscriptions_insert" ON "public"."subscriptions" AS PERMISSIVE FOR INSERT TO public WITH CHECK (is_admin());                                                                                                                                                                                                                                                                      |
+| CREATE POLICY "subscriptions_update" ON "public"."subscriptions" AS PERMISSIVE FOR UPDATE TO public USING (is_admin());                                                                                                                                                                                                                                                                           |

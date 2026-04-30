@@ -62,6 +62,25 @@ export default function TransactionsPage() {
   const [selectedTxn, setSelectedTxn] = React.useState<Transaction | null>(null);
   const [isScannerOpen, setIsScannerOpen] = React.useState(false);
   const [isUpdating, setIsUpdating] = React.useState(false);
+  const [showSuccessAnimation, setShowSuccessAnimation] = React.useState(false);
+  const isScanningRef = React.useRef(false);
+
+  const playBeep = React.useCallback(() => {
+    try {
+      const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const oscillator = audioCtx.createOscillator();
+      const gainNode = audioCtx.createGain();
+      oscillator.type = 'sine';
+      oscillator.frequency.setValueAtTime(880, audioCtx.currentTime); // A5 note
+      gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
+      oscillator.connect(gainNode);
+      gainNode.connect(audioCtx.destination);
+      oscillator.start();
+      oscillator.stop(audioCtx.currentTime + 0.15); // Beep duration
+    } catch (e) {
+      console.error("Audio beep failed", e);
+    }
+  }, []);
 
   const handleStatusUpdate = async (newStatus: 'completed' | 'cancelled' | 'failed') => {
     if (!selectedTxn) return;
@@ -79,26 +98,48 @@ export default function TransactionsPage() {
         await updateOrderStatus(realId, actualStatus as any);
       }
       
-      toast.success(newStatus === 'completed' ? 'Transaction finalisée avec succès' : 'Transaction marquée comme échouée');
-      
-      setTransactions(prev => prev.map(t => t.id === selectedTxn.id ? { ...t, status: newStatus === 'completed' ? 'completed' : 'failed' } : t));
-      setSelectedTxn(null);
-      setIsScannerOpen(false);
+      if (newStatus === 'completed') {
+        setShowSuccessAnimation(true);
+        setTimeout(() => {
+          toast.success('Transaction finalisée avec succès');
+          setTransactions(prev => prev.map(t => t.id === selectedTxn.id ? { ...t, status: 'completed' } : t));
+          setSelectedTxn(null);
+          setIsScannerOpen(false);
+          setShowSuccessAnimation(false);
+        }, 2500);
+      } else {
+        toast.success('Transaction marquée comme échouée');
+        setTransactions(prev => prev.map(t => t.id === selectedTxn.id ? { ...t, status: 'failed' } : t));
+        setSelectedTxn(null);
+        setIsScannerOpen(false);
+      }
     } catch (err: any) {
       toast.error(err.message || 'Erreur lors de la mise à jour');
     } finally {
-      setIsUpdating(false);
+      if (newStatus !== 'completed') {
+        setIsUpdating(false);
+      } else {
+        // Leave isUpdating true until setTimeout finishes to prevent double clicks
+        setTimeout(() => setIsUpdating(false), 2500);
+      }
     }
   };
 
   const onScan = (result: any) => {
+    if (isUpdating || isScanningRef.current) return;
+    
     const code = result?.[0]?.rawValue || result?.rawValue || result;
     if (code && selectedTxn) {
-      if (typeof code === 'string' && code.includes(selectedTxn.reference)) {
-        toast.success('QR Code valide !');
-        handleStatusUpdate('completed');
+      const tokenToMatch = selectedTxn.qr_code_token || selectedTxn.reference;
+      if (typeof code === 'string' && code.includes(tokenToMatch)) {
+        isScanningRef.current = true; // Lock scanner
+        playBeep(); // Audio feedback
+        toast.success('QR Code valide !', { id: 'qr-success' });
+        handleStatusUpdate('completed').finally(() => {
+          setTimeout(() => { isScanningRef.current = false; }, 3000);
+        });
       } else {
-        toast.error('QR Code invalide. Ne correspond pas à la référence attendue.');
+        toast.error('QR Code invalide. Ne correspond pas à la référence attendue.', { id: 'qr-invalid' });
       }
     }
   };
@@ -123,7 +164,7 @@ export default function TransactionsPage() {
         txn.id.toLowerCase().includes(q) ||
         txn.reference.toLowerCase().includes(q) ||
         txn.customer_name.toLowerCase().includes(q);
-      
+        
       const matchesStatus = !statusFilter || txn.status === statusFilter;
       const matchesType = !typeFilter || txn.type === typeFilter;
       
@@ -242,9 +283,9 @@ export default function TransactionsPage() {
               ) : paginated.map(txn => (
                 <tr 
                   key={txn.id} 
-                  className={`transition-colors ${['confirmed', 'validated'].includes(txn.status) ? 'cursor-pointer hover:bg-muted/60' : 'hover:bg-muted/40'}`}
+                  className={`transition-colors ${txn.status === 'pending' ? 'cursor-pointer hover:bg-muted/60' : 'hover:bg-muted/40'}`}
                   onClick={() => {
-                    if (['confirmed', 'validated'].includes(txn.status)) {
+                    if (txn.status === 'pending') {
                       setSelectedTxn(txn);
                       setIsScannerOpen(false);
                     }
@@ -320,7 +361,20 @@ export default function TransactionsPage() {
             </DialogDescription>
           </DialogHeader>
 
-          {isScannerOpen ? (
+          {showSuccessAnimation ? (
+            <div className="flex flex-col items-center justify-center py-12 space-y-4 animate-in fade-in zoom-in duration-500">
+              <div className="w-24 h-24 bg-green-500/20 rounded-full flex items-center justify-center mb-4">
+                <CheckCircle className="w-14 h-14 text-green-500 animate-bounce" />
+              </div>
+              <h2 className="text-3xl font-black text-green-500 tracking-tight uppercase">Validé !</h2>
+              <p className="text-muted-foreground text-center text-sm">
+                Montrez cet écran au client
+              </p>
+              <div className="mt-8 pt-8 border-t border-border/50 w-full flex justify-center">
+                <img src="/ro2ya_logo.png" alt="Ro2ya Logo" className="h-10 object-contain drop-shadow-md" />
+              </div>
+            </div>
+          ) : isScannerOpen ? (
             <div className="space-y-4">
               <div className="bg-black rounded-lg overflow-hidden relative flex justify-center items-center h-[350px] w-full">
                 {!navigator?.mediaDevices ? (
@@ -363,6 +417,16 @@ export default function TransactionsPage() {
                 disabled={isUpdating}
               >
                 Scanner le QR du Client
+              </Button>
+
+              <Button 
+                variant="secondary"
+                className="w-full font-bold border-primary/20 hover:bg-primary/10 transition-colors" 
+                onClick={() => handleStatusUpdate('completed')}
+                disabled={isUpdating}
+              >
+                {isUpdating ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <CheckCircle className="w-4 h-4 mr-2 text-primary" />}
+                Valider manuellement (Sans QR)
               </Button>
 
               <div className="relative my-4">

@@ -22,6 +22,7 @@ import {
   Mail,
   CreditCard,
   MessageSquare,
+  Sparkles,
 } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
@@ -139,6 +140,7 @@ export default function DashboardLayout({
     { href: `/dashboard/${id}/reels`, label: 'Discovery Reels', icon: <Video className="w-5 h-5" /> },
     { href: `/dashboard/${id}/leads`, label: 'Customer Actions', icon: <Bell className="w-5 h-5" /> },
     { href: `/dashboard/${id}/promotions`, label: 'Promotions & Offers', icon: <Zap className="w-5 h-5" /> },
+    { href: `/dashboard/${id}/intelligence`, label: 'Social Intelligence', icon: <Sparkles className="w-5 h-5 text-purple-400" /> },
     { href: `/dashboard/${id}/support/tickets`, label: 'Client Support', icon: <LifeBuoy className="w-5 h-5" /> },
     { href: `/dashboard/${id}/support/chat`, label: 'Messages', icon: <Mail className="w-5 h-5" /> },
     { href: `/dashboard/${id}/account`, label: 'Account & Subscription', icon: <Settings className="w-5 h-5" /> },

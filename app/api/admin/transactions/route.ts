@@ -20,6 +20,7 @@ export async function GET(request: Request) {
       query = query.eq('store_id', storeId);
     }
 
+    
     const { data: transactions, error } = await query;
 
     if (error) {

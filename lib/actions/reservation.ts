@@ -54,9 +54,8 @@ export async function createBooking(data: Omit<BookingInsert, 'booking_number' |
     throw new Error(`Erreur lors de la réservation : ${error.message}`);
   }
 
-  if (booking) {
-    await syncBookingTransaction(booking, supabase);
-  }
+  // We don't sync to transactions yet because it's still PENDING
+  // Only sync when owner accepts the booking
 
   revalidatePath(`/merchants/business/${data.store_id}`);
   return { success: true, booking };
@@ -115,33 +114,91 @@ export async function getUserBookings(customerId: string) {
 /**
  * Update the status of a booking
  */
+import { createAdminClient } from '../supabase/admin';
+
 export async function updateBookingStatus(
   bookingId: number, 
   status: 'PENDING' | 'CONFIRMED' | 'COMPLETED' | 'CANCELLED'
 ) {
   const supabase = createClient();
+  const adminSupabase = createAdminClient();
+  
+  // 1. Get current user
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
+    throw new Error('Vous devez être connecté.');
+  }
+
+  console.log('[updateBookingStatus] Received bookingId:', bookingId, 'Status:', status, 'User:', user.id);
+
+  if (!bookingId || isNaN(bookingId)) {
+    throw new Error(`ID de réservation invalide: ${bookingId}`);
+  }
+
+  // 2. If it's a cancellation, verify ownership or store ownership
+  if (status === 'CANCELLED') {
+    const { data: booking, error: fetchError } = await adminSupabase
+      .from('bookings')
+      .select('customer_id, store_id')
+      .eq('id', bookingId)
+      .single();
+    
+    if (fetchError || !booking) {
+      throw new Error('Réservation non trouvée.');
+    }
+
+    // Check if user is either the customer or the store owner
+    const { data: store } = await adminSupabase
+      .from('stores')
+      .select('owner_id')
+      .eq('id', booking.store_id)
+      .single();
+
+    const isCustomer = booking.customer_id === user.id;
+    const isOwner = store?.owner_id === user.id;
+
+    if (!isCustomer && !isOwner) {
+      throw new Error('Vous n\'êtes pas autorisé à annuler cette réservation.');
+    }
+  }
 
   const updateData: any = { status, updated_at: new Date().toISOString() };
   
   if (status === 'CONFIRMED') updateData.confirmed_at = new Date().toISOString();
   if (status === 'COMPLETED') updateData.completed_at = new Date().toISOString();
 
-  const { data, error } = await (supabase
-    .from('bookings') as any)
+  // 3. Use admin client to bypass RLS
+  const { data: results, error } = await adminSupabase
+    .from('bookings')
     .update({ 
       ...updateData,
       status: status
     })
     .eq('id', bookingId)
-    .select()
-    .single();
+    .select();
 
-  if (data) {
-    await syncBookingTransaction(data, supabase);
+  if (error) {
+    console.error('[updateBookingStatus] Admin update error:', error);
+    throw new Error(`Erreur lors de la mise à jour : ${error.message}`);
   }
 
-  revalidatePath(`/dashboard/${data.store_id}/leads`);
-  revalidatePath(`/profile/user`); // Also update customer view
+  if (!results || results.length === 0) {
+    throw new Error(`Échec de la mise à jour de la réservation.`);
+  }
+
+  const data = results[0];
+
+  if (data && (status === 'CONFIRMED' || status === 'COMPLETED' || status === 'CANCELLED')) {
+    // Only sync if it's being confirmed or was already confirmed
+    await syncBookingTransaction(data, adminSupabase as any);
+  }
+
+  if (data) {
+    revalidatePath(`/dashboard/${data.store_id}/leads`);
+  }
+  revalidatePath(`/profile/user`); 
+  revalidatePath(`/profile/cart`);
+
   return data;
 }
 

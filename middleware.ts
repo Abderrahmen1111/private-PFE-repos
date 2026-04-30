@@ -24,6 +24,19 @@ export async function middleware(request: NextRequest) {
   const method = request.method
   const ip = getClientIp(request)
 
+  // ── 0. Handle CORS Preflight (OPTIONS) ────────────────────────────────────
+  if (method === 'OPTIONS') {
+    return new NextResponse(null, {
+      status: 200,
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, PATCH, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Date, X-Api-Version, X-CSRF-Token',
+        'Access-Control-Max-Age': '86400',
+      },
+    })
+  }
+
   // ── Rate limiting — POST uniquement (GET = navigation, pas d'action auth) ──
   if (method === 'POST') {
     const matchedRoute = RATE_LIMITED_ROUTES.find((r) =>
@@ -51,6 +64,9 @@ export async function middleware(request: NextRequest) {
                 'X-RateLimit-Limit': String(result.limit),
                 'X-RateLimit-Remaining': '0',
                 'X-RateLimit-Reset': String(Math.ceil(result.resetAt / 1000)),
+                'Access-Control-Allow-Origin': '*',
+                'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, PATCH, OPTIONS',
+                'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Date, X-Api-Version, X-CSRF-Token',
               },
             }
           )
@@ -74,12 +90,25 @@ export async function middleware(request: NextRequest) {
         'X-RateLimit-Reset',
         String(Math.ceil(result.resetAt / 1000))
       )
+      
+      // CORS headers
+      response.headers.set('Access-Control-Allow-Origin', '*')
+      response.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS')
+      response.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Date, X-Api-Version, X-CSRF-Token')
+      
       return response
     }
   }
 
   // ── Toutes les autres routes — session Supabase uniquement ────────────────
-  return await updateSession(request)
+  const response = await updateSession(request)
+  
+  // Add CORS headers to all responses
+  response.headers.set('Access-Control-Allow-Origin', '*')
+  response.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS')
+  response.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Date, X-Api-Version, X-CSRF-Token')
+  
+  return response
 }
 
 export const config = {

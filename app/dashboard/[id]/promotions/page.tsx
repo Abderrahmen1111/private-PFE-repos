@@ -25,9 +25,10 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import { Star, Package, ShoppingCart, Scale, Heart, Zap, Plus, Edit, Trash2, ToggleLeft, ToggleRight, Calendar, Loader2 } from 'lucide-react';
+import { Star, Package, ShoppingCart, Scale, Heart, Zap, Plus, Edit, Trash2, ToggleLeft, ToggleRight, Calendar, Loader2, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import DarijaAIPanel from '@/components/dashboard/DarijaAIPanel';
 
 type Promo = {
   id: number;
@@ -75,6 +76,7 @@ export default function PromotionsPage({ params }: { params: { id: string } }) {
   const [isSaving, setIsSaving] = useState(false);
   const [draft, setDraft] = useState<PromoDraft>(emptyDraft());
   const [resolvedStoreId, setResolvedStoreId] = useState<number | null>(null);
+  const [isAIOpen, setIsAIOpen] = useState(false);
 
   useEffect(() => {
     async function init() {
@@ -212,7 +214,19 @@ export default function PromotionsPage({ params }: { params: { id: string } }) {
           <p className="text-muted-foreground">Créez et gérez vos campagnes promotionnelles</p>
         </div>
 
-        <Dialog open={isOpen} onOpenChange={open => { setIsOpen(open); if (!open) setDraft(emptyDraft()); }}>
+        <div className="flex items-center gap-3">
+          {/* AI Darija Button */}
+          <Button
+            variant="outline"
+            size="lg"
+            onClick={() => setIsAIOpen(true)}
+            className="border-violet-500/40 text-violet-400 hover:bg-violet-500/10 hover:border-violet-500/70 gap-2"
+          >
+            <Sparkles className="w-4 h-4" />
+            AI Darija
+          </Button>
+
+          <Dialog open={isOpen} onOpenChange={open => { setIsOpen(open); if (!open) setDraft(emptyDraft()); }}>
           <DialogTrigger asChild>
             <Button size="lg" onClick={openCreate}>
               <Plus className="w-5 h-5 mr-2" /> Nouvelle Promotion
@@ -435,7 +449,31 @@ export default function PromotionsPage({ params }: { params: { id: string } }) {
             </div>
           </DialogContent>
         </Dialog>
+        </div>
       </div>
+
+      {/* AI Darija Panel */}
+      {resolvedStoreId && (
+        <DarijaAIPanel
+          open={isAIOpen}
+          onClose={() => setIsAIOpen(false)}
+          storeId={resolvedStoreId}
+          mode="promotion"
+          onApplyPromotion={(data) => {
+            setDraft({
+              title: data.title,
+              description: data.description,
+              discount_percent: data.discount_percent?.toString() ?? '',
+              discount_text: data.discount_text ?? '',
+              valid_from: new Date().toISOString().slice(0, 10),
+              valid_until: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
+              apply_to_all: true,
+              item_ids: [],
+            });
+            setIsOpen(true);
+          }}
+        />
+      )}
 
       {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

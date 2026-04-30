@@ -2,8 +2,9 @@
 
 import React, { useState } from 'react';
 import { Item } from '@/lib/actions/items';
-import { Star, Calendar, Clock, Award, ShieldCheck, Heart, ArrowRight, Zap, Package, ShoppingCart, Scale } from 'lucide-react';
+import { Star, Calendar, Clock, Award, ShieldCheck, Heart, ArrowRight, Zap, Package, ShoppingCart, Scale, ShoppingBag } from 'lucide-react';
 import { useActionDrawer } from '@/hooks/useActionDrawer';
+import { useCartStore } from '@/lib/store/use-cart-store';
 
 interface ServiceCardProps {
     item: Item;
@@ -33,6 +34,7 @@ function Stars({ n }: { n: number }) {
 
 export function ServiceCard({ item, businessName, promotion, onBook, onViewDetails, hideBooking, hidePricing }: ServiceCardProps) {
     const { openDrawer } = useActionDrawer();
+    const addItem = useCartStore((state) => state.addItem);
     const [isWished, setIsWished] = useState(false);
 
     const bName = businessName || (item as any).stores?.name || item.name;
@@ -52,6 +54,8 @@ export function ServiceCard({ item, businessName, promotion, onBook, onViewDetai
                 const itemData = item as any;
                 openDrawer('reservation', {
                     businessId: itemData.store_id || itemData.id,
+                    storeId: itemData.store_id || itemData.id,
+                    service: itemData,
                     businessName: bName,
                     rating: itemData.rating_average || 4.5,
                     reviewCount: itemData.total_reviews || 12,
@@ -67,6 +71,21 @@ export function ServiceCard({ item, businessName, promotion, onBook, onViewDetai
     const discountedPrice = hasDiscount
         ? item.price * (1 - (promotion.discount_percent! / 100))
         : item.price;
+
+    const handleAddToCart = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        addItem({
+            id: item.id.toString(),
+            name: item.name,
+            price: item.price,
+            discountedPrice: hasDiscount ? discountedPrice : undefined,
+            image: item.main_image,
+            quantity: 1,
+            store_id: item.store_id?.toString() || '',
+            store_name: bName,
+            item_type: item.item_type as 'PRODUCT' | 'SERVICE',
+        });
+    };
 
     return (
         <div
@@ -203,17 +222,25 @@ export function ServiceCard({ item, businessName, promotion, onBook, onViewDetai
                         </button>
                     )}
 
-                    <button
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            onViewDetails?.();
-                        }}
-                        className={`${hideBooking ? 'flex-1 h-12' : 'w-12 h-12'} flex items-center justify-center rounded-2xl bg-white border border-stone-100 text-stone-300 hover:border-indigo-400 hover:text-indigo-600 hover:bg-indigo-50 transition-all duration-300 active:scale-95 shadow-sm`}
-                        title="Détails"
-                    >
-                        {hideBooking && <span className="mr-2 text-[13px] font-black tracking-widest uppercase text-stone-400">Détails</span>}
-                        <Clock className="w-5 h-5" />
-                    </button>
+                        <button
+                            onClick={handleAddToCart}
+                            className="w-12 h-12 flex items-center justify-center rounded-2xl bg-white border border-stone-100 text-stone-300 hover:border-emerald-400 hover:text-emerald-600 hover:bg-emerald-50 transition-all duration-300 active:scale-95 shadow-sm"
+                            title="Ajouter au panier"
+                        >
+                            <ShoppingBag className="w-5 h-5" />
+                        </button>
+
+                        <button
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                onViewDetails?.();
+                            }}
+                            className={`${hideBooking ? 'flex-1 h-12' : 'w-12 h-12'} flex items-center justify-center rounded-2xl bg-white border border-stone-100 text-stone-300 hover:border-indigo-400 hover:text-indigo-600 hover:bg-indigo-50 transition-all duration-300 active:scale-95 shadow-sm`}
+                            title="Détails"
+                        >
+                            {hideBooking && <span className="mr-2 text-[13px] font-black tracking-widest uppercase text-stone-400">Détails</span>}
+                            <Clock className="w-5 h-5" />
+                        </button>
                 </div>
             </div>
             

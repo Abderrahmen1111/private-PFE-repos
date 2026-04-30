@@ -73,6 +73,7 @@ export async function postReelComment(input: {
     return { success: false, error: error.message }
   }
 
+  revalidatePath('/discover')
   return { success: true, comment: data }
 }
 
@@ -93,6 +94,7 @@ export async function deleteReelComment(commentId: number) {
     return { success: false, error: error.message }
   }
 
+  revalidatePath('/discover')
   return { success: true }
 }
 

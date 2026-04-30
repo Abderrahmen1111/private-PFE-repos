@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
+import { hasCompletedTransactionWithStore } from './transactions'
 
 export type ReviewInput = {
     store_id: number | null | undefined; // Now explicitly allowing null/update from client
@@ -85,7 +86,41 @@ export async function submitReview(input: ReviewInput) {
         return { error: "Impossible de lier l'avis à cet établissement. ID manquant." };
     }
 
-    // 4. Insert review
+    // 4. Check for existing review (Prevent duplicates)
+    const { data: existingReview } = await supabase
+        .from('reviews')
+        .select('id')
+        .eq('author_id', user.id)
+        .eq('store_id', resolvedStoreId)
+        .maybeSingle();
+
+    if (existingReview) {
+        return { error: 'Vous avez déjà laissé un avis pour cet établissement.' };
+    }
+
+    // 5. Security & Verification
+    const { data: storeInfo } = await supabase
+        .from('stores')
+        .select('owner_id, status')
+        .eq('id', resolvedStoreId)
+        .single();
+
+    if (storeInfo) {
+        // Prevent owners from reviewing their own store
+        if (storeInfo.owner_id === user.id) {
+            return { error: 'Vous ne pouvez pas laisser un avis sur votre propre établissement.' };
+        }
+
+        // For ACTIVE stores, require a completed transaction
+        if (storeInfo.status === 'ACTIVE') {
+            const hasPurchased = await hasCompletedTransactionWithStore(resolvedStoreId);
+            if (!hasPurchased) {
+                return { error: 'Vous devez avoir effectué un achat ou une réservation terminée pour laisser un avis sur cet établissement.' };
+            }
+        }
+    }
+
+    // 6. Insert review
     const { error: insertError } = await (supabase
         .from('reviews') as any)
         .insert({
@@ -99,6 +134,32 @@ export async function submitReview(input: ReviewInput) {
     if (insertError) {
         console.error('Review submission error:', insertError)
         return { error: `Erreur lors de l'enregistrement: ${insertError.message}` }
+    }
+
+    // 7. Update Store Rating Statistics (Cache)
+    try {
+        const { data: allReviews } = await supabase
+            .from('reviews')
+            .select('rating')
+            .eq('store_id', resolvedStoreId)
+            .eq('is_approved', true);
+
+        if (allReviews && allReviews.length > 0) {
+            const totalReviews = allReviews.length;
+            const avgRating = allReviews.reduce((sum, r) => sum + r.rating, 0) / totalReviews;
+
+            await supabase
+                .from('stores')
+                .update({
+                    rating_average: parseFloat(avgRating.toFixed(1)),
+                    total_reviews: totalReviews,
+                    updated_at: new Date().toISOString()
+                })
+                .eq('id', resolvedStoreId);
+        }
+    } catch (err) {
+        console.error("Failed to update store stats:", err);
+        // Don't block the response even if stats update fails
     }
 
     if (input.businessId) {

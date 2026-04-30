@@ -5,7 +5,7 @@ import { useRouter, usePathname } from 'next/navigation';
 import {
   FolderKanban, Search, MapPin, Plus, Camera, X, Upload, Loader2, Mic, MicOff, Navigation,
   Utensils, Wrench, ShoppingBag, Stethoscope, GraduationCap, Car, Home, Scissors,
-  Dumbbell, Laptop, Bell, MessageCircle
+  Dumbbell, Laptop, Bell, MessageCircle, ShoppingCart
 } from "lucide-react";
 import { createClient } from '@/lib/supabase/client';
 import { signOut } from '@/lib/supabase/auth';
@@ -18,6 +18,7 @@ import { useVoiceSearch } from '@/hooks/useVoiceSearch';
 import { useSmartSearch } from '@/hooks/useSmartSearch';
 import { useSavesStore } from '@/lib/store/use-saves-store';
 import { useMessaging } from '@/hooks/useMessaging';
+import { useCartStore } from '@/lib/store/use-cart-store';
 
 // ─── Category menu data ───────────────────────────────────────────────────────
 const categoryMenuItems = [
@@ -594,6 +595,7 @@ export default function Navbar() {
   const [debouncedQuery, setDebouncedQuery] = useState('');
   const [showDropdown, setShowDropdown] = useState(false);
   const saveCount = useSavesStore((state) => state.saveCount);
+  const cartItemCount = useCartStore((state) => state.getTotalItems());
 
   useEffect(() => {
     const handler = setTimeout(() => {
@@ -964,7 +966,7 @@ export default function Navbar() {
                         </button>
                       </Link>
                     ) : (
-                      <Link href="/business/add">
+                      <Link href="/merchants/business/add">
                         <button className="flex items-center gap-2 px-4 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-sm font-semibold text-white transition shadow-lg shadow-red-600/20">
                           <Plus className="w-4 h-4" />
                           Add Business
@@ -974,6 +976,18 @@ export default function Navbar() {
                   })()}
 
                     <div className="flex items-center gap-2">
+                      {/* Cart Icon */}
+                      <Link href="/profile/cart">
+                        <button className="relative group/cart w-10 h-10 flex items-center justify-center rounded-2xl bg-[#11111198] hover:bg-[#111111d1] backdrop-blur-sm border border-white/10 transition-all duration-300">
+                          <ShoppingCart className="w-5 h-5 text-white/70 group-hover/cart:text-white transition-colors" />
+                          {cartItemCount > 0 && (
+                            <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-red-600 text-[10px] font-bold text-white ring-2 ring-black animate-in zoom-in duration-300">
+                              {cartItemCount > 9 ? '9+' : cartItemCount}
+                            </span>
+                          )}
+                        </button>
+                      </Link>
+
                       {/* Message Icon */}
                       <Link href="/messages">
                         <button className="relative group/msg w-10 h-10 flex items-center justify-center rounded-2xl bg-[#11111198] hover:bg-[#111111d1] backdrop-blur-sm border border-white/10 transition-all duration-300">

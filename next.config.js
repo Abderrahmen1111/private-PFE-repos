@@ -10,7 +10,7 @@ const isDev = process.env.NODE_ENV === 'development'
 
 const ContentSecurityPolicy = `
   default-src 'self';
-  script-src 'self' ${isDev ? "'unsafe-eval' 'unsafe-inline'" : "'strict-dynamic'"};
+  script-src 'self' 'unsafe-inline' ${isDev ? "'unsafe-eval'" : ""};
   style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
   font-src 'self' https://fonts.gstatic.com;
   img-src 'self' blob: data: https://*.supabase.co https://images.unsplash.com https://*.unsplash.com https://lh3.googleusercontent.com https://maps.googleapis.com https://*.googleapis.com https://*.gstatic.com https://streetviewpixels-pa.googleapis.com https://*.googleusercontent.com https://upload.wikimedia.org https://*.cloudinary.com https://res.cloudinary.com *;
@@ -53,12 +53,12 @@ const securityHeaders = [
   {
     key: 'Permissions-Policy',
     value: [
-      'camera=()',
-      'microphone=()',
-      'geolocation=()',
+      'camera=(self)',
+      'microphone=(self)',
+      'geolocation=(self)',
       'interest-cohort=()',
       'payment=(self)',
-      'usb=()',
+      'usb=(self)',
       'bluetooth=()',
     ].join(', '),
   },

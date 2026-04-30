@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import QRCode from 'qrcode';
-import { QrCode, Clock, CheckCircle2, XCircle, Package, ChevronRight } from 'lucide-react';
+import { QrCode, Clock, CheckCircle2, XCircle, Package, ChevronRight, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 interface OrderCardProps {
@@ -14,30 +14,35 @@ interface OrderCardProps {
   status: 'PENDING' | 'VALIDATED' | 'SHIPPED' | 'COMPLETED' | 'CANCELLED';
   total_price: number;
   date: string;
+  onCancel?: (id: string) => Promise<void>;
 }
 
 const statusConfig = {
-  PENDING: { label: 'Pending', color: 'text-amber-600', bg: 'bg-amber-50', border: 'border-amber-100', icon: Clock },
-  VALIDATED: { label: 'Accepted', color: 'text-blue-600', bg: 'bg-blue-50', border: 'border-blue-100', icon: QrCode },
-  SHIPPED: { label: 'Shipped', color: 'text-indigo-600', bg: 'bg-indigo-50', border: 'border-indigo-100', icon: Package },
-  COMPLETED: { label: 'Completed', color: 'text-emerald-600', bg: 'bg-emerald-50', border: 'border-emerald-100', icon: CheckCircle2 },
-  CANCELLED: { label: 'Cancelled', color: 'text-rose-600', bg: 'bg-rose-50', border: 'border-rose-100', icon: XCircle },
+  PENDING: { label: 'En attente', color: 'text-amber-600', bg: 'bg-amber-50', border: 'border-amber-100', icon: Clock },
+  VALIDATED: { label: 'Acceptée', color: 'text-blue-600', bg: 'bg-blue-50', border: 'border-blue-100', icon: QrCode },
+  SHIPPED: { label: 'En livraison', color: 'text-indigo-600', bg: 'bg-indigo-50', border: 'border-indigo-100', icon: Package },
+  COMPLETED: { label: 'Terminée', color: 'text-emerald-600', bg: 'bg-emerald-50', border: 'border-emerald-100', icon: CheckCircle2 },
+  CANCELLED: { label: 'Annulée', color: 'text-rose-600', bg: 'bg-rose-50', border: 'border-rose-100', icon: XCircle },
 };
 
 export default function OrderCard({
+  id,
   order_number,
   businessName,
   businessImage,
   status,
   total_price,
   date,
+  onCancel,
 }: OrderCardProps) {
   const [showQr, setShowQr] = useState(false);
   const [qrDataUrl, setQrDataUrl] = useState<string>('');
+  const [isCancelling, setIsCancelling] = useState(false);
   const config = statusConfig[status] || statusConfig.PENDING;
   const StatusIcon = config.icon;
 
-  const qrValue = `order_completion:${order_number}`;
+  const baseUrl = typeof window !== 'undefined' ? window.location.origin : 'https://ro2ya.tn';
+  const qrValue = `${baseUrl}/valider?code=order_completion:${order_number}`;
 
   useEffect(() => {
     if (showQr && qrValue) {
@@ -57,6 +62,18 @@ export default function OrderCard({
         });
     }
   }, [showQr, qrValue]);
+
+  const handleCancel = async () => {
+    if (!onCancel) return;
+    if (window.confirm('Voulez-vous vraiment annuler cette commande ?')) {
+      setIsCancelling(true);
+      try {
+        await onCancel(id);
+      } finally {
+        setIsCancelling(false);
+      }
+    }
+  };
 
   return (
     <motion.div 
@@ -93,7 +110,7 @@ export default function OrderCard({
             </div>
             <div>
               <h4 className="text-lg font-black text-gray-900 line-clamp-1 tracking-tight">{businessName}</h4>
-              <p className="text-xs font-bold text-gray-400">Order #{order_number}</p>
+              <p className="text-xs font-bold text-gray-400">Commande #{order_number}</p>
             </div>
           </div>
           
@@ -109,10 +126,25 @@ export default function OrderCard({
             <span className="text-sm font-bold text-gray-700">{date}</span>
           </div>
           <div className="flex flex-col items-end gap-1">
-            <span className="text-[10px] uppercase font-black tracking-[0.15em] text-gray-300 leading-none text-right">Amount</span>
+            <span className="text-[10px] uppercase font-black tracking-[0.15em] text-gray-300 leading-none text-right">Montant</span>
             <span className="text-lg font-black text-indigo-600 tracking-tighter">{total_price.toLocaleString()} DT</span>
           </div>
         </div>
+
+        {status?.toUpperCase() === 'PENDING' && (
+          <button
+            onClick={handleCancel}
+            disabled={isCancelling}
+            className="w-full py-4 bg-rose-50 text-rose-600 hover:bg-rose-100 rounded-2xl text-xs font-black uppercase tracking-widest transition-all active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2"
+          >
+            {isCancelling ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <XCircle className="w-4 h-4" />
+            )}
+            Annuler la commande
+          </button>
+        )}
 
         {status === 'VALIDATED' && (
           <div className="relative overflow-hidden">
@@ -127,7 +159,7 @@ export default function OrderCard({
                   className="w-full group/btn flex items-center justify-center gap-3 py-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl text-sm font-black transition-all shadow-xl shadow-indigo-200 active:scale-[0.98]"
                 >
                   <QrCode className="w-4 h-4 transition-transform group-hover/btn:rotate-12" />
-                  Show Validation QR
+                  Afficher le QR Code
                   <ChevronRight className="w-4 h-4 transition-transform group-hover/btn:translate-x-1" />
                 </motion.button>
               ) : (
@@ -149,13 +181,13 @@ export default function OrderCard({
                     )}
                     </div>
                     <p className="text-xs text-center font-bold text-indigo-400 max-w-[200px] leading-relaxed mb-4">
-                      Present this QR to the owner to confirm your order completion.
+                      Présentez ce QR au commerçant pour valider votre commande.
                     </p>
                     <button
                       onClick={() => setShowQr(false)}
                       className="text-xs font-black text-indigo-600 hover:text-indigo-800 uppercase tracking-widest px-4 py-2"
                     >
-                      Hide QR Code
+                      Masquer le QR Code
                     </button>
                   </div>
                 </motion.div>

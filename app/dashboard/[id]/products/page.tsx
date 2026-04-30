@@ -18,7 +18,8 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import { Plus, Edit, Trash2, Upload, Eye, EyeOff, Package, Loader2 } from 'lucide-react';
+import { Plus, Edit, Trash2, Upload, Eye, EyeOff, Package, Loader2, Sparkles } from 'lucide-react';
+import DarijaAIPanel from '@/components/dashboard/DarijaAIPanel';
 import { toast } from 'sonner';
 import {
   Select,
@@ -59,6 +60,7 @@ export default function ProductsPage() {
   const [isOpen, setIsOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<EditingProduct | null>(null);
   const [resolvedStoreId, setResolvedStoreId] = useState<number | null>(null);
+  const [isAIOpen, setIsAIOpen] = useState(false);
 
   useEffect(() => {
     async function resolveAndFetch() {
@@ -200,21 +202,57 @@ export default function ProductsPage() {
           </p>
         </div>
 
-        <Dialog open={isOpen} onOpenChange={handleDialogChange}>
-          <DialogTrigger asChild>
-            <Button size="lg" onClick={() => setEditingProduct(null)} disabled={isLoading || !resolvedStoreId}>
-              <Plus className="w-5 h-5 mr-2" />
-              Ajouter
-            </Button>
-          </DialogTrigger>
+        <div className="flex items-center gap-3">
+          {/* AI Darija Button */}
+          <Button
+            variant="outline"
+            size="lg"
+            onClick={() => setIsAIOpen(true)}
+            disabled={isLoading || !resolvedStoreId}
+            className="border-violet-500/40 text-violet-400 hover:bg-violet-500/10 hover:border-violet-500/70 gap-2"
+          >
+            <Sparkles className="w-4 h-4" />
+            AI Darija
+          </Button>
 
-          <ProductForm
-            product={editingProduct}
-            onSave={handleAddProduct}
-            onClose={() => handleDialogChange(false)}
-          />
-        </Dialog>
+          <Dialog open={isOpen} onOpenChange={handleDialogChange}>
+            <DialogTrigger asChild>
+              <Button size="lg" onClick={() => setEditingProduct(null)} disabled={isLoading || !resolvedStoreId}>
+                <Plus className="w-5 h-5 mr-2" />
+                Ajouter
+              </Button>
+            </DialogTrigger>
+
+            <ProductForm
+              product={editingProduct}
+              onSave={handleAddProduct}
+              onClose={() => handleDialogChange(false)}
+            />
+          </Dialog>
+        </div>
       </div>
+
+      {/* AI Darija Panel */}
+      {resolvedStoreId && (
+        <DarijaAIPanel
+          open={isAIOpen}
+          onClose={() => setIsAIOpen(false)}
+          storeId={resolvedStoreId}
+          mode="product"
+          onApplyProduct={(data) => {
+            setEditingProduct({
+              name: data.name,
+              description: data.description,
+              price: data.price ?? 0,
+              category: data.category ?? 'other',
+              available: true,
+              stock: 0,
+              image: data.image_url ?? undefined,
+            });
+            setIsOpen(true);
+          }}
+        />
+      )}
 
       {/* Products Grid */}
       {isLoading ? (

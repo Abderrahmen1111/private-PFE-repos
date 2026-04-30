@@ -83,6 +83,8 @@ export default function GlobalActionDrawer() {
                   website={data.website}
                   address={data.address}
                   workingHours={data.workingHours}
+                  service={data.service}
+                  storeId={data.storeId}
                   onConfirm={(resData) => {
                     console.log('Reservation confirmed:', resData);
                     // maybe close or show success
@@ -95,9 +97,12 @@ export default function GlobalActionDrawer() {
                   businessName={data.businessName}
                   storeId={data.storeId}
                   promotion={data.promotion}
+                  isOwner={data.isOwner}
+                  cartItems={data.cartItems}
+                  isCartCheckout={data.isCartCheckout}
                   onConfirm={(orderData) => {
                     console.log('Order confirmed:', orderData);
-                    // maybe close or show success
+                    data.onConfirm?.(orderData);
                   }}
                 />
               )}

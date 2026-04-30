@@ -134,9 +134,15 @@ export function ReservationCard({
     setIsLoading(true);
     setError(null);
 
+    // Fallback logic for storeId
+    const effectiveStoreId = storeId || (businessId ? parseInt(businessId) : null);
+
     try {
-      if (!storeId || !service) {
-        throw new Error("Informations sur l'établissement ou le service manquantes.");
+      if (!effectiveStoreId || !service) {
+        const missing = [];
+        if (!effectiveStoreId) missing.push("ID boutique");
+        if (!service) missing.push("Service");
+        throw new Error(`Informations manquantes : ${missing.join(', ')}`);
       }
 
       // Calculate end_time based on start_time and service duration
@@ -145,7 +151,7 @@ export function ReservationCard({
       const endTime = format(endTimeDate, 'HH:mm');
 
       const result = await createBooking({
-        store_id: storeId,
+        store_id: effectiveStoreId!,
         item_id: service.id,
         booking_date: format(data.date!, 'yyyy-MM-dd'),
         start_time: data.time!,
