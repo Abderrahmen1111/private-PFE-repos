@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import { SessionProvider } from '@/components/session-provider'
+
 import "./globals.css";
 import { Toaster } from "sonner";
 
@@ -29,10 +31,12 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className="antialiased">
-        {children}
-        <GlobalActionDrawer />
-        <ChatHeads />
-        <Toaster />
+        <SessionProvider>
+          {children}
+          <GlobalActionDrawer />
+          <ChatHeads />
+          <Toaster />
+        </SessionProvider>
       </body>
     </html>
   );

@@ -53,7 +53,8 @@ function Card({ item, isActive, index, onClick }: CardProps) {
     <button
       type="button"
       onClick={onClick}
-      className="relative w-full h-24 rounded-xl p-3 text-left
+      className="relative flex-shrink-0 flex flex-col justify-between
+                 w-[120px] h-24 rounded-xl p-3 text-left
                  cursor-pointer select-none outline-none
                  transition-all duration-200 ease-out
                  hover:scale-[1.03] hover:bg-[#222222]
@@ -129,6 +130,33 @@ export function SmartStrip({ items, title = 'Trending & Offers', onSelect, class
     onSelect?.(null);
   }, [onSelect]);
 
+  const dragState = useRef({ isDragging: false, startX: 0, scrollLeft: 0, dragged: false });
+
+  const handlePointerDown = (e: React.PointerEvent) => {
+    if (!scrollRef.current) return;
+    dragState.current.isDragging = true;
+    dragState.current.dragged = false;
+    dragState.current.startX = e.pageX - scrollRef.current.offsetLeft;
+    dragState.current.scrollLeft = scrollRef.current.scrollLeft;
+  };
+
+  const handlePointerMove = (e: React.PointerEvent) => {
+    if (!dragState.current.isDragging || !scrollRef.current) return;
+    
+    const x = e.pageX - scrollRef.current.offsetLeft;
+    const walk = (x - dragState.current.startX) * 1.5;
+    
+    if (Math.abs(walk) > 5) {
+      dragState.current.dragged = true;
+    }
+    
+    scrollRef.current.scrollLeft = dragState.current.scrollLeft - walk;
+  };
+
+  const handlePointerUp = () => {
+    dragState.current.isDragging = false;
+  };
+
   const cards = useMemo(
     () => items.map((item, i) => (
       <Card
@@ -137,6 +165,7 @@ export function SmartStrip({ items, title = 'Trending & Offers', onSelect, class
         isActive={activeId === item.id}
         index={i}
         onClick={() => {
+          if (dragState.current.dragged) return;
           handleSelect(item);
         }}
       />
@@ -160,6 +189,8 @@ export function SmartStrip({ items, title = 'Trending & Offers', onSelect, class
           from { opacity: 0; }
           to   { opacity: 1; }
         }
+        .ss-scroll { scrollbar-width: none; -ms-overflow-style: none; }
+        .ss-scroll::-webkit-scrollbar { display: none; }
       `}</style>
 
       <section className={`relative w-full ${className}`} aria-label={title}>
@@ -188,13 +219,25 @@ export function SmartStrip({ items, title = 'Trending & Offers', onSelect, class
           )}
         </div>
 
-        {/* ── Grid row ── */}
+        {/* ── Scroll row ── */}
         <div className="relative">
           <div
-            className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-1 xl:grid-cols-2 gap-3"
+            ref={scrollRef}
+            className="ss-scroll flex gap-2.5 overflow-x-auto pb-0.5 cursor-grab active:cursor-grabbing"
+            style={{ scrollSnapType: 'x mandatory', WebkitOverflowScrolling: 'touch', touchAction: 'pan-x' }}
+            onPointerDown={handlePointerDown}
+            onPointerMove={handlePointerMove}
+            onPointerUp={handlePointerUp}
+            onPointerLeave={handlePointerUp}
           >
             {cards}
+            <div className="flex-shrink-0 w-3" aria-hidden />
           </div>
+
+          <div
+            className="absolute right-0 top-0 bottom-0 w-8 pointer-events-none rounded-r-2xl"
+            style={{ background: 'linear-gradient(to right, transparent, rgba(14,14,14,0.92))' }}
+          />
         </div>
 
         {/* ── Active filter caption & Clear Action ── */}

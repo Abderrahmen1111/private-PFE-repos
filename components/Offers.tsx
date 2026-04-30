@@ -82,7 +82,7 @@ export default function OfferCarouselDemo() {
 
   const title = hasInteractions 
     ? "On commence à vous connaître ❤️" 
-    : "Populaire près de vous";
+    : "Populaire près de vous 📍🗺️";
 
   return (
     <div className="w-full min-h-[500px] bg-[#F9F8F6] flex flex-col items-center justify-center p-4 md:p-10">

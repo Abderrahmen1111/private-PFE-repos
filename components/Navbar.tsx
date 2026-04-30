@@ -798,6 +798,7 @@ export default function Navbar() {
     const params = new URLSearchParams();
     if (searchQuery) params.set('query', searchQuery);
     if (locationQuery) params.set('location', locationQuery);
+
   router.push(`/search?${params.toString()}`);
   };
 
