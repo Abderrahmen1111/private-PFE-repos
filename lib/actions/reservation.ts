@@ -54,8 +54,10 @@ export async function createBooking(data: Omit<BookingInsert, 'booking_number' |
     throw new Error(`Erreur lors de la réservation : ${error.message}`);
   }
 
-  // We don't sync to transactions yet because it's still PENDING
-  // Only sync when owner accepts the booking
+  if (booking) {
+    // Sync to transactions immediately (even if PENDING)
+    await syncBookingTransaction(booking, supabase);
+  }
 
   revalidatePath(`/merchants/business/${data.store_id}`);
   return { success: true, booking };
@@ -188,8 +190,7 @@ export async function updateBookingStatus(
 
   const data = results[0];
 
-  if (data && (status === 'CONFIRMED' || status === 'COMPLETED' || status === 'CANCELLED')) {
-    // Only sync if it's being confirmed or was already confirmed
+  if (data) {
     await syncBookingTransaction(data, adminSupabase as any);
   }
 

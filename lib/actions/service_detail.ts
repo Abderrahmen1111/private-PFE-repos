@@ -40,6 +40,7 @@ export interface ServiceDetail {
     total_reviews: number;
     opening_hours: Record<string, { open: string; close: string; closed: boolean }> | null;
     verified_at: string | null;
+    owner_id: string | null;
   };
   schedules: {
     id: number;
@@ -109,7 +110,8 @@ export async function getServiceById(identifier: any): Promise<ServiceDetail | n
         rating_average,
         total_reviews,
         opening_hours,
-        verified_at
+        verified_at,
+        owner_id
       ),
       service_schedules (
         id,
@@ -183,7 +185,8 @@ export async function getServiceById(identifier: any): Promise<ServiceDetail | n
             rating_average,
             total_reviews,
             opening_hours,
-            verified_at
+            verified_at,
+            owner_id
         )
     `);
 
@@ -244,7 +247,7 @@ export async function getServiceById(identifier: any): Promise<ServiceDetail | n
   // 3. Fallback: try the 'stores' table directly (for native stores acting as services)
   let storeQuery = supabase
       .from('stores')
-      .select('id, name, slug, description, category, phone, address, city, rating_average, total_reviews, opening_hours, logo_url, status');
+      .select('id, name, slug, description, category, phone, address, city, rating_average, total_reviews, opening_hours, logo_url, status, owner_id');
 
   if (isNumeric) {
       storeQuery = storeQuery.eq('id', Number(identifier));

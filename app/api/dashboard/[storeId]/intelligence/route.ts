@@ -39,15 +39,38 @@ export async function GET(
       `)
       .eq('reels.store_id', storeId)
       .order('created_at', { ascending: false })
-      .limit(20) as any);
+      .limit(15) as any);
 
-    if (commentsError) {
-      return NextResponse.json({ error: commentsError.message }, { status: 400 });
+    // 1b. Fetch latest reviews for this store
+    const { data: reviews, error: reviewsError } = await supabase
+      .from('reviews')
+      .select('id, comment, rating, author_id, created_at')
+      .eq('store_id', storeId)
+      .order('created_at', { ascending: false })
+      .limit(15);
+
+    if (commentsError || reviewsError) {
+      return NextResponse.json({ error: (commentsError || reviewsError)?.message }, { status: 400 });
     }
 
-    if (!comments || comments.length === 0) {
+    const allData = [
+      ...(comments || []).map((c: any) => ({
+        comment: c.content,
+        reelId: c.reel_id,
+        userId: c.user_id,
+        type: 'COMMENT'
+      })),
+      ...(reviews || []).map((r: any) => ({
+        comment: r.comment,
+        rating: r.rating,
+        userId: r.author_id,
+        type: 'REVIEW'
+      }))
+    ];
+
+    if (allData.length === 0) {
       return NextResponse.json({ 
-        message: "No comments found to analyze",
+        message: "No data found to analyze",
         data: null 
       });
     }
@@ -55,11 +78,7 @@ export async function GET(
     // 2. Format for analyzer
     const batchReq = {
       businessId: storeId.toString(),
-      comments: (comments as any[]).map((c: any) => ({
-        comment: c.content,
-        reelId: c.reel_id,
-        userId: c.user_id,
-      }))
+      comments: allData
     };
 
     // 3. Analyze

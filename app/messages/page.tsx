@@ -8,6 +8,8 @@ import { useMessaging } from "@/hooks/useMessaging";
 import Navbar from "@/components/Navbar";
 import { getFriendshipStatus } from "@/lib/actions/friendships";
 import { CallOverlay } from "@/components/messaging/CallOverlay";
+import { getUserProfile } from "@/lib/actions/users";
+import { getPrimaryStoreForOwner } from "@/lib/actions/stores";
 
 function MessagesContent() {
   const searchParams = useSearchParams();
@@ -45,10 +47,48 @@ function MessagesContent() {
 
 
   useEffect(() => {
+    const storeIdFromUrl = searchParams.get('storeId');
+    
     if (partnerIdFromUrl) {
       setActivePartnerId(partnerIdFromUrl);
+      
+      // If it's not in existing conversations, fetch details to show store name/logo
+      const existing = conversations.find(c => c.user_id === partnerIdFromUrl);
+      if (!existing && !selectedNewPartner) {
+        const fetchPartnerDetails = async () => {
+          const [profileRes, storeRes] = await Promise.all([
+            getUserProfile(partnerIdFromUrl),
+            getPrimaryStoreForOwner(partnerIdFromUrl)
+          ]);
+          
+          if (profileRes.data) {
+            setSelectedNewPartner({
+              user_id: partnerIdFromUrl,
+              full_name: storeRes.data?.name || profileRes.data.full_name || 'Utilisateur',
+              avatar_url: storeRes.data?.logo_url || profileRes.data.avatar_url,
+              unread_count: 0
+            });
+          }
+        };
+        fetchPartnerDetails();
+      }
+    } else if (storeIdFromUrl) {
+        // Resolve owner from storeId
+        const fetchStoreOwner = async () => {
+            const { data: store } = await getStoreById(Number(storeIdFromUrl));
+            if (store && store.owner_id) {
+                setActivePartnerId(store.owner_id);
+                setSelectedNewPartner({
+                    user_id: store.owner_id,
+                    full_name: store.name,
+                    avatar_url: store.logo_url,
+                    unread_count: 0
+                });
+            }
+        };
+        fetchStoreOwner();
     }
-  }, [partnerIdFromUrl]);
+  }, [partnerIdFromUrl, searchParams, conversations, selectedNewPartner]);
 
   const handleSelectPartner = (id: string, partnerData?: any) => {
     setActivePartnerId(id);

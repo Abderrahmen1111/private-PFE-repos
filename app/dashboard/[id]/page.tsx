@@ -1,8 +1,8 @@
 'use client';
 
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState } from 'react';
 import '@/app/globals.css';
-import { TrendingUp, Eye, Phone, MapPin, ShoppingCart, DollarSign } from 'lucide-react';
+import { TrendingUp, Eye, Phone, MapPin, ShoppingCart, DollarSign, CreditCard } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
@@ -19,6 +19,10 @@ import {
 } from 'recharts';
 import { useParams } from 'next/navigation';
 import { getDashboardOverview } from '@/lib/actions/overviews';
+import { motion } from 'framer-motion';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import AccountSection from '@/components/dashboard/AccountSection';
 
 interface StatCardProps {
   label: string;
@@ -27,8 +31,6 @@ interface StatCardProps {
   trend?: number;
   color?: 'blue' | 'green' | 'purple' | 'orange';
 }
-
-import { motion } from 'framer-motion';
 
 function StatCard({ label, value, icon, trend, color = 'blue' }: StatCardProps) {
   const colorClasses = {
@@ -48,7 +50,6 @@ function StatCard({ label, value, icon, trend, color = 'blue' }: StatCardProps) 
       <Card
         className="relative overflow-hidden border-0 shadow-2xl transition-all duration-500 bg-white/5 backdrop-blur-2xl ring-1 ring-white/10 group"
       >
-        {/* Animated background glow */}
         <div className={`absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 bg-gradient-to-br ${colorClasses[color].split(' ').slice(0, 2).join(' ')} blur-3xl -z-10`} />
 
         <CardContent className="p-6">
@@ -75,29 +76,9 @@ function StatCard({ label, value, icon, trend, color = 'blue' }: StatCardProps) 
   );
 }
 
-// Weekly trend data
-const weeklyData = [
-  { day: 'Mon', views: 240, clicks: 28, actions: 15 },
-  { day: 'Tue', views: 320, clicks: 32, actions: 18 },
-  { day: 'Wed', views: 290, clicks: 35, actions: 22 },
-  { day: 'Thu', views: 380, clicks: 42, actions: 28 },
-  { day: 'Fri', views: 450, clicks: 55, actions: 32 },
-  { day: 'Sat', views: 520, clicks: 68, actions: 35 },
-  { day: 'Sun', views: 280, clicks: 28, actions: 17 },
-];
-
-const defaultWeeklyData = [
-  { day: 'Mon', views: 0, clicks: 0, actions: 0 },
-  { day: 'Tue', views: 0, clicks: 0, actions: 0 },
-  { day: 'Wed', views: 0, clicks: 0, actions: 0 },
-  { day: 'Thu', views: 0, clicks: 0, actions: 0 },
-  { day: 'Fri', views: 0, clicks: 0, actions: 0 },
-  { day: 'Sat', views: 0, clicks: 0, actions: 0 },
-  { day: 'Sun', views: 0, clicks: 0, actions: 0 },
-];
-
 export default function DashboardPage() {
   const params = useParams();
+  const storeId = Number(params.id);
   const [period, setPeriod] = useState<'today' | 'week' | 'month'>('week');
   const [data, setData] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -105,23 +86,21 @@ export default function DashboardPage() {
   useEffect(() => {
     async function fetchData() {
       setIsLoading(true);
-      if (params.id) {
-        const stats = await getDashboardOverview(Number(params.id));
+      if (storeId) {
+        const stats = await getDashboardOverview(storeId);
         setData(stats);
       }
       setIsLoading(false);
     }
     fetchData();
-  }, [params.id, period]); // Currently period doesn't filter DB queries, but keeps UI state intact
+  }, [storeId, period]);
 
-  if (isLoading) return <div className="p-8 text-white">Chargement des statistiques...</div>;
+  if (isLoading) return <div className="p-8 text-white font-bold animate-pulse text-center">Chargement des statistiques...</div>;
   if (!data) return null;
-
-  const totalActions = data.phoneClicks + data.directionClicks + data.reservations + data.purchases;
 
   return (
     <div className="space-y-6 p-4 md:p-8 flex-1" style={{ background: 'linear-gradient(135deg, #0f1729 0%, #1a1f3a 100%)' }}>
-      {/* Verification Warning Banner - Only show if PENDING */}
+      {/* Verification Warning Banner */}
       {data.status === 'PENDING' && (
         <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-4 flex items-start gap-4 shadow-lg shadow-amber-500/5 backdrop-blur-sm animate-in fade-in slide-in-from-top duration-500">
           <div className="p-2 bg-amber-500/20 rounded-lg text-amber-500">
@@ -206,7 +185,6 @@ export default function DashboardPage() {
 
       {/* Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Activity Trend */}
         <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
@@ -278,7 +256,6 @@ export default function DashboardPage() {
           </Card>
         </motion.div>
 
-        {/* Rating Distribution */}
         <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
@@ -319,7 +296,7 @@ export default function DashboardPage() {
         </motion.div>
       </div>
 
-      {/* Recent Actions */}
+      {/* Recent Activity List */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -359,9 +336,6 @@ export default function DashboardPage() {
                       <p className="text-xs font-medium text-white/30 whitespace-nowrap">
                         {Math.max(0, Math.round((Date.now() - new Date(action.timestamp).getTime()) / 1000 / 60))} min ago
                       </p>
-                      <div className="w-8 h-1 bg-white/5 rounded-full overflow-hidden">
-                        <div className="w-1/2 h-full bg-pink-500/50" />
-                      </div>
                     </div>
                   </motion.div>
                 ))
@@ -370,6 +344,14 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
       </motion.div>
+
+      {/* FULL ACCOUNT & SUBSCRIPTION SECTION (The "Mix") */}
+      <AccountSection 
+        store={data.store} 
+        user={data.user} 
+        subscription={data.subscription} 
+        storeId={storeId} 
+      />
     </div>
   );
 }

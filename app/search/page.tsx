@@ -34,14 +34,63 @@ function SearchPageContent() {
     const fetchAllResults = async () => {
       setIsLoading(true);
       try {
-        const [busResults, prodResults, servResults] = await Promise.all([
-          searchStores(query, location),
-          searchItems(query),
-          searchServicesDirectory(query, location)
-        ]);
-        setBusinesses(busResults);
-        setProducts(prodResults.data || []);
-        setServices(servResults.data || []);
+        // Use the new 7-step semantic search API endpoint instead of old direct DB calls
+        const res = await fetch('/api/semantic-search', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ query, location, limit: 100 })
+        });
+        const data = await res.json();
+        const results = data.results || [];
+
+        const mappedBusinesses: any[] = [];
+        const mappedProducts: any[] = [];
+        const mappedServices: any[] = [];
+
+        results.forEach((r: any) => {
+          if (r.result_type === 'STORE' || r.result_type === 'BUSINESS_DIR') {
+            mappedBusinesses.push({
+              id: r.id?.toString(),
+              name: r.name || r.title,
+              description: r.description,
+              image: r.image_url,
+              rating: r.metadata?.rating || r.metadata?.score || 0,
+              reviewCount: r.metadata?.total_reviews || r.metadata?.reviews || 0,
+              category: r.category || 'Local Business',
+              location: { address: r.metadata?.address || r.location_city || 'Tunisie', lat: 0, lng: 0 }
+            });
+          } else if (r.result_type === 'ITEM' || r.item_type === 'PRODUCT') {
+            mappedProducts.push({
+              id: r.id,
+              name: r.name || r.title,
+              description: r.description,
+              item_type: 'PRODUCT',
+              main_image: r.image_url || r.main_image,
+              price: r.metadata?.price ?? r.price ?? 0,
+              stores: r.stores || (r.metadata?.store_id ? {
+                id: r.metadata.store_id,
+                name: r.metadata.store_name || 'Boutique'
+              } : null)
+            });
+          } else if (r.result_type === 'SERVICE_DIR' || r.item_type === 'SERVICE') {
+            mappedServices.push({
+              id: r.id,
+              name: r.name || r.title,
+              description: r.description,
+              item_type: 'SERVICE',
+              main_image: r.image_url || r.main_image,
+              price: r.metadata?.price ?? r.price ?? 0,
+              stores: r.stores || (r.metadata?.store_id ? {
+                id: r.metadata.store_id,
+                name: r.metadata.store_name || 'Boutique'
+              } : null)
+            });
+          }
+        });
+
+        setBusinesses(mappedBusinesses);
+        setProducts(mappedProducts);
+        setServices(mappedServices);
       } catch (err) {
         console.error('Fetch error:', err);
       } finally {
@@ -49,7 +98,14 @@ function SearchPageContent() {
       }
     };
 
-    fetchAllResults();
+    if (query) {
+      fetchAllResults();
+    } else {
+      setBusinesses([]);
+      setProducts([]);
+      setServices([]);
+      setIsLoading(false);
+    }
   }, [query, location]);
 
   // When user clicks a marker: highlight it, scroll list to card, open map popup (via activeBusinessId)

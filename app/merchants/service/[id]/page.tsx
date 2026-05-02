@@ -365,6 +365,7 @@ export default async function ServiceProfilePage({ params }: { params: { id: str
               businessReviews={service.store.total_reviews}
               isVerified={isVerified}
               isLinkedToStore={service.store.id > 0 || !!service.store.verified_at}
+              ownerId={service.store.owner_id}
             />
           </div>
 

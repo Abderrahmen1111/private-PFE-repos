@@ -15,9 +15,17 @@ export async function getBusinessStories(storeId: number) {
             caption,
             views_count,
             created_at,
-            stores:store_id (
+            author_id,
+            is_approved,
+            expires_at,
+            author:users (
+                full_name,
+                avatar_url
+            ),
+            stores:stores (
                 name,
-                logo_url
+                logo_url,
+                owner_id
             )
         `)
         .eq('store_id', storeId)
@@ -46,9 +54,14 @@ export async function getDiscoverStories(limit: number = 20) {
             views_count,
             created_at,
             store_id,
-            stores:store_id (
-              name,
-              logo_url
+            author:users (
+                full_name,
+                avatar_url
+            ),
+            stores:stores (
+                name,
+                logo_url,
+                owner_id
             )
         `)
         .eq('is_approved', true)
@@ -114,21 +127,18 @@ export async function uploadStoryMedia(formData: FormData): Promise<string | nul
     const file = formData.get('file') as File | null;
     if (!file) return null;
 
-    const supabase = createClient()
     const ext = file.name.split('.').pop()
     const filename = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
 
-    const { error } = await supabase.storage
-        .from('stories')
-        .upload(filename, file, { contentType: file.type, upsert: false })
+    const { uploadFile } = await import('@/lib/supabase/storage')
+    const { url, error } = await uploadFile('STORIES', filename, file)
 
     if (error) {
         console.error('Upload error:', error)
         return null
     }
 
-    const { data } = supabase.storage.from('stories').getPublicUrl(filename)
-    return data?.publicUrl || null
+    return url
 }
 
 // Delete a story (only owner)
@@ -141,4 +151,29 @@ export async function deleteStory(storyId: number) {
 
     if (error) return { success: false }
     return { success: true }
+}
+
+export async function getDashboardStories(storeId: number) {
+    const supabase = createClient()
+    
+    // Fetch stories for this store, including expired ones for dashboard management
+    const { data, error } = await (supabase as any)
+        .from('stories')
+        .select(`
+            *,
+            author:author_id (
+                id,
+                full_name,
+                avatar_url
+            )
+        `)
+        .eq('store_id', storeId)
+        .order('created_at', { ascending: false });
+
+    if (error) {
+        console.error('Error fetching dashboard stories:', error);
+        return [];
+    }
+
+    return data || [];
 }

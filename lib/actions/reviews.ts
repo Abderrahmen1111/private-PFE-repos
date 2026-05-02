@@ -181,6 +181,10 @@ export async function getReviewsByStoreId(storeId: number) {
             created_at,
             vendor_response,
             responded_at,
+            item_id,
+            item:item_id (
+                name
+            ),
             author:author_id (
                 full_name,
                 avatar_url
@@ -196,4 +200,25 @@ export async function getReviewsByStoreId(storeId: number) {
     }
 
     return data || [];
+}
+
+export async function respondToReview(reviewId: number, response: string) {
+    const supabase = createClient()
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    if (authError || !user) return { success: false, error: 'Non authentifié.' }
+
+    const { error } = await supabase
+        .from('reviews')
+        .update({
+            vendor_response: response,
+            responded_at: new Date().toISOString()
+        })
+        .eq('id', reviewId)
+
+    if (error) {
+        console.error('Error responding to review:', error)
+        return { success: false, error: error.message }
+    }
+
+    return { success: true }
 }

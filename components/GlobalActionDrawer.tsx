@@ -85,6 +85,7 @@ export default function GlobalActionDrawer() {
                   workingHours={data.workingHours}
                   service={data.service}
                   storeId={data.storeId}
+                  ownerId={data.ownerId}
                   onConfirm={(resData) => {
                     console.log('Reservation confirmed:', resData);
                     // maybe close or show success

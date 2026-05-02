@@ -57,15 +57,16 @@ export function CheckoutDrawerContent({ item, businessName, storeId, promotion, 
           setAddress(profile.address || '');
         }
 
-        if (storeId) {
+        const targetStoreId = storeId || item.store_id;
+        if (targetStoreId) {
           const orders = await getUserOrders(user.id);
-          const storeOrders = orders.filter((o: any) => o.store_id === storeId && (o.status === 'PENDING' || o.status === 'VALIDATED'));
+          const storeOrders = orders.filter((o: any) => o.store_id === targetStoreId && (o.status === 'PENDING' || o.status === 'VALIDATED'));
           setActiveOrders(storeOrders);
         }
       }
     };
     loadData();
-  }, [storeId]);
+  }, [storeId, item.store_id]);
 
   const hasDiscount = !!promotion?.discount_percent;
   const unitPrice = hasDiscount
@@ -76,9 +77,12 @@ export function CheckoutDrawerContent({ item, businessName, storeId, promotion, 
 
   const isFormValid = (name?.trim() || userEmail) && phone?.trim() && address?.trim();
 
+  const effectiveStoreId = storeId || item.store_id;
+
   const handleOrder = async () => {
-    if (!isFormValid || !storeId) {
+    if (!isFormValid || !effectiveStoreId) {
       toast.error('Veuillez remplir tous les champs requis');
+      console.error('Validation failed:', { isFormValid, effectiveStoreId, name, phone, address });
       return;
     }
     
@@ -130,7 +134,7 @@ export function CheckoutDrawerContent({ item, businessName, storeId, promotion, 
       } else {
         // Single item checkout
         const result = await createOrder({
-          store_id: storeId,
+          store_id: effectiveStoreId,
           item_id: item.id,
           quantity,
           unit_price: item.price,
@@ -162,7 +166,7 @@ export function CheckoutDrawerContent({ item, businessName, storeId, promotion, 
         const { data: { user } } = await supabase.auth.getUser();
         if (user) {
           const orders = await getUserOrders(user.id);
-          const storeOrders = orders.filter((o: any) => o.store_id === storeId && (o.status === 'PENDING' || o.status === 'VALIDATED'));
+          const storeOrders = orders.filter((o: any) => o.store_id === effectiveStoreId && (o.status === 'PENDING' || o.status === 'VALIDATED'));
           setActiveOrders(storeOrders);
         }
 

@@ -119,3 +119,41 @@ export async function uploadCommentAttachment(formData: FormData): Promise<strin
     const { data } = supabase.storage.from('reels').getPublicUrl(filename)
     return data?.publicUrl || null
 }
+// Fetch all reel comments for a business
+export async function getStoreReelComments(storeId: number) {
+  const supabase = createClient()
+
+  // First get all reel IDs for this store
+  const { data: reels } = await supabase
+    .from('reels')
+    .select('id')
+    .eq('store_id', storeId)
+
+  if (!reels || reels.length === 0) return []
+
+  const reelIds = reels.map(r => r.id)
+
+  const { data, error } = await (supabase as any)
+    .from('reel_comments')
+    .select(`
+      *,
+      reel:reel_id (
+        id,
+        title,
+        media_path
+      ),
+      user:user_id (
+        full_name,
+        avatar_url
+      )
+    `)
+    .in('reel_id', reelIds)
+    .order('created_at', { ascending: false })
+
+  if (error) {
+    console.error('Error fetching store reel comments:', error)
+    return []
+  }
+
+  return data || []
+}

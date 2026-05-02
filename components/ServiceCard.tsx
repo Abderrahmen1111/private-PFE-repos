@@ -62,6 +62,7 @@ export function ServiceCard({ item, businessName, promotion, onBook, onViewDetai
                     phone: itemData.stores?.phone,
                     address: itemData.stores?.address || 'Tunisie',
                     workingHours: itemData.stores?.working_hours,
+                    ownerId: itemData.stores?.owner_id,
                 });
             }
         }
@@ -84,6 +85,7 @@ export function ServiceCard({ item, businessName, promotion, onBook, onViewDetai
             store_id: item.store_id?.toString() || '',
             store_name: bName,
             item_type: item.item_type as 'PRODUCT' | 'SERVICE',
+            owner_id: (item as any).stores?.owner_id,
         });
     };
 

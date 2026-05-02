@@ -49,7 +49,13 @@ function DiscoverCardComponent({ item, priority = false }: DiscoverCardProps) {
     return () => window.clearTimeout(id)
   }, [])
 
-  const displayLikes = useMemo(() => item.likes + (liked ? 1 : 0), [item.likes, liked])
+  const displayLikes = useMemo(() => {
+    const baseLikes = item.likes || 0;
+    // Si l'état actuel (liked) est différent de l'état initial (item.hasLiked), on ajuste
+    if (liked && !item.hasLiked) return baseLikes + 1;
+    if (!liked && item.hasLiked) return baseLikes - 1;
+    return baseLikes;
+  }, [item.likes, item.hasLiked, liked]);
 
   const triggerLike = useCallback(async () => {
     if (liked) return
@@ -210,7 +216,14 @@ function DiscoverCardComponent({ item, priority = false }: DiscoverCardProps) {
             onLoadStart={() => setIsMediaLoading(true)}
             onCanPlay={() => setIsMediaLoading(false)}
             onWaiting={() => setIsMediaLoading(true)}
-            onPlaying={() => setIsMediaLoading(false)}
+            onPlaying={() => {
+              setIsMediaLoading(false);
+              // Trigger view count once per mount
+              if (numericId && !(window as any)[`viewed_${item.id}`]) {
+                trackReelInteraction(numericId, 'view');
+                (window as any)[`viewed_${item.id}`] = true;
+              }
+            }}
             onError={(e) => {
               console.error("Video Load Error:", item.image, e);
               setIsMediaLoading(false);
@@ -229,7 +242,7 @@ function DiscoverCardComponent({ item, priority = false }: DiscoverCardProps) {
           <img
             src={item.allMedia?.[currentMediaIndex] || item.image}
             alt=""
-            className="absolute inset-0 h-full w-full object-cover blur-2xl opacity-60 scale-110"
+            className="absolute inset-0 h-full w-full object-cover blur-3xl opacity-30 scale-125 brightness-[0.25]"
           />
           <img
             src={item.allMedia?.[currentMediaIndex] || item.image}
@@ -240,7 +253,13 @@ function DiscoverCardComponent({ item, priority = false }: DiscoverCardProps) {
               'relative z-10 h-full w-full object-contain transition-all duration-700',
               entered && !isMediaLoading ? 'scale-100 opacity-100' : 'scale-[1.03] opacity-0',
             )}
-            onLoad={() => setIsMediaLoading(false)}
+            onLoad={() => {
+              setIsMediaLoading(false);
+              if (numericId && !(window as any)[`viewed_${item.id}`]) {
+                trackReelInteraction(numericId, 'view');
+                (window as any)[`viewed_${item.id}`] = true;
+              }
+            }}
             onError={() => {
               setIsMediaLoading(false);
               setMediaError(true);
@@ -288,40 +307,46 @@ function DiscoverCardComponent({ item, priority = false }: DiscoverCardProps) {
         <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 px-4 sm:px-6 pb-20">
           <div
             className={cn(
-              'pointer-events-auto w-full max-w-md rounded-2xl border bg-black/40 p-5 shadow-[0_20px_80px_rgba(0,0,0,0.6)] backdrop-blur-2xl transition-all duration-500',
+              'pointer-events-auto w-[82%] max-w-[320px] rounded-3xl border bg-black/40 p-5 shadow-[0_20px_80px_rgba(0,0,0,0.6)] backdrop-blur-2xl transition-all duration-500',
               item.isSponsored
                 ? 'border-[#F97316]/50 ring-1 ring-[#F97316]/40'
                 : 'border-white/10 ring-1 ring-white/5',
             )}
           >
             <div className="mb-2 flex items-center gap-2">
-              <p className="text-xs font-semibold uppercase tracking-wider text-white/70">
-                {item.merchantName}
-              </p>
+              <div className="flex h-6 items-center rounded-full bg-white/10 px-2.5 backdrop-blur-md border border-white/10">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-white/90">
+                  {item.merchantName}
+                </p>
+              </div>
               {isTopSeller ? (
-                <span className="rounded-full bg-[#22C55E]/20 px-2 py-0.5 text-[10px] font-semibold text-[#22C55E]">
+                <span className="flex h-6 items-center rounded-full bg-[#22C55E]/20 px-2.5 text-[10px] font-bold uppercase tracking-wider text-[#22C55E] border border-[#22C55E]/20">
                   Top Seller
                 </span>
               ) : null}
             </div>
 
-            <h2 className="text-2xl font-bold leading-tight text-white">🛍️ {item.product}</h2>
-            <p className="mt-1 text-sm leading-relaxed text-white/85">{item.description}</p>
+            <h2 className="text-xl sm:text-2xl font-black leading-tight text-white drop-shadow-md">
+              {item.product}
+            </h2>
+            <p className="mt-1.5 text-sm leading-relaxed text-white/80 line-clamp-2">
+              {item.description}
+            </p>
 
             <div className="mt-3 flex items-center gap-3 text-white/85">
-              <div className="flex items-center gap-1 text-sm font-semibold">
-                <Star className="h-4 w-4 fill-yellow-300 text-yellow-300" />
+              <div className="flex items-center gap-1.5 text-sm font-bold bg-white/5 px-2 py-1 rounded-lg border border-white/5">
+                <Star className="h-3.5 w-3.5 fill-yellow-400 text-yellow-400" />
                 <span>{item.merchant.rating.toFixed(1)}</span>
               </div>
-              <span className="text-xs uppercase text-white/70">{item.category}</span>
+              <span className="text-xs font-medium uppercase tracking-wide text-white/50">{item.category}</span>
             </div>
 
-            <div className="mt-4 flex items-center justify-between gap-3 relative">
-              <span className="text-lg font-semibold text-white">{item.price}</span>
+            <div className="mt-5 flex items-center justify-between gap-3 relative">
+              <span className="text-xl font-black text-white tracking-tight">{item.price}</span>
               <button
                 type="button"
                 aria-label="Buy"
-                className="rounded-full bg-[#22C55E] border border-[#22C55E] px-6 py-2 text-sm font-semibold text-[#0A0A0A] transition-all duration-300 hover:scale-105 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0A0A0A] hover:bg-[#16A34A] hover:border-[#16A34A]"
+                className="rounded-full bg-gradient-to-r from-[#22C55E] to-[#16A34A] px-6 py-2.5 text-sm font-black uppercase tracking-wide text-white shadow-[0_0_20px_rgba(34,197,94,0.3)] transition-all duration-300 hover:scale-105 active:scale-95 hover:shadow-[0_0_30px_rgba(34,197,94,0.5)] border border-white/20"
                 onClick={handleBuy}
               >
                 {item.itemType === 'SERVICE' ? 'Réserver' : 'Acheter'}

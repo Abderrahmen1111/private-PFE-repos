@@ -63,7 +63,11 @@ export async function getBusinessReels(storeId: number) {
     if (commentsResult.error) console.error('Error fetching comments:', commentsResult.error);
 
     // Identify reels missing stats and initialize them
-    const missingStats = reelsData.filter((reel: any) => !reel.reel_stats)
+    const missingStats = reelsData.filter((reel: any) => {
+        const stats = Array.isArray(reel.reel_stats) ? reel.reel_stats[0] : reel.reel_stats;
+        return !stats;
+    })
+    
     if (missingStats.length > 0) {
         await Promise.all(missingStats.map((reel: any) => 
             (supabase as any).from('reel_stats').insert({ reel_id: reel.id })
@@ -73,18 +77,22 @@ export async function getBusinessReels(storeId: number) {
     // Flatten stats and parse media URLs for easier UI consumption
     return reelsData.map((reel: any) => {
         const reelInteractions = interactionsData?.filter((i: any) => i.reel_id === reel.id) || [];
+        const rawStats = Array.isArray(reel.reel_stats) ? reel.reel_stats[0] : reel.reel_stats;
+        const statsObj = rawStats || {};
+        const dbStats = reel.stats || {}; // Handle potential JSONB stats column
         
         return {
             ...reel,
             media_urls: parseMediaUrls(reel.media_path),
             is_gallery: parseMediaUrls(reel.media_path).length > 1,
             stats: {
-                ...(reel.reel_stats || {}),
-                views_count: reel.reel_stats?.views_count || 0,
-                likes_count: reelInteractions.filter((i: any) => i.type === 'like').length,
-                clicks_count: reel.reel_stats?.clicks_count || 0,
-                contact_count: reel.reel_stats?.contact_count || 0,
-                comments_count: (commentsData?.filter((c: any) => c.reel_id === reel.id) || []).length,
+                ...dbStats,
+                ...statsObj,
+                views_count: statsObj.views_count || statsObj.view_count || reel.views_count || reel.view_count || dbStats.views_count || dbStats.view_count || 0,
+                likes_count: reelInteractions.filter((i: any) => i.type === 'like').length || dbStats.likes_count || 0,
+                clicks_count: statsObj.clicks_count || reel.clicks_count || dbStats.clicks_count || 0,
+                contact_count: statsObj.contact_count || reel.contact_count || dbStats.contact_count || 0,
+                comments_count: (commentsData?.filter((c: any) => c.reel_id === reel.id) || []).length || dbStats.comments_count || 0,
             }
         };
     });
@@ -124,6 +132,15 @@ export async function trackReelInteraction(reelId: number, type: 'like' | 'save'
     if (error) {
         console.error('Error tracking interaction:', error);
         return { success: false, error: error.message };
+    }
+
+    // --- MISE À JOUR RÉELLE DES COMPTEURS ---
+    if (type === 'view') {
+        await (supabase as any).rpc('increment_reel_view', { x: 1, reel_id_input: reelId });
+    } else if (type === 'like') {
+        await (supabase as any).rpc('increment_reel_like', { x: 1, reel_id_input: reelId });
+    } else if (type === 'save') {
+        await (supabase as any).rpc('increment_reel_save', { x: 1, reel_id_input: reelId });
     }
 
     return { success: true, action: 'added' };
@@ -193,41 +210,18 @@ export async function uploadReelMedia(formData: FormData): Promise<string | null
     const file = formData.get('file') as File | null;
     if (!file) return null;
 
-    const supabase = createClient()
     const ext = file.name.split('.').pop()
     const filename = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
 
-    // Use 'reels' bucket if exists, otherwise fallback to 'stories'
-    const bucket = 'reels'
-    
-    const { error } = await supabase.storage
-        .from(bucket)
-        .upload(filename, file, { contentType: file.type, upsert: false })
+    const { uploadFile } = await import('@/lib/supabase/storage')
+    const { url, error } = await uploadFile('REELS', filename, file)
 
     if (error) {
         console.error('Upload error (reels bucket):', error)
-        
-        // If it's an RLS error (403), don't fallback to stories bucket
-        if ((error as any).statusCode === '403' || (error as any).status === 403) {
-            console.error('RLS policy violation: please ensure your account has upload permissions for the "reels" bucket.')
-            return null
-        }
-
-        // Only fallback to 'stories' bucket if 'reels' doesn't exist (e.g. 404)
-        const { error: fallbackError } = await supabase.storage
-            .from('stories')
-            .upload(filename, file, { contentType: file.type, upsert: false })
-            
-        if (fallbackError) {
-            console.error('Upload error (stories bucket):', fallbackError)
-            return null
-        }
-        const { data } = supabase.storage.from('stories').getPublicUrl(filename)
-        return data?.publicUrl || null
+        return null
     }
 
-    const { data } = supabase.storage.from(bucket).getPublicUrl(filename)
-    return data?.publicUrl || null
+    return url
 }
 
 // Delete a reel

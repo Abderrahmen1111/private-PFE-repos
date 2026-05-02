@@ -113,7 +113,8 @@ export async function getLatestItems(limit: number = 10) {
             stores!inner (
                 name,
                 logo_url,
-                status
+                status,
+                owner_id
             )
         `)
         .eq('stores.status', 'PUBLISHED')
@@ -127,4 +128,38 @@ export async function getLatestItems(limit: number = 10) {
     }
 
     return data || []
+}
+
+/**
+ * Decrements the stock of an item.
+ */
+export async function decrementStock(itemId: number, quantity: number) {
+    const supabase = createClient()
+    
+    const { data: item, error: fetchError } = await supabase
+        .from('items')
+        .select('stock_quantity, item_type, store_id')
+        .eq('id', itemId)
+        .single()
+        
+    if (fetchError || !item) return { error: 'Item not found' }
+    
+    // Only decrement if it's a PRODUCT and has stock management enabled
+    if (item.item_type !== 'PRODUCT') return { success: true }
+    
+    const currentStock = item.stock_quantity || 0
+    const newStock = Math.max(0, currentStock - quantity)
+    
+    const { error: updateError } = await supabase
+        .from('items')
+        .update({ 
+            stock_quantity: newStock,
+            status: newStock === 0 ? 'OUT_OF_STOCK' : 'AVAILABLE'
+        })
+        .eq('id', itemId)
+        
+    if (updateError) return { error: updateError.message }
+    
+    revalidatePath(`/dashboard/${item.store_id}/products`)
+    return { success: true }
 }

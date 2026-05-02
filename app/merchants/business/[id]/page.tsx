@@ -21,6 +21,7 @@ import { Item } from '@/lib/actions/items';
 import { BusinessReservationSidebar } from '@/components/BusinessReservationSidebar';
 import FavoriteButton from '@/components/FavoriteButton';
 import StoreAnalyticsTracker from '@/components/StoreAnalyticsTracker';
+import BusinessGallerySection from '@/components/BusinessGallerySection';
 
 interface Promotion {
   id: number;
@@ -220,7 +221,13 @@ export default async function BusinessDetailPage({ params }: { params: { id: str
 
       {/* ── CUSTOMER STORIES ── */}
       {business.store_id && (
-        <BusinessStories businessName={business.name} storeId={business.store_id} initialStories={stories} canAddStory={canAddStory} />
+        <BusinessStories 
+          businessName={business.name} 
+          storeId={business.store_id} 
+          initialStories={stories} 
+          canAddStory={canAddStory} 
+          isOwner={isOwner} 
+        />
       )}
 
       {/* Main Content */}
@@ -260,19 +267,8 @@ export default async function BusinessDetailPage({ params }: { params: { id: str
               </div>
             )}
 
-            {/* Photos Section (if many) */}
-            {business.photos && business.photos.length > 1 && (
-              <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
-                <h2 className="text-2xl font-bold text-gray-900 mb-6">Photos</h2>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                  {business.photos.map((photo: string, index: number) => (
-                    <div key={index} className="aspect-square rounded-lg overflow-hidden border">
-                      <img src={photo} alt={`${business.name} photo ${index}`} className="w-full h-full object-cover" />
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
+            {/* Gallery Section */}
+            <BusinessGallerySection images={allMedia} businessName={business.name} />
 
             {/* Reviews Section */}
             <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
@@ -358,6 +354,8 @@ export default async function BusinessDetailPage({ params }: { params: { id: str
               hasProducts={hasProducts}
               items={items}
               isOwner={isOwner}
+              ownerId={business.owner_id}
+              storeId={business.store_id}
             />
           </div>
         </div>
