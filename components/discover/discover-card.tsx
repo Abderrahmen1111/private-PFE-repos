@@ -195,9 +195,10 @@ function DiscoverCardComponent({ item, priority = false }: DiscoverCardProps) {
           <video
             src={item.image}
             className="absolute inset-0 h-full w-full object-cover blur-2xl opacity-60 scale-110"
-            autoPlay
+            autoPlay={false}
+
             loop
-            muted
+            
             playsInline
           />
           <video
@@ -207,9 +208,10 @@ function DiscoverCardComponent({ item, priority = false }: DiscoverCardProps) {
               'relative z-10 h-full w-full object-contain transition-all duration-700',
               entered && !isMediaLoading ? 'scale-100 opacity-100' : 'scale-[1.03] opacity-0',
             )}
-            autoPlay
+            autoPlay={false}
+
             loop
-            muted
+            
             playsInline
             preload="auto"
             crossOrigin="anonymous"

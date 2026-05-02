@@ -8,24 +8,7 @@
 
 const isDev = process.env.NODE_ENV === 'development'
 
-const ContentSecurityPolicy = `
-  default-src 'self';
-  script-src 'self' 'unsafe-inline' ${isDev ? "'unsafe-eval'" : ""};
-  style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
-  font-src 'self' https://fonts.gstatic.com;
-  img-src 'self' blob: data: https://*.supabase.co https://images.unsplash.com https://*.unsplash.com https://lh3.googleusercontent.com https://maps.googleapis.com https://*.googleapis.com https://*.gstatic.com https://streetviewpixels-pa.googleapis.com https://*.googleusercontent.com https://upload.wikimedia.org https://*.cloudinary.com https://res.cloudinary.com *;
-  media-src 'self';
-  connect-src 'self'
-    https://*.supabase.co
-    https://*.supabase.io
-    wss://*.supabase.co
-  ${isDev ? 'ws://localhost:3000 http://localhost:3000' : ''};
-  frame-src 'none';
-  object-src 'none';
-  base-uri 'self';
-  form-action 'self';
-  upgrade-insecure-requests;
-`
+const ContentSecurityPolicy = `default-src 'self'; script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""}; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' blob: data: https://*.supabase.co https://images.unsplash.com https://*.unsplash.com https://lh3.googleusercontent.com https://maps.googleapis.com https://*.googleapis.com https://*.gstatic.com https://streetviewpixels-pa.googleapis.com https://*.googleusercontent.com https://upload.wikimedia.org https://*.cloudinary.com https://res.cloudinary.com *; media-src 'self' https://res.cloudinary.com https://*.cloudinary.com blob: data:; connect-src 'self' https://*.supabase.co https://*.supabase.io wss://*.supabase.co${isDev ? ' ws://localhost:3000 http://localhost:3000' : ''}; frame-src 'none'; object-src 'none'; base-uri 'self'; form-action 'self'; upgrade-insecure-requests;`
   .replace(/\s{2,}/g, ' ')
   .trim()
 

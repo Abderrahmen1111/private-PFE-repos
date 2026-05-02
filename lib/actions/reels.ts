@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 
+
 export interface ReelInput {
     storeId: number
     mediaPath: string | string[]
@@ -206,37 +207,133 @@ export async function publishReel(input: ReelInput) {
 }
 
 // Upload a reel media file to storage
+// ============================================
+// ONLY MODIFY THIS FUNCTION - REST OF FILE STAYS THE SAME
+// ============================================
+
+// Upload a reel media file to Cloudinary
 export async function uploadReelMedia(formData: FormData): Promise<string | null> {
     const file = formData.get('file') as File | null;
     if (!file) return null;
 
-    const ext = file.name.split('.').pop()
-    const filename = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
-
-    const { uploadFile } = await import('@/lib/supabase/storage')
-    const { url, error } = await uploadFile('REELS', filename, file)
-
-    if (error) {
-        console.error('Upload error (reels bucket):', error)
-        return null
+    const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
+    if (!cloudName) {
+        console.error('Cloudinary cloud name is missing. Add NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME to .env.local');
+        return null;
     }
 
-    return url
+    // Determine endpoint based on file type
+    const isVideo = file.type.startsWith('video/');
+    const uploadEndpoint = isVideo
+        ? `https://api.cloudinary.com/v1_1/${cloudName}/video/upload`
+        : `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`;
+
+    const cloudinaryFormData = new FormData();
+    cloudinaryFormData.append('file', file);
+    cloudinaryFormData.append('upload_preset', 'ro2ya_reels');
+
+    try {
+        const response = await fetch(uploadEndpoint, {
+            method: 'POST',
+            body: cloudinaryFormData,
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            console.error('Cloudinary upload error:', errorData);
+            return null;
+        }
+
+        const data = await response.json();
+        return data.secure_url;
+        
+    } catch (error) {
+        console.error('Error uploading to Cloudinary:', error);
+        return null;
+    }
 }
 
-// Delete a reel
+
+// Delete a reel (also removes file from Cloudinary)
 export async function deleteReel(reelId: number) {
     const supabase = createClient()
     
-    // Stats will be deleted by cascade since they have a foreign key to reels
+    // First, get the reel to find the Cloudinary public ID
+    const { data: reel, error: fetchError } = await (supabase as any)
+        .from('reels')
+        .select('media_path')
+        .eq('id', reelId)
+        .single()
+    
+    if (fetchError) {
+        console.error('Error fetching reel:', fetchError)
+        return { success: false }
+    }
+    
+    // Delete from Cloudinary if it's a Cloudinary URL
+    const mediaPath = reel.media_path
+    
+    if (mediaPath && typeof mediaPath === 'string' && mediaPath.includes('res.cloudinary.com')) {
+        try {
+            // Extract public ID from Cloudinary URL
+            // URL format examples:
+            // https://res.cloudinary.com/cloud/video/upload/v123456/folder/filename.mp4
+            // https://res.cloudinary.com/cloud/image/upload/v123456/folder/image.jpg
+            
+            let publicId = mediaPath.split('/upload/')[1]
+            
+            // Remove video/image prefix and version if present
+            if (publicId) {
+                // Remove transformation parameters if any (e.g., f_auto,q_auto)
+                if (publicId.includes('/')) {
+                    const parts = publicId.split('/')
+                    // Check if first part is transformation (contains letters and underscores)
+                    if (parts[0].includes('_') && !parts[0].includes('v')) {
+                        parts.shift() // Remove transformation
+                    }
+                    publicId = parts.join('/')
+                }
+                
+                // Remove file extension
+                publicId = publicId.replace(/\.[^/.]+$/, '')
+                
+                // Get cloud name from URL
+                const cloudNameMatch = mediaPath.match(/res\.cloudinary\.com\/([^/]+)/)
+                const cloudName = cloudNameMatch ? cloudNameMatch[1] : process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME
+                
+                // Call your API route to delete from Cloudinary
+                const deleteResponse = await fetch('/api/cloudinary/delete', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        publicId: publicId,
+                        resourceType: mediaPath.includes('/image/') ? 'image' : 'video'
+                    }),
+                })
+                
+                if (!deleteResponse.ok) {
+                    console.error('Failed to delete from Cloudinary:', await deleteResponse.text())
+                    // Continue with database deletion even if Cloudinary delete fails
+                }
+            }
+        } catch (error) {
+            console.error('Error deleting from Cloudinary:', error)
+            // Continue with database deletion
+        }
+    }
+    
+    // Delete from database (stats will be deleted by cascade)
     const { error } = await (supabase as any)
         .from('reels')
         .delete()
         .eq('id', reelId)
-
+    
     if (error) {
         console.error('Error deleting reel:', error)
         return { success: false }
     }
+    
     return { success: true }
 }

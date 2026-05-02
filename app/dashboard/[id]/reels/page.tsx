@@ -31,16 +31,8 @@ import {
   Heart,
   Bookmark,
   Target,
-  Clock,
-  CheckCircle2,
-  AlertCircle,
-  Upload,
-  X,
-  Smartphone,
-  Wand2,
-  Scissors,
-  Layers,
-  MessageSquare
+  Volume2,
+  VolumeX,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
@@ -84,20 +76,9 @@ export default function MediaManagementPage() {
   const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const chunksRef = useRef<Blob[]>([]);
-  const [recordingTime, setRecordingTime] = useState(0);
-  const recordingTimerRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Filter state
-  const [selectedFilter, setSelectedFilter] = useState('none');
-  const filters = [
-    { name: 'Normal', class: 'none' },
-    { name: 'Éclatant', class: 'brightness(1.2) contrast(1.1)' },
-    { name: 'Chaud', class: 'sepia(0.3) saturate(1.4)' },
-    { name: 'Froid', class: 'brightness(0.9) saturate(0.8) hue-rotate(200deg)' },
-    { name: 'Sépia', class: 'sepia(1)' },
-    { name: 'N&B', class: 'grayscale(1)' },
-    { name: 'Cinéma', class: 'contrast(1.2) saturate(0.6)' },
-  ];
+  // State for unmuted videos
+  const [unmutedVideos, setUnmutedVideos] = useState<{ [key: number]: boolean }>({});
 
   useEffect(() => {
     fetchData();
@@ -479,20 +460,108 @@ export default function MediaManagementPage() {
                    <p className="text-xs text-white/40">Complétez les informations avant de mettre en ligne.</p>
                 </div>
 
-                <div className="flex bg-white/5 p-1 rounded-xl">
-                  <Button variant={mode === 'upload' ? 'secondary' : 'ghost'} className="flex-1 rounded-lg text-xs font-bold" onClick={() => { setMode('upload'); stopCamera(); }}>Upload</Button>
-                  <Button variant={mode === 'record' ? 'secondary' : 'ghost'} className="flex-1 rounded-lg text-xs font-bold" onClick={() => { setMode('record'); startCamera(); }}>Caméra</Button>
-                </div>
-
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <Label className="text-[10px] font-bold uppercase tracking-widest text-white/40">Titre / Légende</Label>
-                    <Input 
-                      placeholder="Donnez un titre percutant..." 
-                      value={title} 
-                      onChange={e => setTitle(e.target.value)} 
-                      className="bg-white/5 border-white/10 rounded-xl h-12" 
-                    />
+      {isLoading ? (
+        <div className="flex items-center justify-center py-20">
+          <Loader2 className="w-8 h-8 animate-spin text-red-500" />
+        </div>
+      ) : reels.length === 0 ? (
+        <Card className="border-0 shadow-none bg-slate-50/50 dark:bg-slate-900/20 py-20">
+          <div className="flex flex-col items-center justify-center text-center">
+            <div className="p-6 rounded-full bg-slate-100 dark:bg-slate-800 mb-6 group-hover:scale-110 transition-transform">
+              <Video className="w-12 h-12 text-slate-400" />
+            </div>
+            <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-2">Aucun reel pour le moment</h3>
+            <p className="text-slate-500 dark:text-slate-400 max-w-sm mb-8">
+              Publiez votre premier reel pour booster votre visibilité sur le flux Discover et attirer de nouveaux clients.
+            </p>
+            <Button onClick={() => setIsDialogOpen(true)} variant="outline" className="rounded-xl border-slate-200 dark:border-slate-800">
+              <Plus className="w-4 h-4 mr-2" /> Commencer dès maintenant
+            </Button>
+          </div>
+        </Card>
+      ) : (
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
+          {reels.map((reel) => (
+            <div key={reel.id} className="relative group">
+              <Card className="overflow-hidden border-0 bg-slate-100 dark:bg-slate-900 aspect-[9/16] ring-1 ring-slate-200 dark:ring-white/5 shadow-md">
+                <div className="p-0 h-full relative">
+                  {reel.is_gallery ? (
+                    <Carousel className="w-full h-full">
+                      <CarouselContent className="h-full ml-0">
+                        {reel.media_urls.map((url: string, idx: number) => (
+                           <CarouselItem key={idx} className="pl-0 h-full">
+                             <img src={url} className="w-full h-full object-cover" alt={`${reel.title} ${idx + 1}`} />
+                           </CarouselItem>
+                        ))}
+                      </CarouselContent>
+                      <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1 z-10">
+                        {reel.media_urls.map((_: any, idx: number) => (
+                          <div key={idx} className="w-1.5 h-1.5 rounded-full bg-white/50" />
+                        ))}
+                      </div>
+                    </Carousel>
+                  ) : reel.media_type === 'video' ? (
+                    <div className="relative w-full h-full">
+                      <video 
+                        key={reel.id}
+                        controls
+                        playsInline
+                        preload="metadata"
+                        muted={!unmutedVideos[reel.id]}
+                        className="w-full h-full object-cover"
+                      >
+                        <source src={reel.media_urls?.[0] || reel.media_path} type="video/mp4" />
+                        Your browser does not support the video tag.
+                      </video>
+                      
+                      {/* Unmute button overlay */}
+                      {!unmutedVideos[reel.id] && (
+                        <button
+                          onClick={() => setUnmutedVideos(prev => ({ ...prev, [reel.id]: true }))}
+                          className="absolute bottom-20 right-3 bg-black/60 backdrop-blur-md rounded-full p-2 z-10 hover:bg-black/80 transition"
+                        >
+                          <VolumeX className="w-4 h-4 text-white" />
+                        </button>
+                      )}
+                      
+                      {/* Mute button overlay when unmuted */}
+                      {unmutedVideos[reel.id] && (
+                        <button
+                          onClick={() => setUnmutedVideos(prev => ({ ...prev, [reel.id]: false }))}
+                          className="absolute bottom-20 right-3 bg-black/60 backdrop-blur-md rounded-full p-2 z-10 hover:bg-black/80 transition"
+                        >
+                          <Volume2 className="w-4 h-4 text-white" />
+                        </button>
+                      )}
+                    </div>
+                  ) : (
+                    <img src={reel.media_urls?.[0] || reel.media_path} className="w-full h-full object-cover" alt={reel.title} />
+                  )}
+                  
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-end p-4">
+                    <p className="text-sm font-bold text-white mb-1">{reel.title}</p>
+                    {reel.subtitle && <p className="text-[10px] text-white/70 line-clamp-2 mb-2">{reel.subtitle}</p>}
+                    {reel.price && <p className="text-xs font-bold text-red-500 mb-3">{reel.price} {reel.currency}</p>}
+                    
+                    <div className="flex items-center justify-between gap-2">
+                       <Button 
+                         variant="ghost" 
+                         size="sm" 
+                         className="h-8 w-8 p-0 text-white hover:bg-white/20"
+                         onClick={() => window.open(reel.media_urls?.[0] || reel.media_path, '_blank')}
+                       >
+                         <Play className="w-4 h-4" />
+                       </Button>
+                       <Button 
+                        variant="destructive" 
+                        size="sm" 
+                        className="h-8 w-8 p-0"
+                        onClick={() => handleDelete(reel.id)}
+                        disabled={isDeleting === reel.id}
+                      >
+                        {isDeleting === reel.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                      </Button>
+                    </div>
                   </div>
 
                   {activeTab === 'reels' && (
@@ -526,8 +595,4 @@ export default function MediaManagementPage() {
       </Dialog>
     </div>
   );
-}
-
-function cn(...classes: any[]) {
-  return classes.filter(Boolean).join(' ');
 }
