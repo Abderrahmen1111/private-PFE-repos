@@ -26,6 +26,8 @@ import {
   Heart,
   Bookmark,
   Target,
+  Volume2,
+  VolumeX,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
@@ -84,6 +86,9 @@ export default function ReelsPage() {
   const [availableCameras, setAvailableCameras] = useState<MediaDeviceInfo[]>([]);
   const videoRef = useRef<HTMLVideoElement>(null);
   const chunksRef = useRef<Blob[]>([]);
+
+  // State for unmuted videos
+  const [unmutedVideos, setUnmutedVideos] = useState<{ [key: number]: boolean }>({});
 
   useEffect(() => {
     fetchReels();
@@ -675,7 +680,39 @@ export default function ReelsPage() {
                       </div>
                     </Carousel>
                   ) : reel.media_type === 'video' ? (
-                    <video src={reel.media_urls?.[0] || reel.media_path} className="w-full h-full object-cover" />
+                    <div className="relative w-full h-full">
+                      <video 
+                        key={reel.id}
+                        controls
+                        playsInline
+                        preload="metadata"
+                        muted={!unmutedVideos[reel.id]}
+                        className="w-full h-full object-cover"
+                      >
+                        <source src={reel.media_urls?.[0] || reel.media_path} type="video/mp4" />
+                        Your browser does not support the video tag.
+                      </video>
+                      
+                      {/* Unmute button overlay */}
+                      {!unmutedVideos[reel.id] && (
+                        <button
+                          onClick={() => setUnmutedVideos(prev => ({ ...prev, [reel.id]: true }))}
+                          className="absolute bottom-20 right-3 bg-black/60 backdrop-blur-md rounded-full p-2 z-10 hover:bg-black/80 transition"
+                        >
+                          <VolumeX className="w-4 h-4 text-white" />
+                        </button>
+                      )}
+                      
+                      {/* Mute button overlay when unmuted */}
+                      {unmutedVideos[reel.id] && (
+                        <button
+                          onClick={() => setUnmutedVideos(prev => ({ ...prev, [reel.id]: false }))}
+                          className="absolute bottom-20 right-3 bg-black/60 backdrop-blur-md rounded-full p-2 z-10 hover:bg-black/80 transition"
+                        >
+                          <Volume2 className="w-4 h-4 text-white" />
+                        </button>
+                      )}
+                    </div>
                   ) : (
                     <img src={reel.media_urls?.[0] || reel.media_path} className="w-full h-full object-cover" alt={reel.title} />
                   )}

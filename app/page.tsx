@@ -15,7 +15,6 @@ import { LogoCarouselDemo } from "@/components/ui/testimonials";
 import { FloatingAiAssistant } from "@/components/ui/glowing-ai-chat-assistant";
 import ShortAdsSection from '@/components/ShortAdsSection';
 import { SmartStrip, type SmartStripItem } from '@/components/SmartStrip';
-import { TestTracking } from '@/components/TestTracking';
 
 const BackgroundScene = dynamic(
   () => import('@/components/BackgroundScene'),
@@ -66,7 +65,6 @@ export default function Home() {
     <ShortAdsSection />
   </div>
           <Offers />
-          <TestTracking />
           <OffersCarouselDemo />
         
         {/*   <Hero />   
