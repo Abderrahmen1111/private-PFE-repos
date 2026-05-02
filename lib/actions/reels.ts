@@ -15,6 +15,7 @@ export interface ReelInput {
     ctaValue?: string
     category?: string
     itemId?: number
+    metadata?: any
 }
 
 // Helper to parse media_url (handles single string or JSON array)
@@ -190,6 +191,7 @@ export async function publishReel(input: ReelInput) {
             cta_value: input.ctaValue || null,
             category: input.category || null,
             item_id: input.itemId || null,
+            metadata: input.metadata || null,
             status: 'active'
         })
         .select('id')
