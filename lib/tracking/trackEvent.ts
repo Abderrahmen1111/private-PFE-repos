@@ -2,81 +2,88 @@
 
 import { getSessionId } from '@/lib/session-utils';
 
-// Event queue for batching
+// Queue used to batch concurrent rapid events (e.g. scroll) into a single request
 let eventQueue: any[] = [];
-let flushTimeout: NodeJS.Timeout | null = null;
 let isFlushing = false;
+let retryTimeout: NodeJS.Timeout | null = null;
 
-export async function trackEvent(params: {
-    surface: 'search' | 'discover' | 'reels' | 'category' | 'nearby' | 'profile' | 'home';
-    event_type: string;
-    item_id?: string;
-    merchant_id?: string;
-    category_id?: string;
-    search_query?: string;
-    search_result_position?: number;
-    discover_feed_position?: number;
-    reel_id?: string;
-    reel_progress_percentage?: number;
-    dwell_time_ms?: number;
-    scroll_depth_percentage?: number;
-    [key: string]: any;
-}) {
+export async function trackEvent(
+    params: {
+        surface: 'search' | 'discover' | 'reels' | 'category' | 'nearby' | 'profile' | 'home';
+        event_type: string;
+        item_id?: string;
+        merchant_id?: string;
+        category_id?: string;
+        search_query?: string;
+        search_result_position?: number;
+        discover_feed_position?: number;
+        reel_id?: string;
+        reel_progress_percentage?: number;
+        dwell_time_ms?: number;
+        scroll_depth_percentage?: number;
+        [key: string]: any;
+    },
+    // kept for backwards-compatibility but ignored — all events are now immediate
+    _immediate = true,
+) {
     const event = {
         id: crypto.randomUUID(),
         session_id: getSessionId(),
-        user_id: localStorage.getItem('user_id') || null,
+        user_id: typeof localStorage !== 'undefined' ? localStorage.getItem('user_id') || null : null,
         surface: params.surface,
-        page_path: window.location.pathname,
+        page_path: typeof window !== 'undefined' ? window.location.pathname : '/',
         event_type: params.event_type,
         created_at: new Date().toISOString(),
-        ...params
+        ...params,
     };
+
+    console.log('🎯 trackEvent:', event.event_type, '|', event.surface, '|', event.item_id ?? event.search_query ?? '');
 
     eventQueue.push(event);
 
-    if (eventQueue.length >= 10) {
-        flushEvents();
-    } else if (!flushTimeout) {
-        flushTimeout = setTimeout(flushEvents, 5000);
-    }
+    // Always flush immediately — no more batching delays
+    flushEvents();
 }
 
 async function flushEvents() {
-    if (flushTimeout) {
-        clearTimeout(flushTimeout);
-        flushTimeout = null;
-    }
+    if (eventQueue.length === 0) return;
 
-    if (isFlushing || eventQueue.length === 0) return;
+    // Already in-flight: schedule a retry so queued events aren't lost
+    if (isFlushing) {
+        if (!retryTimeout) {
+            retryTimeout = setTimeout(() => {
+                retryTimeout = null;
+                flushEvents();
+            }, 300);
+        }
+        return;
+    }
 
     isFlushing = true;
     const events = [...eventQueue];
     eventQueue = [];
 
     try {
-        await fetch('/api/events', {
+        const res = await fetch('/api/events', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ events }),
             keepalive: true,
         });
+        const result = await res.json();
+        console.log('📡 Events saved:', result);
     } catch (error) {
-        console.error('Failed to send events:', error);
-        // Re-queue on failure
-        if (events.length > 0) {
-            eventQueue.unshift(...events);
-        }
+        console.error('❌ Failed to send events — re-queuing:', error);
+        // Re-queue so events aren't silently dropped on network error
+        eventQueue.unshift(...events);
     } finally {
         isFlushing = false;
     }
 }
 
-// Flush on page unload
+// Last-chance flush when tab/window closes
 if (typeof window !== 'undefined') {
     window.addEventListener('beforeunload', () => {
-        if (eventQueue.length > 0) {
-            flushEvents();
-        }
+        if (eventQueue.length > 0) flushEvents();
     });
 }

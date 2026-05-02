@@ -13,6 +13,7 @@ import { searchServicesDirectory } from '@/lib/actions/search_service';
 import { ProductCard } from '@/components/ProductCard';
 import { ServiceCard } from '@/components/ServiceCard';
 import { Business } from '@/types/business';
+import { useTracking } from '@/hooks/useTracking'; // ✅ ADDED
 
 function SearchPageContent() {
   const router = useRouter();
@@ -29,6 +30,17 @@ function SearchPageContent() {
   const [isLoading, setIsLoading] = useState(true);
   const [compared, setCompared] = useState<number[]>([]);
   const businessRefs = useRef<Map<string, HTMLDivElement>>(new Map());
+  
+  // ✅ ADDED: Initialize tracking
+  const { trackSearch, trackClick, trackNoResults, trackRefine, trackFilter, trackSort } = useTracking();
+
+  // ✅ ADDED: Track when tab changes (refine event)
+// ✅ FIXED: Match your trackRefine signature (query, filters)
+const handleTabChange = (tabId: string) => {
+    setActiveTab(tabId);
+    // trackRefine expects (query, filters)
+    trackRefine(query, { tab: tabId, previousTab: activeTab, location });
+};
 
   useEffect(() => {
     const fetchAllResults = async () => {
@@ -42,6 +54,20 @@ function SearchPageContent() {
         setBusinesses(busResults);
         setProducts(prodResults.data || []);
         setServices(servResults.data || []);
+        console.log('📊 Search completed:', { query, location, businessCount: busResults.length });
+        
+        // ✅ ADDED: Track search after results load
+        if (query) {
+          console.log('📤 About to call trackSearch with:', { query, location });
+          trackSearch(query, { location, tab: activeTab });
+          console.log('📤 trackSearch called successfully');
+          
+          // ✅ ADDED: Track no results if all empty
+          if (busResults.length === 0 && prodResults.data?.length === 0 && servResults.data?.length === 0) {
+            trackNoResults(query, { location });
+          }
+        }
+
       } catch (err) {
         console.error('Fetch error:', err);
       } finally {
@@ -50,9 +76,9 @@ function SearchPageContent() {
     };
 
     fetchAllResults();
-  }, [query, location]);
+  }, [query, location]); // Removed activeTab from dependencies to avoid re-tracking on tab change
 
-  // When user clicks a marker: highlight it, scroll list to card, open map popup (via activeBusinessId)
+  // When user clicks a marker: highlight it, scroll list to card, open map popup
   const handleMarkerClick = (businessId: string) => {
     setActiveBusinessId(businessId);
     const element = businessRefs.current.get(businessId);
@@ -60,34 +86,45 @@ function SearchPageContent() {
     setTimeout(() => setActiveBusinessId(undefined), 5000);
   };
 
-  // When user clicks a card: highlight it and show marker popup on map
-  const handleCardClick = (businessId: string) => {
+  // ✅ UPDATED: When user clicks a business card - track it
+  const handleCardClick = (businessId: string, position: number, merchantId?: string) => {
+    // TRACK: click event with position
+    trackClick('search', businessId, position, merchantId);
     setActiveBusinessId(businessId);
     setTimeout(() => setActiveBusinessId(undefined), 5000);
   };
 
-  const handleProductClick = (item: SearchResultItem) => {
+  // ✅ UPDATED: When user clicks a product - track it
+  const handleProductClick = (item: SearchResultItem, position: number) => {
+    trackClick('search', String(item.id), position, item.stores?.id);
     router.push(`/merchants/product/${item.id}`);
+  };
+
+  // ✅ UPDATED: When user clicks a service - track it
+  const handleServiceClick = (item: SearchResultItem, position: number) => {
+    trackClick('search', String(item.id), position, item.stores?.id);
+    router.push(`/merchants/business/${item.id}`);
   };
 
   const toggleCompare = (id: number) =>
     setCompared((prev: number[]) => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id].slice(-3));
 
+  // ✅ ADDED: Placeholder for future filter implementation
+  const handleFilter = (filterType: string, value: any) => {
+    trackFilter('search', filterType, value);
+    // Future: Apply filter logic
+  };
+
+  // ✅ ADDED: Placeholder for future sort implementation
+  const handleSort = (sortBy: string, order: 'asc' | 'desc') => {
+    trackSort('search', sortBy, order);
+    // Future: Apply sort logic
+  };
+
   return (
     <div className="min-h-screen bg-white pt-24 pb-24">
       <Navbar />
       {/* Results Header - Sticky below navbar */}
-
-
-
-      {/* 
-            Filters button (ready for future implementation) 
-            <button className="flex items-center gap-2 px-4 py-2  text-white bg-[#11111198] hover:bg-[#111111d1] shadow-[0_0_20px_rgba(0,0,0,0.2)] border-none rounded-xl backdrop-blur-sm transition">
-              <SlidersHorizontal className="w-4 h-4" />
-              <span className="text-sm font-medium">Filters</span>
-            </button> 
-            */}
-
 
       {/* Main Content: List + Map */}
       {/* Tab Switcher */}
@@ -101,7 +138,7 @@ function SearchPageContent() {
           ].map((tab) => (
             <button
               key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
+              onClick={() => handleTabChange(tab.id)} // ✅ UPDATED: Use handleTabChange
               className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-bold transition-all duration-300 ${activeTab === tab.id
                 ? 'bg-white text-stone-900 shadow-md scale-105'
                 : 'text-stone-500 hover:text-stone-700 hover:bg-white/50'
@@ -143,11 +180,15 @@ function SearchPageContent() {
                     <section>
                       <div className="flex items-center justify-between mb-4">
                         <h2 className="text-xl font-bold text-stone-900">Meilleures boutiques</h2>
-                        <button onClick={() => setActiveTab('boutiques')} className="text-sm font-bold text-red-600 hover:text-red-700">Voir tout</button>
+                        <button onClick={() => handleTabChange('boutiques')} className="text-sm font-bold text-red-600 hover:text-red-700">Voir tout</button>
                       </div>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {businesses.slice(0, 2).map((b: Business) => (
-                          <BusinessCard key={b.id} business={b} onClick={() => handleCardClick(b.id)} />
+                        {businesses.slice(0, 2).map((b: Business, idx: number) => (
+                          <BusinessCard 
+                            key={b.id} 
+                            business={b} 
+                            onClick={() => handleCardClick(b.id, idx + 1, b.id)} // ✅ UPDATED: Track position
+                          />
                         ))}
                       </div>
                     </section>
@@ -158,26 +199,25 @@ function SearchPageContent() {
                     <section>
                       <div className="flex items-center justify-between mb-4">
                         <h2 className="text-xl font-bold text-stone-900">Articles et Services</h2>
-                        <button onClick={() => setActiveTab('items')} className="text-sm font-bold text-red-600 hover:text-red-700">Voir tout</button>
+                        <button onClick={() => handleTabChange('items')} className="text-sm font-bold text-red-600 hover:text-red-700">Voir tout</button>
                       </div>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                        {[...products, ...services].slice(0, 4).map((item: SearchResultItem) => (
+                        {[...products, ...services].slice(0, 4).map((item: SearchResultItem, idx: number) => (
                           <div key={item.id}>
                             {item.item_type === 'SERVICE' ? (
-                            /* Service Card Component */
-                            <ServiceCard 
-                              item={item} 
-                              businessName={item.stores?.name}
-                              onViewDetails={() => router.push(`/merchants/business/${item.id}`)}
-                              hideBooking={false} 
-                            />
+                              <ServiceCard 
+                                item={item} 
+                                businessName={item.stores?.name}
+                                onViewDetails={() => handleServiceClick(item, idx + 1)} // ✅ UPDATED: Track position
+                                hideBooking={false} 
+                              />
                             ) : (
                               <ProductCard
                                 item={item}
                                 businessName={item.stores?.name}
                                 compared={compared.includes(item.id)}
                                 onCompare={() => toggleCompare(item.id)}
-                                onViewDetails={() => router.push(`/merchants/product/${item.id}`)}
+                                onViewDetails={() => handleProductClick(item, idx + 1)} // ✅ UPDATED: Track position
                               />
                             )}
                           </div>
@@ -205,7 +245,7 @@ function SearchPageContent() {
                       <h2 className="text-xl font-semibold text-stone-800">Aucune boutique trouvée</h2>
                     </div>
                   ) : (
-                    businesses.map((business: Business) => (
+                    businesses.map((business: Business, idx: number) => (
                       <div
                         key={business.id}
                         ref={(el) => { if (el) businessRefs.current.set(business.id, el); }}
@@ -215,7 +255,7 @@ function SearchPageContent() {
                         <BusinessCard
                           business={business}
                           isHighlighted={activeBusinessId === business.id}
-                          onClick={() => handleCardClick(business.id)}
+                          onClick={() => handleCardClick(business.id, idx + 1, business.id)} // ✅ UPDATED: Track position
                         />
                       </div>
                     ))
@@ -233,13 +273,13 @@ function SearchPageContent() {
                     </div>
                   ) : (
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                      {products.map((item: SearchResultItem) => (
+                      {products.map((item: SearchResultItem, idx: number) => (
                         <div key={item.id}>
                           {item.item_type === 'SERVICE' ? (
                             <ServiceCard 
                               item={item} 
                               businessName={item.stores?.name}
-                              onViewDetails={() => router.push(`/merchants/business/${item.id}`)}
+                              onViewDetails={() => handleServiceClick(item, idx + 1)} // ✅ UPDATED: Track position
                               hideBooking={false}
                             />
                           ) : (
@@ -248,7 +288,7 @@ function SearchPageContent() {
                               businessName={item.stores?.name}
                               compared={compared.includes(item.id)}
                               onCompare={() => toggleCompare(item.id)}
-                              onViewDetails={() => handleProductClick(item)}
+                              onViewDetails={() => handleProductClick(item, idx + 1)} // ✅ UPDATED: Track position
                             />
                           )}
                         </div>
@@ -268,12 +308,12 @@ function SearchPageContent() {
                     </div>
                   ) : (
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                      {services.map((item: SearchResultItem) => (
+                      {services.map((item: SearchResultItem, idx: number) => (
                         <div key={item.id}>
                           <ServiceCard 
                             item={item} 
                             businessName={item.stores?.name}
-                            onViewDetails={() => router.push(`/merchants/business/${item.id}`)}
+                            onViewDetails={() => handleServiceClick(item, idx + 1)} // ✅ UPDATED: Track position
                             hideBooking={false}
                             hidePricing={true}
                           />

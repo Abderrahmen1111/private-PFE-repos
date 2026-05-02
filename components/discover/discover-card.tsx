@@ -12,6 +12,7 @@ import { trackReelInteraction } from '@/lib/actions/reels'
 import { CommentDrawer } from '@/components/discover/comment-drawer'
 import { useRouter } from 'next/navigation'
 import { Loader2, AlertCircle } from 'lucide-react'
+import { useTracking } from '@/hooks/useTracking'
 
 type DiscoverCardProps = {
   item: DiscoverFeedItem & { merchantScore?: number }
@@ -32,6 +33,8 @@ function DiscoverCardComponent({ item, priority = false }: DiscoverCardProps) {
   const videoRef = useRef<HTMLVideoElement>(null)
   const router = useRouter()
 
+  const { trackLike, trackUnlike, trackSave, trackUnsave, trackClick, trackImpression } = useTracking()
+
   const saveCount = useSavesStore((state) => state.saveCount)
   const incrementSave = useSavesStore((state) => state.incrementSave)
 
@@ -46,8 +49,10 @@ function DiscoverCardComponent({ item, priority = false }: DiscoverCardProps) {
 
   useEffect(() => {
     const id = window.setTimeout(() => setEntered(true), 50)
+    // Track impression when card becomes visible
+    trackImpression('discover', item.id, 0, item.merchantId?.toString())
     return () => window.clearTimeout(id)
-  }, [])
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const displayLikes = useMemo(() => item.likes + (liked ? 1 : 0), [item.likes, liked])
 
@@ -58,19 +63,24 @@ function DiscoverCardComponent({ item, priority = false }: DiscoverCardProps) {
     setIsDimmed(true)
     setTimeout(() => setIsDimmed(false), 200)
 
+    // Track like event → saved immediately to events table
+    trackLike('discover', item.id, item.merchantId?.toString())
+
     if (numericId) {
       trackReelInteraction(numericId, 'like');
     }
-  }, [liked, numericId])
+  }, [liked, numericId, item.id, item.merchantId, trackLike])
 
   const handleToggleLike = useCallback(async () => {
     if (liked) {
       setLiked(false)
-      if (numericId) trackReelInteraction(numericId, 'like'); // This handles removal in my action
+      // Track unlike event
+      trackUnlike('discover', item.id, item.merchantId?.toString())
+      if (numericId) trackReelInteraction(numericId, 'like');
     } else {
       triggerLike()
     }
-  }, [liked, triggerLike, numericId])
+  }, [liked, triggerLike, numericId, item.id, item.merchantId, trackUnlike])
 
   useEffect(() => {
     if (!showLikeBurst) return
@@ -135,12 +145,17 @@ function DiscoverCardComponent({ item, priority = false }: DiscoverCardProps) {
         },
       })
       incrementSave()
+      // Track save event
+      trackSave('discover', item.id, item.merchantId?.toString())
+    } else {
+      // Track unsave event
+      trackUnsave('discover', item.id, item.merchantId?.toString())
     }
 
     if (numericId) {
       trackReelInteraction(numericId, 'save');
     }
-  }, [saved, incrementSave, numericId])
+  }, [saved, incrementSave, numericId, item.id, item.merchantId, trackSave, trackUnsave])
 
   useEffect(() => {
     // Reset state if the item object completely changes (e.g., when swiping between real reels)
@@ -149,14 +164,16 @@ function DiscoverCardComponent({ item, priority = false }: DiscoverCardProps) {
   }, [item.id, item.hasLiked, item.hasSaved]);
 
   const handleBuy = useCallback(() => {
+    // Track buy/booking click as a high-priority click event
+    trackClick('discover', item.id, 0, item.merchantId?.toString())
+
     if (item.itemId) {
       const path = item.itemType === 'SERVICE' ? 'service' : 'product';
       router.push(`/merchants/${path}/${item.itemId}`);
     } else {
-      // Fallback to merchant profile page if no specific item is linked
       router.push(`/merchants/business/${item.merchantId}`);
     }
-  }, [item.itemId, item.itemType, item.merchantId, router])
+  }, [item.itemId, item.itemType, item.merchantId, item.id, router, trackClick])
 
   return (
     <article

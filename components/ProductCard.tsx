@@ -5,6 +5,7 @@ import { Item } from '@/lib/actions/items';
 import { Star, Package, ShoppingCart, Scale, Heart, Zap, Calendar, ShoppingBag } from 'lucide-react';
 import { useActionDrawer } from '@/hooks/useActionDrawer';
 import { useCartStore } from '@/lib/store/use-cart-store';
+import { useTracking } from '@/hooks/useTracking';
 
 interface ServiceCardProps {
     item: Item;
@@ -61,8 +62,10 @@ export function ProductCard({ item, businessName, compared, promotion, onCompare
     const { openDrawer } = useActionDrawer();
     const [isWished, setIsWished] = useState(false);
     const addItem = useCartStore((state) => state.addItem);
+    const { trackLike, trackUnlike, trackClick, trackBookingStart } = useTracking();
     
     const bName = businessName || (item as any).stores?.name || 'Commerce';
+    const merchantId = item.store_id?.toString();
 
     const handleAddToCart = (e: React.MouseEvent) => {
         e.stopPropagation();
@@ -89,17 +92,17 @@ export function ProductCard({ item, businessName, compared, promotion, onCompare
     };
 
     const handleOpenBuy = () => {
+        // Track the booking/buy intent immediately
+        trackBookingStart(item.id.toString(), merchantId || '');
+
         if (onBuy) {
             onBuy();
         } else {
-            // Check if CommandSidebar exists on this page
             const commandSidebar = document.getElementById('command-sidebar');
             if (commandSidebar) {
-                // On business page: dispatch event to open CommandSidebar
                 window.dispatchEvent(new CustomEvent('openCommandSidebar', { detail: { item, businessName: bName } }));
                 window.location.hash = 'command-sidebar';
             } else {
-                // On search/other pages: open drawer directly
                 openDrawer('checkout', {
                     item,
                     businessName: bName,
@@ -119,7 +122,11 @@ export function ProductCard({ item, businessName, compared, promotion, onCompare
 
     return (
         <div
-            onClick={onViewDetails}
+            onClick={() => {
+                // Track card click as a high-priority event
+                trackClick('home', item.id.toString(), 0, merchantId);
+                onViewDetails?.();
+            }}
             className="group relative bg-white rounded-3xl shadow-[0_10px_30px_rgba(0,0,0,0.04)] hover:shadow-[0_20px_50px_rgba(0,0,0,0.1)] transition-all duration-700 ease-[cubic-bezier(0.23,1,0.32,1)] overflow-hidden border border-stone-100/50 hover:border-stone-200 hover:-translate-y-2 cursor-pointer h-full flex flex-col"
         >
             {/* Image Section */}
@@ -145,7 +152,14 @@ export function ProductCard({ item, businessName, compared, promotion, onCompare
                 <button
                     onClick={(e) => {
                         e.stopPropagation();
-                        setIsWished(!isWished);
+                        const nowWished = !isWished;
+                        setIsWished(nowWished);
+                        // Track like/unlike immediately
+                        if (nowWished) {
+                            trackLike('home', item.id.toString(), merchantId);
+                        } else {
+                            trackUnlike('home', item.id.toString(), merchantId);
+                        }
                     }}
                     className={`absolute top-5 right-5 w-10 h-10 rounded-2xl flex items-center justify-center transition-all duration-500 transform ${
                         isWished ? 'bg-rose-500 text-white shadow-xl scale-110' : 'bg-white/80 text-stone-400 hover:text-rose-500 hover:scale-105'

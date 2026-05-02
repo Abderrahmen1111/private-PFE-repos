@@ -7,6 +7,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { getDiscoverStories } from '@/lib/actions/stories';
 import { getLatestStores } from '@/lib/actions/business';
 import { getLatestItems } from '@/lib/actions/items';
+import { useTracking } from '@/hooks/useTracking';
 
 interface SnapchatStory {
   id: string;
@@ -24,6 +25,7 @@ export default function SnapchatReels() {
   const router = useRouter();
   const [stories, setStories] = useState<SnapchatStory[]>([]);
   const [loading, setLoading] = useState(true);
+  const { trackClick } = useTracking();
   
   useEffect(() => {
     async function initReels() {
@@ -98,7 +100,9 @@ export default function SnapchatReels() {
     initReels();
   }, []);
 
-  const handleStoreClick = (story: any) => {
+  const handleStoreClick = (story: SnapchatStory, position: number) => {
+    // Track the click with position in the list
+    trackClick('discover', story.id, position, story.store_id);
     if (story.store_id) {
        router.push(`/merchants/business/${story.store_id}`);
     } else {
@@ -143,10 +147,10 @@ export default function SnapchatReels() {
           </div>
           
           <div className="flex gap-7 overflow-x-auto pb-4 px-2 scrollbar-none snap-x h-full no-scrollbar">
-            {stories.map((story) => (
+            {stories.map((story, index) => (
               <button 
                 key={story.id}
-                onClick={() => handleStoreClick(story)}
+                onClick={() => handleStoreClick(story, index)}
                 className="flex flex-col items-center gap-3.5 shrink-0 snap-start group relative"
               >
                 {/* Glow ring for unseen stories */}
@@ -204,7 +208,7 @@ export default function SnapchatReels() {
             {stories.map((story, i) => (
               <button
                 key={story.id}
-                onClick={() => handleStoreClick(story)}
+                onClick={() => handleStoreClick(story, i)}
                 className="relative aspect-[2.8/4] rounded-[2.5rem] overflow-hidden group shadow-[0_20px_50px_rgba(0,0,0,0.5)] hover:shadow-indigo-500/20 transition-all duration-700 ease-[cubic-bezier(0.23,1,0.32,1)] hover:-translate-y-3 border border-white/5"
               >
                 {/* Immersive Media */}
