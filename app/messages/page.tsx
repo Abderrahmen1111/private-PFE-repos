@@ -9,7 +9,7 @@ import Navbar from "@/components/Navbar";
 import { getFriendshipStatus } from "@/lib/actions/friendships";
 import { CallOverlay } from "@/components/messaging/CallOverlay";
 import { getUserProfile } from "@/lib/actions/users";
-import { getPrimaryStoreForOwner } from "@/lib/actions/stores";
+import { getPrimaryStoreForOwner, getStoreById } from "@/lib/actions/stores";
 
 function MessagesContent() {
   const searchParams = useSearchParams();
