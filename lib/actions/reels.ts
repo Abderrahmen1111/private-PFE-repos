@@ -15,6 +15,7 @@ export interface ReelInput {
     ctaValue?: string
     category?: string
     itemId?: number
+    metadata?: any
 }
 
 // Helper to parse media_url (handles single string or JSON array)
@@ -64,7 +65,11 @@ export async function getBusinessReels(storeId: number) {
     if (commentsResult.error) console.error('Error fetching comments:', commentsResult.error);
 
     // Identify reels missing stats and initialize them
-    const missingStats = reelsData.filter((reel: any) => !reel.reel_stats)
+    const missingStats = reelsData.filter((reel: any) => {
+        const stats = Array.isArray(reel.reel_stats) ? reel.reel_stats[0] : reel.reel_stats;
+        return !stats;
+    })
+    
     if (missingStats.length > 0) {
         await Promise.all(missingStats.map((reel: any) => 
             (supabase as any).from('reel_stats').insert({ reel_id: reel.id })
@@ -74,18 +79,22 @@ export async function getBusinessReels(storeId: number) {
     // Flatten stats and parse media URLs for easier UI consumption
     return reelsData.map((reel: any) => {
         const reelInteractions = interactionsData?.filter((i: any) => i.reel_id === reel.id) || [];
+        const rawStats = Array.isArray(reel.reel_stats) ? reel.reel_stats[0] : reel.reel_stats;
+        const statsObj = rawStats || {};
+        const dbStats = reel.stats || {}; // Handle potential JSONB stats column
         
         return {
             ...reel,
             media_urls: parseMediaUrls(reel.media_path),
             is_gallery: parseMediaUrls(reel.media_path).length > 1,
             stats: {
-                ...(reel.reel_stats || {}),
-                views_count: reel.reel_stats?.views_count || 0,
-                likes_count: reelInteractions.filter((i: any) => i.type === 'like').length,
-                clicks_count: reel.reel_stats?.clicks_count || 0,
-                contact_count: reel.reel_stats?.contact_count || 0,
-                comments_count: (commentsData?.filter((c: any) => c.reel_id === reel.id) || []).length,
+                ...dbStats,
+                ...statsObj,
+                views_count: statsObj.views_count || statsObj.view_count || reel.views_count || reel.view_count || dbStats.views_count || dbStats.view_count || 0,
+                likes_count: reelInteractions.filter((i: any) => i.type === 'like').length || dbStats.likes_count || 0,
+                clicks_count: statsObj.clicks_count || reel.clicks_count || dbStats.clicks_count || 0,
+                contact_count: statsObj.contact_count || reel.contact_count || dbStats.contact_count || 0,
+                comments_count: (commentsData?.filter((c: any) => c.reel_id === reel.id) || []).length || dbStats.comments_count || 0,
             }
         };
     });
@@ -125,6 +134,15 @@ export async function trackReelInteraction(reelId: number, type: 'like' | 'save'
     if (error) {
         console.error('Error tracking interaction:', error);
         return { success: false, error: error.message };
+    }
+
+    // --- MISE À JOUR RÉELLE DES COMPTEURS ---
+    if (type === 'view') {
+        await (supabase as any).rpc('increment_reel_view', { x: 1, reel_id_input: reelId });
+    } else if (type === 'like') {
+        await (supabase as any).rpc('increment_reel_like', { x: 1, reel_id_input: reelId });
+    } else if (type === 'save') {
+        await (supabase as any).rpc('increment_reel_save', { x: 1, reel_id_input: reelId });
     }
 
     return { success: true, action: 'added' };
@@ -173,6 +191,7 @@ export async function publishReel(input: ReelInput) {
             cta_value: input.ctaValue || null,
             category: input.category || null,
             item_id: input.itemId || null,
+            metadata: input.metadata || null,
             status: 'active'
         })
         .select('id')

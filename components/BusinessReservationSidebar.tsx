@@ -1,12 +1,17 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Phone, Globe, MapPin, Clock, MessageCircle, X } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import Link from 'next/link';
+import { Phone, Globe, MapPin, Clock, MessageCircle, X, Loader2 } from 'lucide-react';
 import { ReservationCard } from '@/components/reservation/reservation-card';
+import { logStoreAnalyticsEvent } from '@/lib/actions/user-activity';
 import { ReservationConfirmationModal } from '@/components/reservation/reservation-confirmation-modal';
 import { ReservationData } from '@/components/reservation/types';
 import { Item } from '@/lib/actions/items';
 import BusinessCommandSidebar from './BusinessCommandSidebar';
+import { toast } from 'sonner';
+import { Button } from '@/components/ui/button';
 
 interface WorkingHours {
   open: string;
@@ -27,6 +32,8 @@ export interface Props {
   hasProducts?: boolean;
   items?: Item[];
   isOwner?: boolean;
+  ownerId?: string | null;
+  storeId?: number | null;
 }
 
 export function BusinessReservationSidebar({
@@ -42,9 +49,12 @@ export function BusinessReservationSidebar({
   hasProducts = false,
   items = [],
   isOwner = false,
+  ownerId,
+  storeId
 }: Props) {
   const [showReservation, setShowReservation] = useState(false);
-  const [confirmedData,   setConfirmedData]   = useState<ReservationData | null>(null);
+  const [confirmedData, setConfirmedData] = useState<ReservationData | null>(null);
+  const router = useRouter();
 
   useEffect(() => {
     const handleHashChange = () => {
@@ -89,7 +99,13 @@ export function BusinessReservationSidebar({
                 <Phone className="w-5 h-5 text-gray-400 mt-0.5 flex-shrink-0" />
                 <div>
                   <p className="text-sm font-semibold text-gray-900">Téléphone</p>
-                  <a href={`tel:${phone}`} className="text-blue-600 hover:underline text-sm">{phone}</a>
+                  <a 
+                    href={`tel:${phone}`} 
+                    className="text-blue-600 hover:underline text-sm"
+                    onClick={() => storeId && logStoreAnalyticsEvent(storeId, 'phone_click', crypto.randomUUID())}
+                  >
+                    {phone}
+                  </a>
                 </div>
               </div>
             )}
@@ -113,7 +129,13 @@ export function BusinessReservationSidebar({
               <div>
                 <p className="text-sm font-semibold text-gray-900">Adresse</p>
                 <p className="text-gray-700 text-sm">{address}</p>
-                <a href={`https://maps.google.com/?q=${encodeURIComponent(address)}`} target="_blank" rel="noopener noreferrer" className="mt-1 text-blue-600 text-sm font-semibold hover:underline inline-block">
+                <a 
+                  href={`https://maps.google.com/?q=${encodeURIComponent(address)}`} 
+                  target="_blank" 
+                  rel="noopener noreferrer" 
+                  className="mt-1 text-blue-600 text-sm font-semibold hover:underline inline-block"
+                  onClick={() => storeId && logStoreAnalyticsEvent(storeId, 'direction_click', crypto.randomUUID())}
+                >
                   Itinéraire
                 </a>
               </div>
@@ -144,10 +166,17 @@ export function BusinessReservationSidebar({
           {/* ── Action buttons ────────────────────────────────────────────── */}
           {!isOwner ? (
             <div className="mt-8 space-y-3">
-              <button className="w-full bg-red-500 hover:bg-red-600 text-white font-bold py-3 rounded-lg flex items-center justify-center gap-2 transition-all shadow-md active:scale-[0.98]">
-                <MessageCircle className="w-4 h-4" />
-                Envoyer un message
-              </button>
+              {ownerId && (
+                <Button 
+                  asChild
+                  className="w-full bg-red-500 hover:bg-red-600 text-white font-bold py-3 rounded-lg flex items-center justify-center gap-2 transition-all shadow-md active:scale-[0.98] h-auto"
+                >
+                  <Link href={`/messages?storeId=${storeId}&type=store`}>
+                    <MessageCircle className="w-4 h-4" />
+                    Envoyer un message
+                  </Link>
+                </Button>
+              )}
 
               {isLinkedToStore && (
                 <button
@@ -194,7 +223,7 @@ export function BusinessReservationSidebar({
               reservationFee={0}
               currency="TND "
               service={items.find(i => i.item_type === 'SERVICE')}
-              storeId={items[0]?.store_id ?? undefined} // Taking store_id from any item if available
+              storeId={items[0]?.store_id ?? undefined}
               workingHours={workingHours}
               onConfirm={(data: ReservationData) => {
                 setConfirmedData(data);

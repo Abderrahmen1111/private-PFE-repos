@@ -49,6 +49,8 @@ const statusLabels: Record<string, string> = {
   closed: 'Fermé',
 };
 
+import SupportMessagesSection from '@/components/dashboard/SupportMessagesSection';
+
 export default function TicketsPage() {
   const router = useRouter();
   const params = useParams();
@@ -60,7 +62,6 @@ export default function TicketsPage() {
   const [priorityFilter, setPriorityFilter] = useState<string | undefined>();
   const [statusFilter, setStatusFilter] = useState<string | undefined>();
 
-  // New Ticket State
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   const [newTicket, setNewTicket] = useState({ subject: '', description: '', priority: 'medium' as any });
@@ -115,19 +116,24 @@ export default function TicketsPage() {
   const inProgressCount = tickets.filter(t => t.status === 'in_progress').length;
   const resolvedCount = tickets.filter(t => t.status === 'resolved').length;
 
-  if (isLoading) return <div className="p-8 text-foreground flex items-center gap-2"><Loader2 className="w-4 h-4 animate-spin" /> Chargement des tickets...</div>;
+  if (isLoading) return <div className="p-8 text-foreground flex items-center gap-2"><Loader2 className="w-4 h-4 animate-spin" /> Chargement...</div>;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 max-w-7xl mx-auto p-4 md:p-8">
+      {/* SUPPORT MESSAGES AT THE TOP */}
+      <SupportMessagesSection storeId={storeId} />
+
+      <div className="border-t border-white/10 pt-12" />
+
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Support Tickets</h1>
-          <p className="text-muted-foreground">Manage customer support requests for Ro2ya</p>
+          <h1 className="text-3xl font-black text-foreground tracking-tight">Support Tickets</h1>
+          <p className="text-muted-foreground font-medium">Historique et gestion des requêtes</p>
         </div>
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
-            <Button>
+            <Button type="button" className="bg-primary hover:bg-primary/90 font-bold px-6">
               <Plus className="w-4 h-4 mr-2" />
               Nouveau Ticket
             </Button>
@@ -174,8 +180,8 @@ export default function TicketsPage() {
               </div>
             </div>
             <DialogFooter>
-              <Button variant="outline" onClick={() => setIsDialogOpen(false)}>Annuler</Button>
-              <Button onClick={handleCreateTicket} disabled={isCreating}>
+              <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>Annuler</Button>
+              <Button type="button" onClick={handleCreateTicket} disabled={isCreating}>
                 {isCreating ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
                 Envoyer le ticket
               </Button>

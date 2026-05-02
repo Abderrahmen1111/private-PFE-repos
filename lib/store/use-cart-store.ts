@@ -11,6 +11,7 @@ export interface CartItem {
   store_id: string;
   store_name: string;
   item_type: 'PRODUCT' | 'SERVICE';
+  owner_id?: string;
 }
 
 interface CartState {

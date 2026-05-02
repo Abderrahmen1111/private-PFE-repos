@@ -1,16 +1,22 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import { 
   getBusinessReels, 
   deleteReel,
   publishReel,
   uploadReelMedia
 } from '@/lib/actions/reels';
-import { getAdminItemsByStoreId, Item } from '@/lib/actions/items';
-import { Card, CardContent } from '@/components/ui/card';
+import { 
+  getDashboardStories, 
+  deleteStory, 
+  publishStory, 
+  uploadStoryMedia 
+} from '@/lib/actions/stories';
+import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
   Plus, 
   Trash2, 
@@ -21,221 +27,163 @@ import {
   Camera,
   Circle,
   StopCircle,
-  RefreshCw,
-  AlertCircle,
   Heart,
   Bookmark,
-  Target,
+  Smartphone,
+  X,
+  Upload,
+  Scissors,
+  Wand2,
+  MessageSquare,
   Volume2,
   VolumeX,
+  Zap,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
-  DialogFooter,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Badge } from '@/components/ui/badge';
+import { cn } from '@/lib/utils';
+import { Toaster } from '@/components/ui/sonner';
+import AIAgent from '@/components/ai-agent/AIAgent';
 import {
   Carousel,
   CarouselContent,
   CarouselItem,
-  CarouselNext,
-  CarouselPrevious,
 } from "@/components/ui/carousel";
 
-export default function ReelsPage() {
+const filters = [
+  { name: 'none', class: 'none' },
+  { name: 'vibrant', class: 'saturate(1.5) contrast(1.1)' },
+  { name: 'noir', class: 'grayscale(1) contrast(1.2)' },
+  { name: 'warm', class: 'sepia(0.3) saturate(1.2)' },
+  { name: 'cool', class: 'hue-rotate(10deg) saturate(0.9)' },
+];
+
+export default function MediaManagementPage() {
   const { id } = useParams();
   const storeId = parseInt(id as string);
+  const router = useRouter();
 
+  const [activeTab, setActiveTab] = useState('reels');
   const [reels, setReels] = useState<any[]>([]);
+  const [stories, setStories] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isUploading, setIsUploading] = useState(false);
   const [isDeleting, setIsDeleting] = useState<number | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   
-  // Form state
+  // Form states
   const [title, setTitle] = useState('');
-  const [subtitle, setSubtitle] = useState('');
   const [price, setPrice] = useState('');
-  const [ctaType, setCtaType] = useState<'call' | 'whatsapp' | 'view'>('view');
-  const [ctaValue, setCtaValue] = useState('');
   const [category, setCategory] = useState('');
-  
-  const [itemId, setItemId] = useState<number | undefined>(undefined);
-  const [storeItems, setStoreItems] = useState<Item[]>([]);
-  const [isItemsLoading, setIsItemsLoading] = useState(false);
+  const [selectedFilter, setSelectedFilter] = useState('none');
   
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
-  const [previewUrls, setPreviewUrls] = useState<string[]>([]);
-  const [file, setFile] = useState<File | null>(null);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
-  // Camera & Recording states
+  // Camera & Recording
   const [mode, setMode] = useState<'upload' | 'record'>('record');
   const [isRecording, setIsRecording] = useState(false);
+  const [recordingTime, setRecordingTime] = useState(0);
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
-  const [cameraError, setCameraError] = useState<string | null>(null);
-  const [isPermissionDenied, setIsPermissionDenied] = useState(false);
-  const [availableCameras, setAvailableCameras] = useState<MediaDeviceInfo[]>([]);
   const videoRef = useRef<HTMLVideoElement>(null);
   const chunksRef = useRef<Blob[]>([]);
+  const recordingTimerRef = useRef<NodeJS.Timeout | null>(null);
 
-  // State for unmuted videos
+  // UI state
   const [unmutedVideos, setUnmutedVideos] = useState<{ [key: number]: boolean }>({});
 
   useEffect(() => {
-    fetchReels();
-    fetchStoreItems();
+    if (storeId) fetchData();
   }, [storeId]);
 
-  const fetchStoreItems = async () => {
-    setIsItemsLoading(true);
-    try {
-      const items = await getAdminItemsByStoreId(storeId);
-      setStoreItems(items);
-    } catch (error) {
-      console.error('Error fetching store items:', error);
-    } finally {
-      setIsItemsLoading(false);
-    }
-  };
-
-  const handleItemSelect = (idStr: string) => {
-    if (idStr === 'none') {
-      setItemId(undefined);
-      return;
-    }
-    const id = parseInt(idStr);
-    setItemId(id);
-    const selectedItem = storeItems.find(item => item.id === id);
-    if (selectedItem) {
-      setTitle(selectedItem.name);
-      setPrice((selectedItem.price || 0).toString());
-      setCategory(selectedItem.item_type === 'SERVICE' ? 'Service' : 'Produit');
-    }
-  };
-
-  const fetchReels = async () => {
+  const fetchData = async () => {
     setIsLoading(true);
     try {
-      const data = await getBusinessReels(storeId);
-      setReels(data);
-    } catch (error) {
-      toast.error('Erreur lors du chargement des reels');
-    } finally {
-      setIsLoading(false);
+      const [r, s] = await Promise.all([
+        getBusinessReels(storeId), 
+        getDashboardStories(storeId)
+      ]);
+      setReels(r || []); 
+      setStories(s || []);
+    } catch (error) { 
+      console.error(error);
+      toast.error('Erreur lors du chargement des données'); 
+    } finally { 
+      setIsLoading(false); 
     }
   };
 
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || []);
-    if (files.length === 0) return;
-
-    const oversized = files.find(f => f.size > 50 * 1024 * 1024);
-    if (oversized) {
-      toast.error(`Fichier ${oversized.name} trop lourd (max 50 MB)`);
-      return;
-    }
-
-    setSelectedFiles(prev => [...prev, ...files]);
-    const newPreviews = files.map(f => URL.createObjectURL(f));
-    setPreviewUrls(prev => [...prev, ...newPreviews]);
-    // keep single-file convenience `file` state for legacy upload logic
-    setFile(files[0] || null);
-  };
-  
-  const removeSelectedFile = (index: number) => {
-    URL.revokeObjectURL(previewUrls[index]);
-    setSelectedFiles(prev => prev.filter((_, i) => i !== index));
-    setPreviewUrls(prev => prev.filter((_, i) => i !== index));
+  const resetForm = () => {
+    setSelectedFile(null);
+    setPreviewUrl(null);
+    setTitle('');
+    setPrice('');
+    setCategory('');
+    setSelectedFilter('none');
+    setRecordingTime(0);
+    if (recordingTimerRef.current) clearInterval(recordingTimerRef.current);
   };
 
-  const handleUpload = async () => {
-    // new supabase upload flow
-    if (!file) {
-      toast.error('Veuillez sélectionner un fichier');
-      return;
-    }
-
-    if (!title) {
-      toast.error('Veuillez donner un titre à votre reel');
-      return;
-    }
-
+  const handlePublish = async () => {
+    if (!selectedFile) return toast.error('Sélectionnez un média');
     setIsUploading(true);
     try {
-      // determine file to upload (support recorded files which set selectedFiles)
-      const filesToUpload = selectedFiles.length > 0 ? selectedFiles : (file ? [file] : []);
-      if (filesToUpload.length === 0) {
-        toast.error('Aucun fichier à uploader');
-        setIsUploading(false);
-        return;
-      }
+      const isVideo = selectedFile.type.startsWith('video/');
+      const formData = new FormData();
+      formData.append('file', selectedFile);
 
-      const uploadPromises = filesToUpload.map(async (f) => {
-        const formData = new FormData();
-        formData.append('file', f);
+      if (activeTab === 'reels') {
         const url = await uploadReelMedia(formData);
-        if (!url) throw new Error('Échec du téléchargement du fichier.');
-        return url;
-      });
-
-      const mediaUrls = await Promise.all(uploadPromises);
+        if (!url) throw new Error("Upload failed");
+        await publishReel({ 
+          storeId, 
+          mediaPath: url, 
+          mediaType: isVideo ? 'video' : 'image', 
+          title, 
+          price: parseFloat(price) || 0, 
+          category,
+          metadata: { filter: selectedFilter }
+        });
+      } else {
+        const url = await uploadStoryMedia(formData);
+        if (!url) throw new Error("Upload failed");
+        await publishStory({ 
+          storeId, 
+          mediaUrl: url, 
+          mediaType: isVideo ? 'video' : 'image', 
+          caption: title 
+        });
+      }
       
-      const isVideo = filesToUpload[0].type.startsWith('video/');
-      
-      const result = await publishReel({
-        storeId,
-        mediaPath: mediaUrls.length === 1 ? mediaUrls[0] : mediaUrls,
-        mediaType: isVideo ? 'video' : 'image',
-        title,
-        subtitle,
-        price: price ? parseFloat(price) : undefined,
-        ctaType,
-        ctaValue: ctaValue || undefined,
-        category: category || undefined,
-        itemId: itemId,
-      });
-
-      toast.success('Reel uploaded successfully 🚀');
+      toast.success('Publié avec succès !');
       setIsDialogOpen(false);
-      // reset form
-      setTitle('');
-      setSubtitle('');
-      setPrice('');
-      setCtaValue('');
-      setCategory('');
-      setSelectedFiles([]);
-      setPreviewUrls([]);
-      setFile(null);
-      fetchReels();
-    } catch (err: any) {
-      console.error(err);
-      toast.error('Upload failed ❌');
+      fetchData();
+      resetForm();
+    } catch (error) {
+      console.error(error);
+      toast.error('Erreur lors de la publication');
     } finally {
       setIsUploading(false);
     }
   };
 
   const handleDelete = async (reelId: number) => {
-    if (!confirm('Voulez-vous vraiment supprimer ce reel ?')) return;
-    
+    if (!confirm('Supprimer ce contenu ?')) return;
     setIsDeleting(reelId);
     try {
-      const result = await deleteReel(reelId);
-      if (result.success) {
-        toast.success('Reel supprimé');
-        setReels(prev => prev.filter(r => r.id !== reelId));
-      } else {
-        throw new Error();
-      }
+      await deleteReel(reelId);
+      toast.success('Supprimé avec succès');
+      fetchData();
     } catch (error) {
       toast.error('Erreur lors de la suppression');
     } finally {
@@ -243,547 +191,376 @@ export default function ReelsPage() {
     }
   };
 
+  const handleDeleteStory = async (storyId: number) => {
+    if (!confirm('Supprimer cette story ?')) return;
+    try {
+      await deleteStory(storyId);
+      toast.success('Story supprimée');
+      fetchData();
+    } catch (error) {
+      toast.error('Erreur lors de la suppression');
+    }
+  };
+
+  // Camera & Recording Logic
+  useEffect(() => {
+    if (stream && videoRef.current) {
+      videoRef.current.srcObject = stream;
+    }
+  }, [stream]);
+
   const startCamera = async () => {
     try {
-      // 1. Check for secure context
-      if (window.location.protocol !== 'https:' && window.location.hostname !== 'localhost') {
-        toast.error("La caméra nécessite un site sécurisé (HTTPS) pour fonctionner.");
-        setMode('upload');
-        return;
-      }
-
-      // 2. Check for navigator.mediaDevices
-      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-        toast.error("Votre navigateur ne supporte pas l'accès à la caméra.");
-        setMode('upload');
-        return;
-      }
-
-      // Check available devices
-      const allDevices = await navigator.mediaDevices.enumerateDevices();
-      const videoDevices = allDevices.filter(d => d.kind === 'videoinput');
-      setAvailableCameras(videoDevices);
-      
-      if (videoDevices.length === 0) {
-        setCameraError("Aucune caméra physique détectée par votre navigateur.");
-        return;
-      }
-
-      // 3. Try many-tiered request strategy
-      let mediaStream: MediaStream;
-      
-      try {
-        // High quality with audio first
-        mediaStream = await navigator.mediaDevices.getUserMedia({ 
-          video: { facingMode: 'user', width: { ideal: 720 }, height: { ideal: 1280 } }, 
-          audio: true 
-        });
-      } catch (err) {
-        console.warn("First attempt (V+A) failed, trying Video only", err);
-        try {
-          // Video only if audio is the problem
-          mediaStream = await navigator.mediaDevices.getUserMedia({ 
-            video: { facingMode: 'user', width: { ideal: 720 }, height: { ideal: 1280 } }
-          });
-        } catch (err2) {
-          console.warn("Second attempt (V only) failed, trying simplest video", err2);
-          // Last resort: any camera available
-          mediaStream = await navigator.mediaDevices.getUserMedia({ video: true });
-        }
-      }
-
-      setStream(mediaStream);
-      setCameraError(null);
-      setIsPermissionDenied(false);
-      if (videoRef.current) {
-        videoRef.current.srcObject = mediaStream;
-      }
-    } catch (err: any) {
-      console.error("Camera error details:", err);
-      let msg = "Erreur d'accès à la caméra";
-      if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
-        msg = "Permission refusée. Vous devez autoriser la caméra dans les réglages.";
-        setIsPermissionDenied(true);
-      } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
-        msg = "Aucune caméra détectée.";
-      }
-      setCameraError(msg);
-      toast.error(msg);
+      const s = await navigator.mediaDevices.getUserMedia({ 
+        video: { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: 'user' }, 
+        audio: true 
+      });
+      setStream(s);
+    } catch (err) { 
+      toast.error("Accès caméra refusé"); 
     }
   };
 
   const stopCamera = () => {
-    if (stream) {
-      stream.getTracks().forEach(track => track.stop());
-      setStream(null);
-    }
+    stream?.getTracks().forEach(t => t.stop());
+    setStream(null);
   };
 
   const startRecording = () => {
     if (!stream) return;
-    
     chunksRef.current = [];
     const recorder = new MediaRecorder(stream, { mimeType: 'video/webm' });
-    
-    recorder.ondataavailable = (e) => {
-      if (e.data.size > 0) chunksRef.current.push(e.data);
-    };
-
+    recorder.ondataavailable = (e) => chunksRef.current.push(e.data);
     recorder.onstop = () => {
-      const blob = new Blob(chunksRef.current, { type: 'video/webm' });
-      const file = new File([blob], `recorded-reel-${Date.now()}.webm`, { type: 'video/webm' });
-      setSelectedFiles([file]);
-      setPreviewUrls([URL.createObjectURL(blob)]);
+      const b = new Blob(chunksRef.current, { type: 'video/webm' });
+      const f = new File([b], 'capture.webm', { type: 'video/webm' });
+      setSelectedFile(f); 
+      setPreviewUrl(URL.createObjectURL(b)); 
       stopCamera();
     };
-
-    recorder.start();
-    setMediaRecorder(recorder);
+    recorder.start(); 
+    setMediaRecorder(recorder); 
     setIsRecording(true);
+    setRecordingTime(0);
+    recordingTimerRef.current = setInterval(() => {
+      setRecordingTime(prev => {
+        if (prev >= 119) {
+          recorder.stop();
+          setIsRecording(false);
+          return 120;
+        }
+        return prev + 1;
+      });
+    }, 1000);
   };
 
-  const stopRecording = () => {
-    if (mediaRecorder && isRecording) {
-      mediaRecorder.stop();
-      setIsRecording(false);
-    }
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setSelectedFile(file);
+    setPreviewUrl(URL.createObjectURL(file));
   };
-
-  useEffect(() => {
-    if (mode === 'record' && isDialogOpen && previewUrls.length === 0) {
-      startCamera();
-    } else {
-      stopCamera();
-    }
-    return () => stopCamera();
-  }, [mode, isDialogOpen, previewUrls.length]);
 
   return (
-    <div className="p-4 md:p-8 space-y-8 max-w-6xl mx-auto">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold text-foreground mb-2">Discovery Reels</h1>
-          <p className="text-muted-foreground">Gérez vos vidéos et photos qui apparaissent dans le flux Discover.</p>
-        </div>
-
-        <Dialog 
-          open={isDialogOpen} 
-          onOpenChange={(open) => {
-            setIsDialogOpen(open);
-            if (open) {
-              setMode('record');
-              setPreviewUrls([]);
-              setSelectedFiles([]);
-              setItemId(undefined);
-            }
-          }}
-        >
-          <DialogTrigger asChild>
-            <Button 
-              size="lg" 
-              className="bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl shadow-lg shadow-red-500/20"
-              onClick={() => {
-                setMode('record');
-                setPreviewUrls([]);
-                setSelectedFiles([]);
-                setItemId(undefined);
-              }}
-            >
-              <Plus className="w-5 h-5 mr-2" /> Nouveau Reel
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-xl bg-slate-900 border-slate-800 text-white scrollbar-hide max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>Publier un nouveau Reel</DialogTitle>
-              <DialogDescription className="text-slate-400">
-                Partagez un moment de votre boutique avec vos futurs clients.
-              </DialogDescription>
-            </DialogHeader>
-
-            <div className="space-y-6 py-4">
-              <div className="flex bg-slate-800 p-1 rounded-xl">
-                <Button 
-                  variant={mode === 'upload' ? 'secondary' : 'ghost'} 
-                  className="flex-1 rounded-lg"
-                  onClick={() => { setMode('upload'); setPreviewUrls([]); }}
-                >
-                  Importer
-                </Button>
-                <Button 
-                  variant={mode === 'record' ? 'secondary' : 'ghost'} 
-                  className="flex-1 rounded-lg"
-                  onClick={() => { setMode('record'); setPreviewUrls([]); setSelectedFiles([]); }}
-                >
-                  Caméra
-                </Button>
-              </div>
-
-              <div className="space-y-4">
-                <Label className="text-sm font-semibold">
-                  {mode === 'upload' ? 'Sélectionner des fichiers' : 'Enregistrer votre story'}
-                </Label>
-                
-                <div 
-                  className="border-2 border-dashed border-slate-700 rounded-2xl min-h-[200px] flex flex-col items-center justify-center bg-slate-800/50 hover:bg-slate-800/80 transition-colors cursor-pointer overflow-hidden relative group p-4"
-                  onClick={() => mode === 'upload' && fileInputRef.current?.click()}
-                >
-                  {previewUrls.length > 0 ? (
-                    <div className="grid grid-cols-3 gap-2 w-full">
-                      {previewUrls.map((url, idx) => (
-                        <div key={idx} className="relative aspect-[9/16] rounded-lg overflow-hidden border border-slate-700">
-                          {selectedFiles[idx]?.type.startsWith('video/') ? (
-                            <video src={url} className="w-full h-full object-cover" />
-                          ) : (
-                            <img src={url} className="w-full h-full object-cover" />
-                          )}
-                          <Button 
-                            variant="destructive" 
-                            size="sm" 
-                            className="absolute top-1 right-1 h-6 w-6 p-0 rounded-full scale-75"
-                            onClick={(e) => { e.stopPropagation(); removeSelectedFile(idx); }}
-                          >
-                            <Trash2 className="w-3 h-3" />
-                          </Button>
-                        </div>
-                      ))}
-                      {mode === 'upload' && (
-                        <div 
-                          className="flex flex-col items-center justify-center aspect-[9/16] rounded-lg border-2 border-dashed border-slate-700 hover:bg-slate-700/50 transition-colors"
-                          onClick={(e) => { e.stopPropagation(); fileInputRef.current?.click(); }}
-                        >
-                          <Plus className="w-6 h-6 text-slate-500" />
-                        </div>
-                      )}
-                    </div>
-                  ) : mode === 'record' ? (
-                    <div className="relative w-full h-full flex items-center justify-center bg-black">
-                      {!stream ? (
-                        <div className="flex flex-col items-center gap-4 p-6 text-center">
-                          <div className="bg-slate-800/80 p-4 rounded-full mb-2">
-                            <Camera className="w-12 h-12 text-slate-500" />
-                          </div>
-                          <div className="space-y-2">
-                            <p className="text-sm font-bold text-white">
-                              {cameraError || "Accès caméra requis"}
-                            </p>
-                          </div>
-                          
-                          <Button 
-                            type="button"
-                            onClick={(e) => { e.stopPropagation(); startCamera(); }}
-                            className="bg-red-600 text-white hover:bg-red-700 font-bold rounded-full px-8 shadow-lg shadow-red-500/20"
-                          >
-                            Réessayer / Autoriser
-                          </Button>
-                        </div>
-                      ) : (
-                        <>
-                          <video 
-                            ref={videoRef} 
-                            autoPlay 
-                            muted 
-                            playsInline 
-                            className="w-full h-full object-cover"
-                          />
-                          
-                          <div className="absolute bottom-8 flex flex-col items-center gap-4">
-                            {isRecording ? (
-                              <Button 
-                                variant="destructive" 
-                                size="lg" 
-                                className="rounded-full h-16 w-16 p-0 border-4 border-white animate-pulse"
-                                onClick={(e) => { e.stopPropagation(); stopRecording(); }}
-                              >
-                                <StopCircle className="w-8 h-8 fill-current" />
-                              </Button>
-                            ) : (
-                              <Button 
-                                variant="destructive" 
-                                size="lg" 
-                                className="rounded-full h-16 w-16 p-0 border-4 border-white"
-                                onClick={(e) => { e.stopPropagation(); startRecording(); }}
-                              >
-                                <Circle className="w-8 h-8 fill-current" />
-                              </Button>
-                            )}
-                          </div>
-                        </>
-                      )}
-                    </div>
-                  ) : (
-                    <>
-                      <div className="p-4 rounded-full bg-slate-700 text-slate-400 mb-2">
-                        <Plus className="w-8 h-8" />
-                      </div>
-                      <span className="text-xs font-medium text-slate-400">Cliquez pour sélectionner</span>
-                      <span className="text-[10px] text-slate-500 mt-1">MP4, JPG, PNG (Max 50MB)</span>
-                    </>
-                  )}
-                </div>
-                <input 
-                  type="file" 
-                  ref={fileInputRef} 
-                  className="hidden" 
-                  accept="image/*,video/*" 
-                  multiple={mode === 'upload'}
-                  onChange={handleFileSelect} 
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="linkedItemId" className="text-sm font-semibold">Lier un article (Produit/Service)</Label>
-                <select 
-                  id="linkedItemId"
-                  className="w-full h-10 px-3 rounded-md bg-slate-800 border border-slate-700 text-sm focus:ring-2 focus:ring-red-500 outline-none text-white appearance-none"
-                  value={itemId || 'none'}
-                  onChange={(e) => handleItemSelect(e.target.value)}
-                >
-                  <option value="none" className="bg-slate-900 text-slate-400 italic">-- Aucun article lié --</option>
-                  {storeItems.map(item => (
-                    <option key={item.id} value={item.id} className="bg-slate-900 text-white">
-                      [{item.item_type === 'PRODUCT' ? '📦 Produit' : '🛠️ Service'}] {item.name} - {item.price} TND
-                    </option>
-                  ))}
-                </select>
-                <p className="text-[10px] text-slate-500">Lier un article permet d'auto-remplir les champs et d'ajouter un lien direct d'achat sur votre Reel.</p>
-              </div>
-
-               <div className="grid grid-cols-2 gap-4">
-                 <div className="space-y-2">
-                   <Label htmlFor="title" className="text-sm font-semibold">Titre</Label>
-                   <Input 
-                     id="title" 
-                     className="bg-slate-800 border-slate-700 focus:ring-red-500 text-white" 
-                     placeholder="Ex: Nouvelle Collection"
-                     value={title}
-                     onChange={(e) => setTitle(e.target.value)}
-                   />
-                 </div>
-                 <div className="space-y-2">
-                   <Label htmlFor="category" className="text-sm font-semibold">Catégorie</Label>
-                   <Input 
-                     id="category" 
-                     className="bg-slate-800 border-slate-700 focus:ring-red-500 text-white" 
-                     placeholder="Ex: Mode"
-                     value={category}
-                     onChange={(e) => setCategory(e.target.value)}
-                   />
-                 </div>
-               </div>
-               
-               <div className="space-y-2">
-                 <Label htmlFor="subtitle" className="text-sm font-semibold">Sous-titre (Optionnel)</Label>
-                 <Input 
-                   id="subtitle" 
-                   className="bg-slate-800 border-slate-700 focus:ring-red-500 text-white" 
-                   placeholder="Dites-en plus..."
-                   value={subtitle}
-                   onChange={(e) => setSubtitle(e.target.value)}
-                 />
-               </div>
-               
-               <div className="grid grid-cols-2 gap-4">
-                 <div className="space-y-2">
-                   <Label htmlFor="price" className="text-sm font-semibold">Prix (Optionnel)</Label>
-                   <Input 
-                     id="price" 
-                     type="number"
-                     className="bg-slate-800 border-slate-700 focus:ring-red-500 text-white" 
-                     placeholder="0.00"
-                     value={price}
-                     onChange={(e) => setPrice(e.target.value)}
-                   />
-                 </div>
-                 <div className="space-y-2">
-                   <Label htmlFor="ctaType" className="text-sm font-semibold">Action Bouton</Label>
-                   <select 
-                     id="ctaType"
-                     className="w-full h-10 px-3 rounded-md bg-slate-800 border border-slate-700 text-sm focus:ring-2 focus:ring-red-500 outline-none text-white"
-                     value={ctaType}
-                     onChange={(e) => setCtaType(e.target.value as any)}
-                   >
-                     <option value="view">Voir plus</option>
-                     <option value="call">Appeler</option>
-                     <option value="whatsapp">WhatsApp</option>
-                   </select>
-                 </div>
-               </div>
-               
-               {ctaType !== 'view' && (
-                 <div className="space-y-2">
-                   <Label htmlFor="ctaValue" className="text-sm font-semibold">
-                     {ctaType === 'call' ? 'Numéro de téléphone' : 'Lien / Numéro WhatsApp'}
-                   </Label>
-                   <Input 
-                     id="ctaValue" 
-                     className="bg-slate-800 border-slate-700 focus:ring-red-500 text-white" 
-                     placeholder={ctaType === 'call' ? '+216...' : 'https://wa.me/...'}
-                     value={ctaValue}
-                     onChange={(e) => setCtaValue(e.target.value)}
-                   />
-                 </div>
-               )}
+    <div className="p-6 max-w-7xl mx-auto min-h-screen bg-[#050811] text-white">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-10 gap-4">
+        <div className="space-y-1">
+          <h1 className="text-4xl font-black flex items-center gap-3 tracking-tighter uppercase italic">
+            <div className="bg-red-500 p-2 rounded-2xl shadow-lg shadow-red-500/40">
+              <Smartphone className="text-white w-6 h-6" />
             </div>
-
-            <DialogFooter>
-              <Button variant="ghost" className="text-white hover:bg-slate-800" onClick={() => setIsDialogOpen(false)} disabled={isUploading}>Annuler</Button>
-              <Button 
-                className="bg-red-600 hover:bg-red-700 text-white font-bold"
-                onClick={handleUpload}
-                disabled={isUploading || (!file && selectedFiles.length === 0)}
-              >
-                {isUploading ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Publication...</> : 'Publier'}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+            Contenu <span className="text-primary italic">Live</span>
+          </h1>
+          <p className="text-white/40 font-medium">Gérez votre présence visuelle en temps réel.</p>
+        </div>
+        <Button 
+          onClick={() => { setIsDialogOpen(true); setMode('upload'); resetForm(); }} 
+          className="bg-red-600 hover:bg-red-700 font-bold px-8 py-6 rounded-2xl shadow-2xl shadow-red-600/30 transition-all hover:scale-105 active:scale-95"
+        >
+          <Plus className="mr-2 w-5 h-5" /> Nouveau Contenu
+        </Button>
       </div>
 
-      {isLoading ? (
-        <div className="flex items-center justify-center py-20">
-          <Loader2 className="w-8 h-8 animate-spin text-red-500" />
-        </div>
-      ) : reels.length === 0 ? (
-        <Card className="border-0 shadow-none bg-slate-50/50 dark:bg-slate-900/20 py-20">
-          <div className="flex flex-col items-center justify-center text-center">
-            <div className="p-6 rounded-full bg-slate-100 dark:bg-slate-800 mb-6 group-hover:scale-110 transition-transform">
-              <Video className="w-12 h-12 text-slate-400" />
-            </div>
-            <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-2">Aucun reel pour le moment</h3>
-            <p className="text-slate-500 dark:text-slate-400 max-w-sm mb-8">
-              Publiez votre premier reel pour booster votre visibilité sur le flux Discover et attirer de nouveaux clients.
-            </p>
-            <Button onClick={() => setIsDialogOpen(true)} variant="outline" className="rounded-xl border-slate-200 dark:border-slate-800">
-              <Plus className="w-4 h-4 mr-2" /> Commencer dès maintenant
-            </Button>
+      <Tabs defaultValue="reels" className="w-full" onValueChange={setActiveTab}>
+        <TabsList className="bg-white/5 border border-white/10 p-1.5 rounded-2xl mb-10 inline-flex w-full max-w-md">
+          <TabsTrigger value="reels" className="flex-1 rounded-xl py-3 data-[state=active]:bg-red-600 data-[state=active]:text-white transition-all font-bold">Reels Discover</TabsTrigger>
+          <TabsTrigger value="stories" className="flex-1 rounded-xl py-3 data-[state=active]:bg-cyan-600 data-[state=active]:text-white transition-all font-bold">Stories Boutique</TabsTrigger>
+        </TabsList>
+
+        {isLoading ? (
+          <div className="flex flex-col items-center justify-center py-32 space-y-4">
+             <Loader2 className="animate-spin size-12 text-red-500" />
+             <p className="text-white/40 font-bold animate-pulse">Chargement de vos médias...</p>
           </div>
-        </Card>
-      ) : (
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
-          {reels.map((reel) => (
-            <div key={reel.id} className="relative group">
-              <Card className="overflow-hidden border-0 bg-slate-100 dark:bg-slate-900 aspect-[9/16] ring-1 ring-slate-200 dark:ring-white/5 shadow-md">
-                <div className="p-0 h-full relative">
-                  {reel.is_gallery ? (
-                    <Carousel className="w-full h-full">
-                      <CarouselContent className="h-full ml-0">
-                        {reel.media_urls.map((url: string, idx: number) => (
-                           <CarouselItem key={idx} className="pl-0 h-full">
-                             <img src={url} className="w-full h-full object-cover" alt={`${reel.title} ${idx + 1}`} />
-                           </CarouselItem>
-                        ))}
-                      </CarouselContent>
-                      <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1 z-10">
-                        {reel.media_urls.map((_: any, idx: number) => (
-                          <div key={idx} className="w-1.5 h-1.5 rounded-full bg-white/50" />
-                        ))}
+        ) : (
+          <>
+            <TabsContent value="reels" className="focus:outline-none">
+              {reels.length === 0 ? (
+                <div className="text-center py-32 bg-white/5 rounded-[40px] border-2 border-dashed border-white/10">
+                  <Video className="mx-auto size-16 text-white/10 mb-6" />
+                  <h3 className="text-xl font-bold text-white/60">Aucun Reel publié</h3>
+                  <p className="text-white/30 max-w-xs mx-auto mt-2 text-sm">Les Reels apparaissent dans le flux mondial pour attirer de nouveaux clients.</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-6">
+                  {reels.map(r => (
+                    <Card key={r.id} className="bg-white/5 border-0 aspect-[9/16] rounded-3xl overflow-hidden relative group ring-1 ring-white/5 shadow-2xl">
+                      {r.media_type === 'video' ? (
+                        <video src={r.media_urls?.[0] || r.media_path} className="size-full object-cover" muted loop autoPlay />
+                      ) : (
+                        <img src={r.media_urls?.[0] || r.media_path} className="size-full object-cover" />
+                      )}
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-all flex flex-col justify-end p-5">
+                        <p className="font-bold text-sm mb-3 line-clamp-2">{r.title}</p>
+                        <div className="flex gap-2">
+                           <Button variant="destructive" className="flex-1 rounded-xl font-bold" onClick={() => handleDelete(r.id)} disabled={isDeleting === r.id}>
+                             {isDeleting === r.id ? <Loader2 className="size-4 animate-spin" /> : <Trash2 className="size-4 mr-2" />}
+                             Supprimer
+                           </Button>
+                        </div>
                       </div>
-                    </Carousel>
-                  ) : reel.media_type === 'video' ? (
-                    <div className="relative w-full h-full">
-                      <video 
-                        key={reel.id}
-                        controls
-                        playsInline
-                        preload="metadata"
-                        muted={!unmutedVideos[reel.id]}
-                        className="w-full h-full object-cover"
-                      >
-                        <source src={reel.media_urls?.[0] || reel.media_path} type="video/mp4" />
-                        Your browser does not support the video tag.
-                      </video>
-                      
-                      {/* Unmute button overlay */}
-                      {!unmutedVideos[reel.id] && (
-                        <button
-                          onClick={() => setUnmutedVideos(prev => ({ ...prev, [reel.id]: true }))}
-                          className="absolute bottom-20 right-3 bg-black/60 backdrop-blur-md rounded-full p-2 z-10 hover:bg-black/80 transition"
-                        >
-                          <VolumeX className="w-4 h-4 text-white" />
-                        </button>
+                      <div className="absolute top-4 right-4 flex flex-col gap-2">
+                        <div className="bg-black/60 backdrop-blur-md rounded-full px-3 py-1 text-[10px] font-bold flex items-center gap-1.5 ring-1 ring-white/10">
+                          <Eye className="size-3 text-blue-400" /> {r.stats?.views_count || 0}
+                        </div>
+                        <div className="bg-black/60 backdrop-blur-md rounded-full px-3 py-1 text-[10px] font-bold flex items-center gap-1.5 ring-1 ring-white/10">
+                          <Heart className="size-3 text-rose-500" /> {r.stats?.likes_count || 0}
+                        </div>
+                      </div>
+                    </Card>
+                  ))}
+                </div>
+              )}
+            </TabsContent>
+
+            <TabsContent value="stories" className="focus:outline-none">
+              {stories.length === 0 ? (
+                <div className="text-center py-32 bg-white/5 rounded-[40px] border-2 border-dashed border-white/10">
+                  <Camera className="mx-auto size-16 text-white/10 mb-6" />
+                  <h3 className="text-xl font-bold text-white/60">Aucune Story active</h3>
+                  <p className="text-white/30 max-w-xs mx-auto mt-2 text-sm">Les Stories durent 24h et apparaissent sur votre page business.</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-6">
+                  {stories.map(s => (
+                    <Card key={s.id} className="bg-white/5 border-0 aspect-[9/16] rounded-3xl overflow-hidden relative group ring-1 ring-white/5 shadow-2xl">
+                      {s.media_type === 'video' ? (
+                        <video src={s.media_url} className="size-full object-cover" muted loop autoPlay />
+                      ) : (
+                        <img src={s.media_url} className="size-full object-cover" />
                       )}
-                      
-                      {/* Mute button overlay when unmuted */}
-                      {unmutedVideos[reel.id] && (
-                        <button
-                          onClick={() => setUnmutedVideos(prev => ({ ...prev, [reel.id]: false }))}
-                          className="absolute bottom-20 right-3 bg-black/60 backdrop-blur-md rounded-full p-2 z-10 hover:bg-black/80 transition"
-                        >
-                          <Volume2 className="w-4 h-4 text-white" />
-                        </button>
-                      )}
-                    </div>
+                      <div className="absolute top-4 left-4">
+                        {new Date(s.expires_at) < new Date() 
+                          ? <Badge variant="outline" className="bg-black/60 backdrop-blur-md">Expiré</Badge>
+                          : <Badge className="bg-green-600 shadow-lg shadow-green-600/30">En Direct</Badge>}
+                      </div>
+                      <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-all flex flex-col justify-end p-5">
+                        <p className="text-xs text-white/60 mb-3">Par: {s.author?.full_name || 'Propriétaire'}</p>
+                        <Button variant="destructive" className="rounded-xl font-bold" onClick={() => handleDeleteStory(s.id)}>
+                          <Trash2 className="size-4 mr-2" /> Supprimer
+                        </Button>
+                      </div>
+                    </Card>
+                  ))}
+                </div>
+              )}
+            </TabsContent>
+          </>
+        )}
+      </Tabs>
+
+      <Dialog open={isDialogOpen} onOpenChange={(open) => { setIsDialogOpen(open); if (!open) stopCamera(); }}>
+        <DialogContent className="bg-slate-950 text-white border-white/10 sm:max-w-4xl rounded-[32px] p-0 overflow-hidden shadow-2xl">
+          <div className="flex h-[600px]">
+            {/* Visual Preview Side */}
+            <div className="w-[350px] bg-black relative flex-shrink-0 group">
+              {previewUrl ? (
+                <div className="size-full relative">
+                  {selectedFile?.type.startsWith('video/') ? (
+                    <video 
+                      src={previewUrl} 
+                      className="size-full object-cover" 
+                      autoPlay 
+                      loop 
+                      muted 
+                      style={{ filter: filters.find(f => f.name === selectedFilter)?.class || 'none' }}
+                    />
                   ) : (
-                    <img src={reel.media_urls?.[0] || reel.media_path} className="w-full h-full object-cover" alt={reel.title} />
+                    <img 
+                      src={previewUrl} 
+                      className="size-full object-cover" 
+                      style={{ filter: filters.find(f => f.name === selectedFilter)?.class || 'none' }}
+                      alt="Preview"
+                    />
                   )}
+                  <div className="absolute top-4 right-4">
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      className="bg-black/40 backdrop-blur-md text-white rounded-full hover:bg-black/60"
+                      onClick={() => { setPreviewUrl(null); setSelectedFile(null); }}
+                    >
+                      <X className="size-4" />
+                    </Button>
+                  </div>
                   
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-end p-4">
-                    <p className="text-sm font-bold text-white mb-1">{reel.title}</p>
-                    {reel.subtitle && <p className="text-[10px] text-white/70 line-clamp-2 mb-2">{reel.subtitle}</p>}
-                    {reel.price && <p className="text-xs font-bold text-red-500 mb-3">{reel.price} {reel.currency}</p>}
-                    
-                    <div className="flex items-center justify-between gap-2">
-                       <Button 
-                         variant="ghost" 
-                         size="sm" 
-                         className="h-8 w-8 p-0 text-white hover:bg-white/20"
-                         onClick={() => window.open(reel.media_urls?.[0] || reel.media_path, '_blank')}
-                       >
-                         <Play className="w-4 h-4" />
-                       </Button>
-                       <Button 
-                        variant="destructive" 
-                        size="sm" 
-                        className="h-8 w-8 p-0"
-                        onClick={() => handleDelete(reel.id)}
-                        disabled={isDeleting === reel.id}
-                      >
-                        {isDeleting === reel.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
-                      </Button>
-                    </div>
-                  </div>
-
-                  <div className="absolute top-2 right-2 flex flex-col gap-2">
-                    <div className="bg-black/60 backdrop-blur-md px-2 py-1 rounded-lg flex flex-col items-center gap-1 text-[10px] font-bold text-white shadow-xl ring-1 ring-white/10">
-                      <div className="flex items-center gap-1">
-                        <Eye className="w-3 h-3 text-blue-400" />
-                        {reel.stats?.views_count || 0}
-                      </div>
-                    </div>
-                    
-                    <div className="bg-black/60 backdrop-blur-md px-2 py-1 rounded-lg flex flex-col items-center gap-1 text-[10px] font-bold text-white shadow-xl ring-1 ring-white/10">
-                      <div className="flex items-center gap-1">
-                        <Heart className="w-3 h-3 text-red-400 fill-red-400" />
-                        {reel.stats?.likes_count || 0}
-                      </div>
-                    </div>
-
-                    <div className="bg-black/60 backdrop-blur-md px-2 py-1 rounded-lg flex flex-col items-center gap-1 text-[10px] font-bold text-white shadow-xl ring-1 ring-white/10">
-                      <div className="flex items-center gap-1">
-                        <Bookmark className="w-3 h-3 text-yellow-400 fill-yellow-400" />
-                        {reel.stats?.clicks_count || 0}
-                      </div>
-                    </div>
-
-                    <div className="bg-black/60 backdrop-blur-md px-2 py-1 rounded-lg flex flex-col items-center gap-1 text-[10px] font-bold text-white shadow-xl ring-1 ring-white/10">
-                      <div className="flex items-center gap-1" title="Contact / Intérêt">
-                        <Target className="w-3 h-3 text-green-400" />
-                        {reel.stats?.contact_count || 0}
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="absolute bottom-4 left-4 flex items-center gap-2 group-hover:opacity-0 transition-opacity">
-                    <div className="p-1 px-2 rounded bg-red-600 text-white text-[10px] font-bold uppercase tracking-wider">
-                      {reel.category || reel.media_type}
+                  {/* Filter Selection */}
+                  <div className="absolute left-4 top-1/2 -translate-y-1/2 flex flex-col gap-2 z-40">
+                    <div className="bg-black/40 backdrop-blur-xl border border-white/10 p-2 rounded-2xl flex flex-col gap-2">
+                      {filters.map((f) => (
+                        <button
+                          key={f.name}
+                          onClick={() => setSelectedFilter(f.name)}
+                          className={cn(
+                            "w-10 h-10 rounded-xl transition-all border-2 overflow-hidden relative group",
+                            selectedFilter === f.name ? "border-red-500 scale-110" : "border-transparent opacity-60 hover:opacity-100"
+                          )}
+                          title={f.name}
+                        >
+                          <div className="size-full" style={{ filter: f.class, background: '#1e293b' }} />
+                        </button>
+                      ))}
                     </div>
                   </div>
                 </div>
-              </Card>
+              ) : mode === 'record' ? (
+                <div className="size-full relative">
+                  <video 
+                    ref={videoRef} 
+                    autoPlay 
+                    muted 
+                    playsInline 
+                    className="size-full object-cover" 
+                    style={{ filter: filters.find(f => f.name === selectedFilter)?.class || 'none' }}
+                  />
+                  
+                  {/* Recording Interface */}
+                  <div className="absolute top-6 left-6 flex items-center gap-2 px-3 py-1.5 bg-red-600 rounded-full shadow-lg shadow-red-600/40 animate-pulse z-50">
+                    <div className="w-2 h-2 rounded-full bg-white" />
+                    <span className="text-[10px] font-black tracking-widest">
+                      {Math.floor(recordingTime / 60)}:{String(recordingTime % 60).padStart(2, '0')}
+                    </span>
+                  </div>
+
+                  <div className="absolute bottom-8 left-0 right-0 flex justify-center">
+                     <button 
+                       onClick={isRecording ? () => mediaRecorder?.stop() : startRecording} 
+                       className={cn(
+                         "size-16 rounded-full border-4 border-white flex items-center justify-center transition-all relative group",
+                         isRecording ? "bg-white text-red-600" : "bg-red-600/20 text-white hover:scale-105"
+                       )}
+                     >
+                       {!isRecording && <div className="absolute inset-2 bg-red-600 rounded-full group-hover:scale-110 transition-transform" />}
+                       {isRecording ? <StopCircle className="size-8 relative z-10" /> : <Circle className="size-8 relative z-10" />}
+                     </button>
+                  </div>
+                </div>
+              ) : (
+                <div 
+                  className="size-full flex flex-col items-center justify-center gap-4 cursor-pointer hover:bg-white/5 transition-colors p-8 text-center"
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  <div className="p-5 bg-white/5 rounded-full ring-1 ring-white/10">
+                    <Upload className="size-10 text-white/20" />
+                  </div>
+                  <div>
+                    <p className="font-bold text-white/60 text-sm">Importer un fichier</p>
+                    <p className="text-[10px] text-white/30 mt-1 uppercase tracking-widest">MP4, JPG, PNG (MAX 50MB)</p>
+                  </div>
+                </div>
+              )}
             </div>
-          ))}
-        </div>
-      )}
+
+            {/* Form Side */}
+            <div className="flex-1 p-8 flex flex-col bg-slate-900/50 overflow-y-auto">
+              <div className="flex-1 space-y-6">
+                <div className="space-y-1">
+                   <h2 className="text-xl font-bold uppercase italic">Publier un <span className="text-primary italic">{activeTab === 'reels' ? 'Reel' : 'Story'}</span></h2>
+                   <p className="text-xs text-white/40 font-medium tracking-tight">Partagez votre contenu avec votre audience.</p>
+                </div>
+
+                <div className="flex gap-4 p-1 bg-white/5 border border-white/10 rounded-2xl">
+                  <button 
+                    onClick={() => { setMode('record'); startCamera(); }}
+                    className={cn(
+                      "flex-1 py-3 rounded-xl flex items-center justify-center gap-2 text-xs font-bold transition-all",
+                      mode === 'record' ? "bg-red-600 text-white shadow-lg shadow-red-600/20" : "text-white/40 hover:text-white"
+                    )}
+                  >
+                    <Camera className="size-4" /> Caméra Live
+                  </button>
+                  <button 
+                    onClick={() => { setMode('upload'); stopCamera(); }}
+                    className={cn(
+                      "flex-1 py-3 rounded-xl flex items-center justify-center gap-2 text-xs font-bold transition-all",
+                      mode === 'upload' ? "bg-red-600 text-white shadow-lg shadow-red-600/20" : "text-white/40 hover:text-white"
+                    )}
+                  >
+                    <Upload className="size-4" /> Import Fichier
+                  </button>
+                </div>
+
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label className="text-[10px] font-black uppercase tracking-widest text-white/40">Titre / Légende</Label>
+                    <Input 
+                      placeholder="Décrivez votre contenu..." 
+                      value={title} 
+                      onChange={e => setTitle(e.target.value)} 
+                      className="bg-white/5 border-white/10 rounded-xl h-12"
+                    />
+                  </div>
+
+                  {activeTab === 'reels' && (
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label className="text-[10px] font-black uppercase tracking-widest text-white/40">Prix (DT)</Label>
+                        <Input 
+                          type="number" 
+                          placeholder="0.00" 
+                          value={price} 
+                          onChange={e => setPrice(e.target.value)} 
+                          className="bg-white/5 border-white/10 rounded-xl h-12"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="text-[10px] font-black uppercase tracking-widest text-white/40">Catégorie</Label>
+                        <Input 
+                          placeholder="Ex: Mode" 
+                          value={category} 
+                          onChange={e => setCategory(e.target.value)} 
+                          className="bg-white/5 border-white/10 rounded-xl h-12"
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="pt-8 border-t border-white/10 mt-6">
+                <Button 
+                  onClick={handlePublish} 
+                  disabled={isUploading || !selectedFile} 
+                  className="w-full bg-red-600 hover:bg-red-700 py-7 rounded-2xl font-bold shadow-2xl shadow-red-600/20 transition-all text-lg"
+                >
+                  {isUploading ? (
+                    <><Loader2 className="animate-spin mr-2" /> Publication en cours...</>
+                  ) : (
+                    <><Zap className="size-5 mr-2 fill-white" /> Mettre en ligne</>
+                  )}
+                </Button>
+              </div>
+            </div>
+          </div>
+          <input 
+            type="file" 
+            ref={fileInputRef} 
+            className="hidden" 
+            onChange={handleFileUpload} 
+            accept="video/*,image/*" 
+          />
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

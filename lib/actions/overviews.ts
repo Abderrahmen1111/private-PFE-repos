@@ -23,6 +23,19 @@ export async function getDashboardOverview(storeId: number) {
         .select('*', { count: 'exact', head: true })
         .eq('store_id', storeId)
 
+    // 2.2 Fetch Analytics Clicks
+    const { count: phoneClicks } = await supabase
+        .from('store_analytics')
+        .select('*', { count: 'exact', head: true })
+        .eq('store_id', storeId)
+        .eq('type', 'phone_click')
+
+    const { count: directionClicks } = await supabase
+        .from('store_analytics')
+        .select('*', { count: 'exact', head: true })
+        .eq('store_id', storeId)
+        .eq('type', 'direction_click')
+
     // 2.1 Fetch Real Revenue (Completed only)
     const { data: ordersRev } = await supabase
         .from('orders')
@@ -36,7 +49,7 @@ export async function getDashboardOverview(storeId: number) {
         .eq('store_id', storeId)
         .eq('status', 'COMPLETED') as { data: { price: number }[] | null }
 
-    const totalRevenue = 
+    const totalRevenue =
         (ordersRev || []).reduce((sum: number, o) => sum + (o.total_price || 0), 0) +
         (bookingsRev || []).reduce((sum: number, b) => sum + (b.price || 0), 0)
 
@@ -153,10 +166,19 @@ export async function getDashboardOverview(storeId: number) {
         }))
     ].sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime()).slice(0, 5)
 
+    // 6. Fetch Subscription Info
+    const { data: subscription } = await (supabase as any)
+        .from('subscriptions')
+        .select('*')
+        .eq('user_id', (store as any)?.owner_id || '')
+        .maybeSingle()
+
+    const { data: { user } } = await supabase.auth.getUser()
+
     return {
         profileViews: (store as any)?.view_count || 0,
-        phoneClicks: 0,
-        directionClicks: 0,
+        phoneClicks: phoneClicks || 0,
+        directionClicks: directionClicks || 0,
         reservations: bookingsCount || 0,
         purchases: ordersCount || 0,
         ratingData: [
@@ -169,7 +191,10 @@ export async function getDashboardOverview(storeId: number) {
         recentActions: allActions,
         weeklyStats: last7Days,
         totalRevenue,
-        status: (store as any)?.status || 'PENDING'
+        status: (store as any)?.status || 'PENDING',
+        subscription: subscription || { plan_name: 'FREE', status: 'ACTIVE' },
+        store: store,
+        user: user
     }
 }
 
@@ -234,5 +259,57 @@ export async function getSidebarStats(storeId: number) {
         products: itemsCount.count || 0,
         reviews: reviewsCount.count || 0,
         leads: (ordersCount.count || 0) + (bookingsCount.count || 0),
+    }
+}
+
+export async function searchDashboard(storeId: number, query: string) {
+    const supabase = createClient()
+    const cleanQuery = query.trim()
+    if (!cleanQuery) return { items: [], bookings: [], orders: [], reviews: [] }
+
+    const [itemsRes, bookingsRes, ordersRes, reviewsRes] = await Promise.all([
+        // Search Items
+        supabase
+            .from('items')
+            .select('id, name, price, status')
+            .eq('store_id', storeId)
+            .ilike('name', `%${cleanQuery}%`)
+            .limit(5),
+
+        // Search Bookings
+        supabase
+            .from('bookings')
+            .select('id, customer_name, created_at, status')
+            .eq('store_id', storeId)
+            .ilike('customer_name', `%${cleanQuery}%`)
+            .limit(5),
+
+        // Search Orders
+        supabase
+            .from('orders')
+            .select('id, customer_name, total_price, status')
+            .eq('store_id', storeId)
+            .ilike('customer_name', `%${cleanQuery}%`)
+            .limit(5),
+
+        // Search Reviews
+        (supabase as any)
+            .from('reviews')
+            .select(`
+                id, 
+                rating, 
+                comment, 
+                author:users!author_id(full_name)
+            `)
+            .eq('store_id', storeId)
+            .or(`comment.ilike.%${cleanQuery}%`)
+            .limit(5)
+    ])
+
+    return {
+        items: itemsRes.data || [],
+        bookings: bookingsRes.data || [],
+        orders: ordersRes.data || [],
+        reviews: reviewsRes.data || []
     }
 }

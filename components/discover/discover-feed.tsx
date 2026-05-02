@@ -4,6 +4,7 @@ import { DiscoverCard } from '@/components/discover/discover-card'
 import { useInfiniteFeed } from '@/components/discover/useInfiniteFeed'
 import { X } from 'lucide-react'
 import { useRouter } from 'next/navigation'
+import { DiscoverStoriesRow } from '@/components/discover/DiscoverStoriesRow'
 import { cn } from '@/lib/utils'
 
 export function DiscoverFeed({ isCompact = false }: { isCompact?: boolean }) {
@@ -19,6 +20,13 @@ export function DiscoverFeed({ isCompact = false }: { isCompact?: boolean }) {
       )}
       ref={containerRef}
     >
+      {/* Stories at the top */}
+      {!isCompact && (
+        <div className="fixed top-0 inset-x-0 z-[55] pt-2">
+          <DiscoverStoriesRow />
+        </div>
+      )}
+
       {/* Close button - only show if NOT compact */}
       {!isCompact && (
         <button

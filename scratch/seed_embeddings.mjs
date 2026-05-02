@@ -45,89 +45,118 @@ async function supabaseQuery(path, options = {}) {
   return res.json()
 }
 
-async function generateEmbeddingsBatch(texts) {
-  const res = await fetch(OPENROUTER_API_URL, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${OPENROUTER_KEY}`,
-      'HTTP-Referer': process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000',
-      'X-Title': 'Seed Embeddings Tool',
-    },
-    body: JSON.stringify({
-      model: EMBEDDING_MODEL,
-      input: texts,
-    }),
-  })
+async function generateEmbeddingsBatch(texts, retries = 3) {
+  for (let attempt = 1; attempt <= retries; attempt++) {
+    try {
+      const res = await fetch(OPENROUTER_API_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${OPENROUTER_KEY}`,
+          'HTTP-Referer': process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000',
+          'X-Title': 'Seed Embeddings Tool',
+        },
+        body: JSON.stringify({
+          model: EMBEDDING_MODEL,
+          input: texts,
+        }),
+      })
 
-  if (!res.ok) {
-    const err = await res.text()
-    throw new Error(`OpenRouter API error (${res.status}): ${err}`)
+      if (!res.ok) {
+        const err = await res.text()
+        throw new Error(`OpenRouter API error (${res.status}): ${err}`)
+      }
+
+      const data = await res.json()
+      return data.data.map(d => d.embedding)
+    } catch (error) {
+      if (attempt === retries) throw error;
+      console.warn(`      ⚠️ OpenRouter timeout/error (attempt ${attempt}/${retries}). Retrying in 2s...`);
+      await new Promise(r => setTimeout(r, 2000));
+    }
   }
-
-  const data = await res.json()
-  return data.data.map(d => d.embedding)
 }
 
-async function main() {
-  console.log(`🚀 Seed Embeddings — OpenRouter ${EMBEDDING_MODEL}`)
-  console.log('================================================\n')
-
-  // 1. Fetch all items without embeddings
-  console.log('📦 Fetching items without embeddings...')
-  const items = await supabaseQuery(
-    'items?select=id,name,description&embedding=is.null&order=id.asc&limit=5000'
+async function processEmbeddings(tableName, selectFields, textFields) {
+  console.log(`📦 Fetching ${tableName} without embeddings...`)
+  const idCol = tableName === 'service_directory' ? 'service_id' : 'id'
+  const records = await supabaseQuery(
+    `${tableName}?select=${selectFields}&embedding=is.null&order=${idCol}.asc&limit=5000`
   )
   
-  console.log(`   Found ${items.length} items to process\n`)
+  console.log(`   Found ${records.length} ${tableName} to process\n`)
 
-  if (items.length === 0) {
-    console.log('✅ All items already have embeddings!')
+  if (records.length === 0) {
+    console.log(`✅ All ${tableName} already have embeddings!`)
     return
   }
 
   let processed = 0
   let errors = 0
 
-  // 2. Process in batches
-  for (let i = 0; i < items.length; i += BATCH_SIZE) {
-    const batch = items.slice(i, i + BATCH_SIZE)
-    const texts = batch.map(item => {
-      const name = item.name || ''
-      const desc = item.description || ''
-      return `${name} ${desc}`.trim()
+  for (let i = 0; i < records.length; i += BATCH_SIZE) {
+    const batch = records.slice(i, i + BATCH_SIZE)
+    const texts = batch.map(record => {
+      return textFields.map(field => record[field] || '').join(' ').trim()
     })
 
     try {
       const embeddings = await generateEmbeddingsBatch(texts)
 
-      // 3. Update each item with its embedding
-      for (let j = 0; j < batch.length; j++) {
-        const item = batch[j]
+      await Promise.all(batch.map((record, j) => {
         const embedding = embeddings[j]
-
-        await supabaseQuery(`items?id=eq.${item.id}`, {
+        return supabaseQuery(`${tableName}?${idCol}=eq.${record[idCol]}`, {
           method: 'PATCH',
           body: { embedding: `[${embedding.join(',')}]` },
         })
-      }
+      }))
 
       processed += batch.length
-      const pct = ((processed / items.length) * 100).toFixed(1)
-      console.log(`   ✅ ${processed}/${items.length} (${pct}%) — batch ${Math.floor(i/BATCH_SIZE)+1}`)
+      const pct = ((processed / records.length) * 100).toFixed(1)
+      console.log(`   ✅ ${processed}/${records.length} (${pct}%) — batch ${Math.floor(i/BATCH_SIZE)+1}`)
     } catch (err) {
       errors++
-      console.error(`   ❌ Batch error at offset ${i}:`, err.message?.substring(0, 100))
-      // Wait and retry
-      await new Promise(r => setTimeout(r, 2000))
+      console.error(`   ❌ Batch error at offset ${i}:`, err.message)
+      if (err.cause) console.error(`      Cause:`, err.cause.message || err.cause)
+      await new Promise(r => setTimeout(r, 5000)) // longer wait on hard failure
     }
 
-    // Rate limit: 200ms between batches
-    await new Promise(r => setTimeout(r, 200))
+    await new Promise(r => setTimeout(r, 500))
   }
+}
+
+async function main() {
+  console.log(`🚀 Seed Embeddings — OpenRouter ${EMBEDDING_MODEL}`)
+  console.log('================================================\n')
+
+  // 1. Items (Produits & Services internes)
+  await processEmbeddings('items', 'id,name,description', ['name', 'description'])
+  
+  console.log('\n------------------------------------------------\n')
+
+  // 2. Stores (Boutiques internes)
+  await processEmbeddings('stores', 'id,name,description,category,city', ['name', 'description', 'category', 'city'])
+
+  console.log('\n------------------------------------------------\n')
+
+  // 3. Business Directory (Données externes Google/Scraped)
+  await processEmbeddings(
+    'business_directory_tunisia', 
+    'id,title,description,categoryName,city,full_address,vitrine_category', 
+    ['title', 'description', 'categoryName', 'city', 'full_address', 'vitrine_category']
+  )
+
+  console.log('\n------------------------------------------------\n')
+
+  // 4. Service Directory
+  await processEmbeddings(
+    'service_directory', 
+    'service_id,name,description,category,city,address', 
+    ['name', 'description', 'category', 'city', 'address']
+  )
 
   console.log(`\n================================================`)
-  console.log(`✅ Done! ${processed} items embedded, ${errors} errors`)
+  console.log(`✅ Seeding complete!`)
 }
 
 main().catch(err => {

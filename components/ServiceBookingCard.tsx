@@ -17,6 +17,7 @@ interface Props {
   businessReviews?: number;
   isVerified: boolean;
   isLinkedToStore?: boolean;
+  ownerId?: string | null;
 }
 
 const UNIT_LABELS: Record<string, string> = {
@@ -39,6 +40,7 @@ export default function ServiceBookingCard({
   businessReviews = 0,
   isVerified,
   isLinkedToStore = true,
+  ownerId,
 }: Props) {
   const { openDrawer } = useActionDrawer();
 
@@ -51,6 +53,7 @@ export default function ServiceBookingCard({
       phone: storePhone,
       address: '',
       workingHours: null,
+      ownerId: ownerId,
     });
   };
 

@@ -880,19 +880,51 @@ export default function Navbar() {
                           </div>
                        ) : searchResults && searchResults.length > 0 ? (
                           <div className="py-2">
-                             {searchResults.slice(0, 5).map((res: any, idx: number) => (
-                                <Link key={idx} href={`/merchants/business/${res.store_id || res.id || '#'}`} className="block px-4 py-3 hover:bg-white/5 transition border-b border-white/5 last:border-0">
-                                   <div className="flex items-center gap-3">
-                                     <div className="w-10 h-10 rounded-lg bg-red-500/10 flex items-center justify-center shrink-0">
-                                       <Search className="w-4 h-4 text-red-500" />
+                             {searchResults.slice(0, 5).map((res: any, idx: number) => {
+                                // Déterminer le lien selon le type de résultat
+                                let href = '#';
+                                let badge = '';
+                                
+                                if (res.result_type === 'STORE' || (!res.result_type && !res.item_type)) {
+                                  href = `/merchants/business/${res.id}`;
+                                  badge = 'Boutique';
+                                } else if (res.result_type === 'ITEM' || res.item_type) {
+                                  // Vector search met le store_id dans metadata
+                                  const sId = res.metadata?.store_id || res.store_id;
+                                  href = `/merchants/business/${sId}`;
+                                  badge = 'Produit';
+                                } else if (res.result_type === 'BUSINESS_DIR') {
+                                  href = `/search?query=${encodeURIComponent(res.name)}`;
+                                  badge = 'Annuaire';
+                                } else if (res.result_type === 'SERVICE_DIR') {
+                                  href = `/searchService?id=${res.id}`;
+                                  badge = 'Service';
+                                }
+
+                                return (
+                                  <Link key={idx} href={href} className="block px-4 py-3 hover:bg-white/5 transition border-b border-white/5 last:border-0">
+                                     <div className="flex items-center gap-3">
+                                       <div className="w-10 h-10 rounded-lg bg-red-500/10 flex flex-col items-center justify-center shrink-0 overflow-hidden relative">
+                                         {res.image_url ? (
+                                           <img src={res.image_url} alt="" className="w-full h-full object-cover" />
+                                         ) : (
+                                           <Search className="w-4 h-4 text-red-500" />
+                                         )}
+                                       </div>
+                                       <div className="min-w-0 flex-1">
+                                         <div className="flex items-center justify-between gap-2">
+                                           <div className="text-white text-sm font-semibold truncate">{res.name || res.title}</div>
+                                           {badge && <span className="text-[10px] uppercase tracking-wider bg-white/10 text-white/70 px-1.5 py-0.5 rounded shrink-0">{badge}</span>}
+                                         </div>
+                                         <div className="text-white/50 text-xs truncate mt-0.5">
+                                            {res.location_city ? `${res.location_city} • ` : ''}
+                                            {res.description?.substring(0, 60) || 'Découvrir ce résultat...'}
+                                         </div>
+                                       </div>
                                      </div>
-                                     <div className="min-w-0">
-                                       <div className="text-white text-sm font-semibold truncate">{res.name || res.title}</div>
-                                       <div className="text-white/50 text-xs truncate mt-0.5">{res.description?.substring(0, 60) || 'Découvrir cette offre...' }</div>
-                                     </div>
-                                   </div>
-                                </Link>
-                             ))}
+                                  </Link>
+                                );
+                             })}
                              <button type="button" onClick={handleSearch as any} className="w-full px-4 py-3 text-sm text-center text-red-400 font-bold hover:bg-white/5 transition border-t border-white/10 mt-1 flex justify-center items-center gap-2">
                                <Search className="w-4 h-4"/> Voir tous les résultats
                              </button>
@@ -959,12 +991,22 @@ export default function Navbar() {
                     const effectiveRole = userRole?.toLowerCase() || user.user_metadata?.role?.toLowerCase();
                     
                     return storeId ? (
-                      <Link href={`/dashboard/${storeId}`}>
-                        <button className="flex items-center gap-2 px-4 py-2 rounded-xl bg-red-600 hover:shadow-lg hover:shadow-red-600/20 text-sm font-bold text-white transition-all ring-1 ring-white/10">
-                          <FolderKanban className="w-4 h-4" />
-                          Dashboard
-                        </button>
-                      </Link>
+                      <div className="flex items-center gap-2">
+                        <Link href={`/dashboard/${storeId}`}>
+                          <button className="flex items-center gap-2 px-4 py-2 rounded-xl bg-red-600 hover:shadow-lg hover:shadow-red-600/20 text-sm font-bold text-white transition-all ring-1 ring-white/10">
+                            <FolderKanban className="w-4 h-4" />
+                            Dashboard
+                          </button>
+                        </Link>
+                        <Link href="/merchants/business/add">
+                          <button 
+                            title="Ajouter un autre établissement"
+                            className="flex items-center justify-center w-10 h-10 rounded-xl bg-green-600 hover:bg-green-700 text-white transition shadow-lg shadow-green-600/20"
+                          >
+                            <Plus className="w-5 h-5" />
+                          </button>
+                        </Link>
+                      </div>
                     ) : (
                       <Link href="/merchants/business/add">
                         <button className="flex items-center gap-2 px-4 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-sm font-semibold text-white transition shadow-lg shadow-red-600/20">

@@ -9,7 +9,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { LogOut, User, Settings, Bell, CreditCard, ShoppingCart } from "lucide-react";
+import { LogOut, User, Settings, Bell, CreditCard, ShoppingCart, Plus } from "lucide-react";
 
 interface UserDropdownProps {
   user: {

@@ -27,25 +27,30 @@ const STATUS_MAP: Record<string, 'pending' | 'completed' | 'failed' | 'refunded'
 export async function syncOrderTransaction(order: any, supabaseClient?: any) {
   const supabase = supabaseClient || createClient();
 
+  // Fetch store data with more fields
   const { data: store } = await supabase
     .from('stores')
-    .select('name, phone')
+    .select('id, name, phone, owner_id')
     .eq('id', order.store_id)
     .single();
+
+  if (!store) {
+    console.error(`[SyncOrder] Store ${order.store_id} not found for order ${order.order_number}`);
+  }
 
   const transactionData = {
     transaction_code: order.order_number,
     order_number: order.order_number,
     customer_id: order.customer_id,
-    customer_name: order.customer_name,
+    customer_name: order.customer_name || 'Client',
     merchant_id: order.store_id,
-    merchant_name: store?.name || null,
+    merchant_name: store?.name || 'Boutique',
     merchant_number: store?.phone || null,
-    amount: order.total_price,
+    amount: order.total_price || 0,
     status: (STATUS_MAP[order.status] || 'pending') as any,
-    date: order.created_at,
-    time_created: order.created_at,
-    qr_code_token: order.tracking_code || null
+    date: order.created_at || new Date().toISOString(),
+    time_created: order.created_at || new Date().toISOString(),
+    qr_code_token: order.tracking_code || order.order_number
   };
 
   const { error } = await supabase
@@ -53,7 +58,7 @@ export async function syncOrderTransaction(order: any, supabaseClient?: any) {
     .upsert(transactionData, { onConflict: 'transaction_code' });
 
   if (error) {
-    console.error('Error syncing order to transaction:', error);
+    console.error('[SyncOrder] Upsert Error:', error);
   }
 }
 
@@ -62,23 +67,27 @@ export async function syncBookingTransaction(booking: any, supabaseClient?: any)
 
   const { data: store } = await supabase
     .from('stores')
-    .select('name, phone')
+    .select('id, name, phone, owner_id')
     .eq('id', booking.store_id)
     .single();
+
+  if (!store) {
+    console.error(`[SyncBooking] Store ${booking.store_id} not found for booking ${booking.booking_number}`);
+  }
 
   const transactionData = {
     transaction_code: booking.booking_number,
     order_number: booking.booking_number,
     booking_id: booking.id,
     customer_id: booking.customer_id,
-    customer_name: booking.customer_name,
+    customer_name: booking.customer_name || 'Client',
     merchant_id: booking.store_id,
-    merchant_name: store?.name || null,
+    merchant_name: store?.name || 'Boutique',
     merchant_number: store?.phone || null,
-    amount: booking.price,
+    amount: booking.price || 0,
     status: (STATUS_MAP[booking.status] || 'pending') as any,
-    date: booking.created_at,
-    time_created: booking.created_at,
+    date: booking.created_at || new Date().toISOString(),
+    time_created: booking.created_at || new Date().toISOString(),
     qr_code_token: booking.booking_number
   };
 
@@ -87,7 +96,7 @@ export async function syncBookingTransaction(booking: any, supabaseClient?: any)
     .upsert(transactionData, { onConflict: 'transaction_code' });
 
   if (error) {
-    console.error('Error syncing booking to transaction:', error);
+    console.error('[SyncBooking] Upsert Error:', error);
   }
 }
 
@@ -107,20 +116,39 @@ export async function getStoreTransactions(storeId: number): Promise<Transaction
 
   const transactionsData = (data as any[]) || [];
 
-  // To get original_id for orders, we need to match order_number with orders table IDs
+  // To get original_id and details, we need to match with orders/bookings table
   const orderNumbers = transactionsData.filter((t: any) => !t.booking_id).map((t: any) => t.order_number);
+  const bookingIds = transactionsData.filter((t: any) => t.booking_id).map((t: any) => t.booking_id);
 
-  let orderMap = new Map<string, number>();
+  let orderMap = new Map<string, { id: number, name: string }>();
+  let bookingMap = new Map<number, { name: string }>();
+
   if (orderNumbers.length > 0) {
     const { data: orders } = await supabase
       .from('orders')
-      .select('id, order_number')
+      .select('id, order_number, items(name)')
       .in('order_number', orderNumbers);
 
-    (orders || []).forEach((o: any) => orderMap.set(o.order_number, o.id));
+    (orders || []).forEach((o: any) => {
+      orderMap.set(o.order_number, { id: o.id, name: o.items?.name || 'Produit' });
+    });
+  }
+
+  if (bookingIds.length > 0) {
+    const { data: bookings } = await supabase
+      .from('bookings')
+      .select('id, items(name)')
+      .in('id', bookingIds);
+
+    (bookings || []).forEach((b: any) => {
+      bookingMap.set(b.id, { name: b.items?.name || 'Service' });
+    });
   }
 
   return transactionsData.map((t: any) => {
+    const orderInfo = !t.booking_id ? orderMap.get(t.order_number) : null;
+    const bookingInfo = t.booking_id ? bookingMap.get(t.booking_id) : null;
+
     return {
       id: t.id,
       type: t.booking_id ? 'booking' : 'order',
@@ -129,8 +157,8 @@ export async function getStoreTransactions(storeId: number): Promise<Transaction
       amount: t.amount,
       status: t.status as any,
       created_at: t.time_created || new Date().toISOString(),
-      details: t.booking_id ? 'Réservation de service' : 'Vente de produit(s)',
-      original_id: t.booking_id || orderMap.get(t.order_number) || undefined,
+      details: bookingInfo?.name || orderInfo?.name || (t.booking_id ? 'Réservation service' : 'Vente produit'),
+      original_id: t.booking_id || orderInfo?.id || undefined,
       qr_code_token: t.qr_code_token || null,
     };
   });

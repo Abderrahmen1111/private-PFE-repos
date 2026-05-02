@@ -6,6 +6,8 @@ const BUCKETS = {
   DOCUMENTS: 'store-documents',
   REVIEWS: 'review-images',
   AVATARS: 'avatars',
+  STORIES: 'stories',
+  REELS: 'reels',
 } as const
 
 export async function uploadFile(

@@ -1,12 +1,16 @@
 'use client';
 
 import { Phone, Globe, MapPin, Clock, MessageCircle, CalendarCheck, CheckCircle2 } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { toast } from 'sonner';
 import { ReservationCard } from '@/components/reservation/reservation-card';
 import { ReservationData } from '@/components/reservation/types';
 import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { getUserBookings } from '@/lib/actions/reservation';
 import ReservationHistoryCard from '@/components/profile/ReservationHistoryCard';
+import { Button } from '@/components/ui/button';
+import Link from 'next/link';
 
 interface WorkingHours {
   open: string;
@@ -25,6 +29,7 @@ interface Props {
   workingHours: Record<string, WorkingHours> | null;
   service?: any;
   storeId?: number;
+  ownerId?: string | null;
   onConfirm?: (data: ReservationData) => void;
 }
 
@@ -39,9 +44,13 @@ export function ReservationDrawerContent({
   workingHours,
   service,
   storeId,
+  ownerId,
   onConfirm,
 }: Props) {
   const [activeBookings, setActiveBookings] = useState<any[]>([]);
+  const [isHistoryOpen, setIsHistoryOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState<'details' | 'history'>('details');
+  const router = useRouter();
 
   useEffect(() => {
     const loadData = async () => {
@@ -129,10 +138,17 @@ export function ReservationDrawerContent({
         onConfirm={onConfirm}
       />
       
-      <button className="w-full bg-red-500 hover:bg-red-600 text-white font-bold py-3 rounded-lg flex items-center justify-center gap-2 transition-all shadow-md active:scale-[0.98]">
-        <MessageCircle className="w-4 h-4" />
-        Envoyer un message
-      </button>
+      {ownerId && (
+        <Button 
+          asChild
+          className="w-full bg-red-500 hover:bg-red-600 text-white font-bold py-3 rounded-lg flex items-center justify-center gap-2 transition-all shadow-md active:scale-[0.98] h-auto"
+        >
+          <Link href={`/messages?partnerId=${ownerId}&type=store&storeId=${storeId}`}>
+            <MessageCircle className="w-4 h-4" />
+            Envoyer un message
+          </Link>
+        </Button>
+      )}
     </div>
   );
 }

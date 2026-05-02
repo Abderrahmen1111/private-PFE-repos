@@ -5,6 +5,7 @@ import { Database } from '@/types/supabase';
 import { revalidatePath } from 'next/cache';
 import { syncOrderTransaction } from './transactions';
 import { createNotification } from './notifications';
+import { decrementStock } from './items';
 import { Client as QStashClient } from '@upstash/qstash';
 
 const qstash = process.env.QSTASH_TOKEN ? new QStashClient({ token: process.env.QSTASH_TOKEN }) : null;
@@ -87,8 +88,9 @@ export async function createOrder(data: Omit<OrderInsert, 'order_number' | 'stat
   }
 
   if (order) {
-    // We don't sync to transactions yet because it's still PENDING
-    // Sync will happen in validateOrder() when the owner accepts
+    // Sync to transactions immediately (even if PENDING)
+    await syncOrderTransaction(order, supabase);
+    
     // Automatically schedule a background job to check against payment failure (2 mins default delay)
     await publishQStashEvent('payment-retry', { orderId: order.id }, 120);
 
@@ -245,6 +247,11 @@ export async function validateOrder(orderId: number) {
     await syncOrderTransaction(data, supabase);
     // Dispatch an asynchronous job to sync with external systems (e.g. ERP) after validation
     await publishQStashEvent('sync-orders', { orderId: data.id });
+
+    // Decrement Stock
+    if (data.item_id && data.quantity) {
+      await decrementStock(data.item_id, data.quantity);
+    }
 
     // Notify Customer
     if (data.customer_id) {

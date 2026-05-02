@@ -85,23 +85,54 @@ export function useMessaging() {
         // Skip messages deleted for the current user
         if (msg.metadata?.deleted_for?.includes(currentUser.id)) return;
 
+        const isStoreChat = msg.metadata?.chat_type === 'store';
         const partnerId = msg.sender_id === currentUser.id ? msg.receiver_id : msg.sender_id;
         const partnerData = msg.sender_id === currentUser.id ? msg.receiver : msg.sender;
 
+        // FILTER LOGIC: 
+        // If I am the RECEIVER of a STORE message, and I have a store (merchant), 
+        // DO NOT show this in my general personal /messages sidebar.
+        // It should only show in my Dashboard.
+        if (isStoreChat && msg.receiver_id === currentUser.id) {
+            // We can check if the user is a merchant here if needed, 
+            // but the rule is generally: store messages are for the dashboard.
+            return;
+        }
+
         if (!conversationMap.has(partnerId)) {
-          conversationMap.set(partnerId, {
-            user_id: partnerId,
-            full_name: partnerData?.full_name || 'Utilisateur',
-            avatar_url: partnerData?.avatar_url,
-            last_message: msg.content,
-            last_message_at: msg.created_at,
-            unread_count: (!msg.is_read && msg.receiver_id === currentUser.id) ? 1 : 0
-          });
+            conversationMap.set(partnerId, {
+              user_id: partnerId,
+              full_name: partnerData?.full_name || 'Utilisateur',
+              avatar_url: partnerData?.avatar_url,
+              last_message: msg.content,
+              last_message_at: msg.created_at,
+              unread_count: (!msg.is_read && msg.receiver_id === currentUser.id) ? 1 : 0,
+              chat_type: msg.metadata?.chat_type || 'personal'
+            } as any);
         } else if (!msg.is_read && msg.receiver_id === currentUser.id) {
           const entry = conversationMap.get(partnerId)!;
           entry.unread_count += 1;
         }
       });
+
+      // Enrich conversations with store details if the partner is a merchant
+      const partnerIds = Array.from(conversationMap.keys());
+      if (partnerIds.length > 0) {
+        const { data: stores } = await supabase
+          .from('stores')
+          .select('owner_id, name, logo_url')
+          .in('owner_id', partnerIds);
+          
+        stores?.forEach((store: any) => {
+          const conv = conversationMap.get(store.owner_id);
+          if (conv) {
+            conv.full_name = store.name;
+            if (store.logo_url) {
+              conv.avatar_url = store.logo_url;
+            }
+          }
+        });
+      }
 
       // Force current active partner to 0 unread locally
       const activeId = useMessagingStore.getState().activePartnerId;
@@ -242,6 +273,17 @@ export function useMessaging() {
   ) => {
     if (!currentUser) return;
 
+    // Determine chat type from URL if available, or use existing metadata
+    const searchParams = new URLSearchParams(window.location.search);
+    const chatType = searchParams.get('type') || metadata.chat_type || 'personal';
+    const storeId = searchParams.get('storeId') || metadata.store_id;
+
+    const enrichedMetadata = {
+        ...metadata,
+        chat_type: chatType,
+        store_id: storeId
+    };
+
     try {
       const { data, error } = await (supabase as any)
         .from('messages' as any)
@@ -251,7 +293,7 @@ export function useMessaging() {
           content,
           type,
           attachment_url: attachmentUrl,
-          metadata
+          metadata: enrichedMetadata
         }])
         .select()
         .single();

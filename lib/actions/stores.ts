@@ -24,6 +24,19 @@ export async function getStoreById(id: number) {
     return { data: data as Store }
 }
 
+export async function getPrimaryStoreForOwner(userId: string): Promise<{ data?: any; error?: string }> {
+    const supabase = createClient() as any
+    const { data, error } = await supabase
+        .from('stores')
+        .select('id, name, logo_url')
+        .eq('owner_id', userId)
+        .limit(1)
+        .maybeSingle()
+
+    if (error) return { error: error.message }
+    return { data }
+}
+
 export async function getUserStores(userId: string): Promise<{ data?: any[]; error?: string }> {
     const supabase = createClient() as any
 

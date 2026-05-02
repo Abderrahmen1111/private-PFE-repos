@@ -1,5 +1,8 @@
 'use client';
 
+import { getBusinessStories } from '@/lib/actions/stories';
+import { useEffect } from 'react';
+
 import React, { useRef, useState } from 'react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { 
@@ -23,12 +26,20 @@ import {
   X, 
   Video as VideoIcon, 
   Send,
+  Check,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { uploadStoryMedia, publishStory, recordStoryView } from '@/lib/actions/stories';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import CameraCapture from '@/components/CameraCapture';
+import { 
+  DropdownMenu, 
+  DropdownMenuContent, 
+  DropdownMenuItem, 
+  DropdownMenuTrigger 
+} from '@/components/ui/dropdown-menu';
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 export interface RealStory {
@@ -42,6 +53,12 @@ export interface RealStory {
     full_name: string;
     avatar_url?: string;
   } | null;
+  author_id?: string;
+  stores?: {
+    name: string;
+    logo_url?: string;
+    owner_id: string;
+  };
 }
 
 const ACCENT_COLORS = [
@@ -51,7 +68,9 @@ const ACCENT_COLORS = [
 
 // ─── Story Viewer Dialog ───────────────────────────────────────────────────────
 function StoryItem({ story, accentColor }: { story: RealStory; accentColor: string }) {
-  const authorName = story.author?.full_name || 'Client';
+  const isBusinessOwner = story.author_id === story.stores?.owner_id;
+  const authorName = isBusinessOwner ? 'Propriétaire' : (story.author?.full_name || 'Client');
+  const avatarUrl = isBusinessOwner ? (story.stores?.logo_url || story.author?.avatar_url) : story.author?.avatar_url;
 
   const handleOpen = async () => {
     try { await recordStoryView(story.id); } catch { }
@@ -62,13 +81,18 @@ function StoryItem({ story, accentColor }: { story: RealStory; accentColor: stri
       <DialogTrigger asChild>
         <button className="flex flex-col items-center gap-1.5 group outline-none" onClick={handleOpen}>
           <div className="p-[2px] rounded-full bg-gradient-to-tr from-red-500 via-rose-400 to-orange-400 group-hover:from-red-400 group-hover:to-orange-300 transition-all duration-300 group-hover:scale-105">
-            <div className="p-[1.5px] rounded-full bg-white">
-              <Avatar className="size-14 border border-transparent">
-                <AvatarImage src={story.author?.avatar_url || ''} alt={authorName} className="object-cover" />
+            <div className="p-[1.5px] rounded-full bg-white relative">
+              <Avatar className={`size-14 border border-transparent ${isBusinessOwner ? 'ring-2 ring-offset-2 ring-red-500' : ''}`}>
+                <AvatarImage src={avatarUrl || ''} alt={authorName} className="object-cover" />
                 <AvatarFallback className="bg-slate-100 text-slate-500 font-bold">
                   {authorName.slice(0, 2).toUpperCase()}
                 </AvatarFallback>
               </Avatar>
+              {isBusinessOwner && (
+                <div className="absolute -bottom-1 -right-1 bg-red-500 text-white p-0.5 rounded-full border-2 border-white shadow-sm">
+                  <Check className="w-2.5 h-2.5" />
+                </div>
+              )}
             </div>
           </div>
           <span className="text-[11px] text-slate-600 font-semibold max-w-[68px] truncate">
@@ -84,7 +108,7 @@ function StoryItem({ story, accentColor }: { story: RealStory; accentColor: stri
           <DialogHeader className="absolute top-0 inset-x-0 z-20 px-4 pt-5 pb-2 bg-gradient-to-b from-black/60 to-transparent">
             <div className="flex items-center gap-2.5">
               <Avatar className="size-9 border-2 border-white/60">
-                <AvatarImage src={story.author?.avatar_url || ''} alt={authorName} className="object-cover" />
+                <AvatarImage src={avatarUrl || ''} alt={authorName} className="object-cover" />
                 <AvatarFallback>{authorName.slice(0, 2).toUpperCase()}</AvatarFallback>
               </Avatar>
               <div className="flex flex-col flex-1 min-w-0">
@@ -95,7 +119,7 @@ function StoryItem({ story, accentColor }: { story: RealStory; accentColor: stri
                 />
                 <div className="flex items-center gap-1.5 mt-1.5">
                    <span className="text-white text-xs font-bold truncate">
-                    {authorName}
+                    {authorName} {isBusinessOwner && <span className="ml-1 text-[10px] bg-red-600 px-1.5 py-0.5 rounded uppercase">Propriétaire</span>}
                   </span>
                   <span className="text-white/60 text-[10px]">
                     · {timeAgo(story.created_at)}
@@ -130,13 +154,14 @@ function StoryItem({ story, accentColor }: { story: RealStory; accentColor: stri
 }
 
 // ─── Add Story Button & Publisher Dialog ──────────────────────────────────────
-function AddStoryButton({ storeId, onAdded }: { storeId: number; onAdded: (story: RealStory) => void }) {
+function AddStoryButton({ storeId, isOwner, onAdded }: { storeId: number; isOwner: boolean; onAdded: (story: RealStory) => void }) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [caption, setCaption] = useState('');
+  const [showCamera, setShowCamera] = useState(false);
 
   const resetState = () => {
     setSelectedFile(null);
@@ -159,6 +184,13 @@ function AddStoryButton({ storeId, onAdded }: { storeId: number; onAdded: (story
       return;
     }
 
+    setSelectedFile(file);
+    setPreviewUrl(URL.createObjectURL(file));
+    setIsDialogOpen(true);
+  };
+
+  const handleCameraCapture = (file: File) => {
+    setShowCamera(false);
     setSelectedFile(file);
     setPreviewUrl(URL.createObjectURL(file));
     setIsDialogOpen(true);
@@ -192,7 +224,16 @@ function AddStoryButton({ storeId, onAdded }: { storeId: number; onAdded: (story
           caption: caption.trim() || undefined,
           views_count: 0,
           created_at: new Date().toISOString(),
-          author: null, // Current user
+          author_id: 'OWNER_MOCK_ID', // Temp ID for instant UI comparison
+          author: {
+            full_name: 'Vous',
+            avatar_url: undefined
+          },
+          stores: isOwner ? {
+            name: '',
+            logo_url: undefined,
+            owner_id: 'OWNER_MOCK_ID'
+          } : undefined,
         });
         setIsDialogOpen(false);
         resetState();
@@ -207,13 +248,40 @@ function AddStoryButton({ storeId, onAdded }: { storeId: number; onAdded: (story
 
   return (
     <div className="flex flex-col items-center gap-1.5 shrink-0">
-      <button
-        onClick={() => fileRef.current?.click()}
-        className="relative flex flex-col items-center justify-center size-14 rounded-full border-2 border-dashed border-slate-300 bg-slate-50 hover:border-red-500 hover:bg-red-50 hover:scale-105 transition-all duration-300"
-      >
-        <PlusCircle className="w-6 h-6 text-slate-400 group-hover:text-red-500" />
-      </button>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <button
+            className="relative flex flex-col items-center justify-center size-14 rounded-full border-2 border-dashed border-slate-300 bg-slate-50 hover:border-red-500 hover:bg-red-50 hover:scale-105 transition-all duration-300"
+          >
+            <PlusCircle className="w-6 h-6 text-slate-400 group-hover:text-red-500" />
+          </button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="center" className="rounded-2xl p-2 bg-white border-slate-100 shadow-2xl">
+          <DropdownMenuItem 
+            className="rounded-xl flex items-center gap-3 py-3 cursor-pointer focus:bg-red-50 focus:text-red-600"
+            onClick={() => fileRef.current?.click()}
+          >
+            <PlusCircle className="w-4 h-4" />
+            <span className="font-bold text-sm text-slate-600">Galerie</span>
+          </DropdownMenuItem>
+          <DropdownMenuItem 
+            className="rounded-xl flex items-center gap-3 py-3 cursor-pointer focus:bg-red-50 focus:text-red-600"
+            onClick={() => setShowCamera(true)}
+          >
+            <Camera className="w-4 h-4" />
+            <span className="font-bold text-sm text-slate-600">Caméra Live</span>
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+      
       <span className="text-[11px] text-slate-500 font-semibold tracking-tight">Ma story</span>
+      
+      {showCamera && (
+        <CameraCapture 
+          onCapture={handleCameraCapture} 
+          onClose={() => setShowCamera(false)} 
+        />
+      )}
       
       <input
         ref={fileRef}
@@ -297,6 +365,95 @@ function timeAgo(dateStr: string) {
   return `${Math.floor(diff / 24)}j`;
 }
 
+// ─── Dialog Wrapper for Discover Feed ─────────────────────────────────────────
+export function BusinessStoriesDialog({ 
+  storeId, 
+  isOpen, 
+  onOpenChange,
+  isOwner = false 
+}: { 
+  storeId: number; 
+  isOpen: boolean; 
+  onOpenChange: (open: boolean) => void;
+  isOwner?: boolean;
+}) {
+  const [stories, setStories] = useState<RealStory[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (isOpen && storeId) {
+      setLoading(true);
+      getBusinessStories(storeId).then(data => {
+        setStories(data);
+        setLoading(false);
+      });
+    }
+  }, [isOpen, storeId]);
+
+  return (
+    <Dialog open={isOpen} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-md bg-black/95 border-0 p-0 overflow-hidden aspect-[9/16] rounded-3xl">
+        <DialogTitle className="sr-only">Stories du commerce</DialogTitle>
+        
+        {loading ? (
+          <div className="size-full flex items-center justify-center">
+            <Loader2 className="animate-spin text-white/20 size-10" />
+          </div>
+        ) : stories.length > 0 ? (
+          <Story className="relative size-full bg-black" duration={5000} mediaLength={stories.length}>
+            {stories.map((story, i) => {
+              const isBusinessOwner = story.author_id === story.stores?.owner_id;
+              const authorName = isBusinessOwner ? 'Propriétaire' : (story.author?.full_name || 'Client');
+              const avatarUrl = isBusinessOwner ? (story.stores?.logo_url || story.author?.avatar_url) : story.author?.avatar_url;
+              const accentColor = ACCENT_COLORS[i % ACCENT_COLORS.length];
+
+              return (
+                <StorySlide key={story.id} index={i} className="absolute inset-0 size-full">
+                  <div className="absolute top-0 inset-x-0 z-20 px-4 pt-8 bg-gradient-to-b from-black/80 to-transparent">
+                    <div className="flex items-center gap-2.5">
+                      <Avatar className="size-9 border-2 border-white/60">
+                        <AvatarImage src={avatarUrl || ''} alt={authorName} />
+                        <AvatarFallback>{authorName.slice(0, 2).toUpperCase()}</AvatarFallback>
+                      </Avatar>
+                      <div className="flex flex-col flex-1 min-w-0">
+                        <StoryProgress className="flex-1" progressWrapClass="h-1 bg-white/30 rounded-full" progressActiveClass={accentColor} />
+                        <span className="text-white text-xs font-bold mt-1">
+                          {authorName} {isBusinessOwner && <span className="ml-1 text-[8px] bg-red-600 px-1 rounded uppercase">Propriétaire</span>}
+                        </span>
+                      </div>
+                      <Button variant="ghost" className="text-white hover:bg-white/10 size-8 p-0 rounded-full" onClick={() => onOpenChange(false)}>
+                        <X className="size-5" />
+                      </Button>
+                    </div>
+                  </div>
+
+                  {story.media_type === 'video' ? (
+                    <video src={story.media_url} className="w-full h-full object-cover" autoPlay loop muted playsInline />
+                  ) : (
+                    <img src={story.media_url} alt="Story" className="w-full h-full object-cover" />
+                  )}
+
+                  {story.caption && (
+                    <div className="absolute bottom-10 inset-x-0 p-6 text-center bg-gradient-to-t from-black/80 to-transparent">
+                      <p className="text-white font-medium">{story.caption}</p>
+                    </div>
+                  )}
+                </StorySlide>
+              );
+            })}
+            <StoryOverlay />
+          </Story>
+        ) : (
+          <div className="size-full flex flex-col items-center justify-center text-white/40 gap-3">
+             <VideoIcon className="size-12 opacity-20" />
+             <p>Aucune story active</p>
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 // ─── Main exported component ──────────────────────────────────────────────────
 interface BusinessStoriesProps {
   businessName: string;
@@ -305,7 +462,7 @@ interface BusinessStoriesProps {
   canAddStory?: boolean;
 }
 
-export function BusinessStories({ storeId, initialStories = [], canAddStory = false }: BusinessStoriesProps) {
+export function BusinessStories({ storeId, initialStories = [], canAddStory = false, isOwner = false }: BusinessStoriesProps & { isOwner?: boolean }) {
   const [stories, setStories] = useState<RealStory[]>(initialStories);
 
   const handleAdded = (newStory: RealStory) => {
@@ -338,7 +495,7 @@ export function BusinessStories({ storeId, initialStories = [], canAddStory = fa
 
         <div className="flex gap-5 overflow-x-auto pb-4 scrollbar-none snap-x h-full">
           {/* Add story button restricted by canAddStory */}
-          {canAddStory && <AddStoryButton storeId={storeId} onAdded={handleAdded} />}
+          {canAddStory && <AddStoryButton storeId={storeId} isOwner={isOwner} onAdded={handleAdded} />}
           
           {/* Real stories */}
           {stories.map((story, i) => (
