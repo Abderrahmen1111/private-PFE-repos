@@ -1,0 +1,23 @@
+--- ANALYSE 1 : Authentification & Commandes ---
+- Corrigé les redirections par rôle (pro -> /dashboard/[id]).
+- Aligné le flux de commande sur le status final 'COMPLETED'.
+- Précisé que le QR code est scanné par le propriétaire pour valider la livraison.
+
+--- ANALYSE 2 : Réservations & QR Code ---
+- Status des réservations alignés (CONFIRMED, COMPLETED).
+- Précisé que le propriétaire marque le service comme 'COMPLETED' après exécution.
+- QR Code : Clarifié que c'est le propriétaire qui scanne le code présenté par le client.
+
+--- ANALYSE 3 : Messagerie & Recherche ---
+- Recherche Sémantique : Détail complet du pipeline en 7 étapes (Normalisation, Expansion, Embedding, Hybrid, RRF, Re-ranking).
+- Messagerie : Identifié le système comme un chat Client-Magasin utilisant la table 'messages' avec métadonnées.
+
+--- ANALYSE 4 : Avis & Favoris ---
+- Avis : Ajout de la contrainte 'Achat/Réservation terminé' obligatoire pour les magasins ACTIFS.
+- Favoris : Correction du nom de la table ('saved_places' au lieu de favoris génériques) et clarification de l'action enregistrer l'établissement (store_id).
+- Note pour Analyse 5 : Analyser lib/actions/notifications.ts et vérifier l'Architecture Générale par rapport au backend réel.
+
+--- ANALYSE 5 : Notifications & Architecture ---
+- Notifications : Remplacement du concept "Push Device" par "Real-time WebSocket (Supabase)". Les notifications sont de type 'in-app' avec mise à jour du flag is_read.
+- Architecture : Ajout de QStash (Upstash) dans le diagramme d'architecture général, car il est utilisé pour les workers asynchrones (ex: synchronisation de commandes, retries).
+- Fin des 5 itérations. Tous les diagrammes ont été mis à jour pour refléter le code réel du projet !
