@@ -26,15 +26,16 @@ export async function trackEvent(
     // kept for backwards-compatibility but ignored — all events are now immediate
     _immediate = true,
 ) {
+    const { surface, event_type, ...restParams } = params;
     const event = {
         id: crypto.randomUUID(),
         session_id: getSessionId(),
         user_id: typeof localStorage !== 'undefined' ? localStorage.getItem('user_id') || null : null,
-        surface: params.surface,
+        surface,
         page_path: typeof window !== 'undefined' ? window.location.pathname : '/',
-        event_type: params.event_type,
+        event_type,
         created_at: new Date().toISOString(),
-        ...params,
+        ...restParams,
     };
 
     console.log('🎯 trackEvent:', event.event_type, '|', event.surface, '|', event.item_id ?? event.search_query ?? '');
