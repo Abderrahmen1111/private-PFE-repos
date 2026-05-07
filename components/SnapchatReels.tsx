@@ -102,7 +102,7 @@ export default function SnapchatReels() {
 
   const handleStoreClick = (story: SnapchatStory, position: number) => {
     // Track the click with position in the list
-    trackClick('discover', story.id, position, story.store_id);
+    trackClick('reels', story.id, position, story.store_id);
     if (story.store_id) {
        router.push(`/merchants/business/${story.store_id}`);
     } else {

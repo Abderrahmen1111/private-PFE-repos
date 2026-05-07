@@ -50,7 +50,7 @@ function DiscoverCardComponent({ item, priority = false }: DiscoverCardProps) {
   useEffect(() => {
     const id = window.setTimeout(() => setEntered(true), 50)
     // Track impression when card becomes visible
-    trackImpression('discover', item.id, 0, item.merchantId?.toString())
+    trackImpression('reels', item.id, 0, item.merchantId?.toString())
     return () => window.clearTimeout(id)
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -70,7 +70,7 @@ function DiscoverCardComponent({ item, priority = false }: DiscoverCardProps) {
     setTimeout(() => setIsDimmed(false), 200)
 
     // Track like event → saved immediately to events table
-    trackLike('discover', item.id, item.merchantId?.toString())
+    trackLike('reels', item.id, item.merchantId?.toString())
 
     if (numericId) {
       trackReelInteraction(numericId, 'like');
@@ -81,7 +81,7 @@ function DiscoverCardComponent({ item, priority = false }: DiscoverCardProps) {
     if (liked) {
       setLiked(false)
       // Track unlike event
-      trackUnlike('discover', item.id, item.merchantId?.toString())
+      trackUnlike('reels', item.id, item.merchantId?.toString())
       if (numericId) trackReelInteraction(numericId, 'like');
     } else {
       triggerLike()
@@ -152,10 +152,10 @@ function DiscoverCardComponent({ item, priority = false }: DiscoverCardProps) {
       })
       incrementSave()
       // Track save event
-      trackSave('discover', item.id, item.merchantId?.toString())
+      trackSave('reels', item.id, item.merchantId?.toString())
     } else {
       // Track unsave event
-      trackUnsave('discover', item.id, item.merchantId?.toString())
+      trackUnsave('reels', item.id, item.merchantId?.toString())
     }
 
     if (numericId) {
@@ -171,7 +171,7 @@ function DiscoverCardComponent({ item, priority = false }: DiscoverCardProps) {
 
   const handleBuy = useCallback(() => {
     // Track buy/booking click as a high-priority click event
-    trackClick('discover', item.id, 0, item.merchantId?.toString())
+    trackClick('reels', item.id, 0, item.merchantId?.toString())
 
     if (item.itemId) {
       const path = item.itemType === 'SERVICE' ? 'service' : 'product';
