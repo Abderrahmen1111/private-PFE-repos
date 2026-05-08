@@ -20,25 +20,24 @@ export async function POST(request: Request) {
     const supabaseAdmin = createAdminClient()
     const requestUrl = new URL(request.url)
 
-    // 1. Generate the Auth Link manually using the Admin API without sending an email via Supabase
+    // 1. Generate the Auth Link manually using the Admin API
     const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
       type: 'magiclink',
       email,
-      options: {
-        // Redirection callback pointing to our verify endpoint
-        redirectTo: `${requestUrl.origin}/api/auth/verify`,
-      }
     })
 
     if (linkError) {
-      return NextResponse.json(
+      return Response.json(
         { error: linkError.message },
         { status: 400 }
       )
     }
 
-    // Capture the generated link
-    const magicLink = linkData.properties.action_link
+    // 2. Construct the direct magic link to our verification endpoint
+    // This ensures the session is established on our domain
+    const tokenHash = linkData.properties.hashed_token
+    const redirectTo = requestUrl.searchParams.get('next') ?? '/'
+    const magicLink = `${requestUrl.origin}/api/auth/verify?token_hash=${tokenHash}&type=magiclink&next=${encodeURIComponent(redirectTo)}`
 
     // 2. Send the email using Resend
     const { error: resendError } = await resend.emails.send({

@@ -24,6 +24,8 @@ import {
 } from 'lucide-react'
 import { getReelComments, postReelComment, uploadCommentAttachment, ReelComment, deleteReelComment } from '@/lib/actions/comments'
 import { toast } from 'sonner'
+import { useTracking } from '@/hooks/useTracking'
+import { cn } from '@/lib/utils'
 
 interface CommentDrawerProps {
   isOpen: boolean
@@ -45,6 +47,7 @@ export function CommentDrawer({ isOpen, onClose, reelId }: CommentDrawerProps) {
   const [showStickers, setShowStickers] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
+  const { trackComment } = useTracking()
 
   useEffect(() => {
     if (isOpen && reelId) {
@@ -102,6 +105,9 @@ export function CommentDrawer({ isOpen, onClose, reelId }: CommentDrawerProps) {
       })
 
       if (result.success) {
+        // Track the comment event
+        trackComment('reels', reelId.toString(), undefined, result.comment?.id)
+        
         setNewComment('')
         setSelectedFile(null)
         setPreviewUrl(null)
@@ -125,6 +131,9 @@ export function CommentDrawer({ isOpen, onClose, reelId }: CommentDrawerProps) {
         attachmentType: 'sticker'
       })
       if (result.success) {
+        // Track the sticker comment
+        trackComment('reels', reelId.toString(), undefined, result.comment?.id)
+        
         fetchComments()
         setShowStickers(false)
       }
@@ -293,6 +302,3 @@ export function CommentDrawer({ isOpen, onClose, reelId }: CommentDrawerProps) {
   )
 }
 
-function cn(...classes: any[]) {
-  return classes.filter(Boolean).join(' ')
-}

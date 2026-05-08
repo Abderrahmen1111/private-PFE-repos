@@ -473,9 +473,7 @@ function BusinessOwnerContent() {
 
             {/* Quick actions */}
             <div className="flex gap-2 flex-wrap text-white items-center">
-              <Button variant="outline" size="sm" className="gap-1.5 rounded-xl text-xs font-semibold border-gray-200 hover:border-orange-300 hover:text-orange-600 transition-all">
-                <Edit2 className="w-3.5 h-3.5 text-white" /> Edit Profile
-              </Button>
+
               <Dialog open={isPasswordModalOpen} onOpenChange={setIsPasswordModalOpen}>
                 <DialogTrigger asChild>
                   <Button variant="outline" size="sm" className="gap-1.5 rounded-xl text-xs font-semibold border-gray-200">
@@ -493,7 +491,7 @@ function BusinessOwnerContent() {
                     </DialogDescription>
                   </DialogHeader>
                   <div className="pt-4 flex justify-end gap-2">
-                    <Button variant="outline" className="rounded-xl" onClick={() => setIsPasswordModalOpen(false)}>Cancel</Button>
+                    <Button variant="outline" className="rounded-xl text-white" onClick={() => setIsPasswordModalOpen(false)}>Cancel</Button>
                     <Button className="rounded-xl font-bold gap-2 bg-orange-500 hover:bg-orange-600" onClick={handlePasswordReset} disabled={isChangingPassword}>
                       {isChangingPassword && <Loader2 className="w-4 h-4 animate-spin" />}
                       Send Reset Link
@@ -501,9 +499,7 @@ function BusinessOwnerContent() {
                   </div>
                 </DialogContent>
               </Dialog>
-              <Button size="sm" className="gap-1.5 rounded-xl text-xs font-bold bg-orange-500 hover:bg-orange-600">
-                <Settings className="w-3.5 h-3.5" /> Settings
-              </Button>
+
             </div>
           </div>
 
@@ -554,7 +550,7 @@ function BusinessOwnerContent() {
           {/* Actions */}
           <div className="flex sm:flex-col gap-2 sm:w-36">
             <Button size="sm" className="flex-1 gap-1.5 text-xs rounded-xl font-bold bg-orange-500 hover:bg-orange-600" asChild>
-              <Link href={`/business/${business.id}`}><ExternalLink className="w-3.5 h-3.5" /> View Page</Link>
+              <Link href={`/merchants/business/${business.id}`}><ExternalLink className="w-3.5 h-3.5" /> View Page</Link>
             </Button>
             <Button size="sm" variant="outline" className="flex-1 gap-1.5 text-xs rounded-xl text-white font-semibold border-gray-200 hover:border-orange-300" asChild>
               <Link href={`/dashboard/${business.id}/profile`}><Edit2 className="w-3.5 h-3.5" /> Edit</Link>
@@ -833,11 +829,7 @@ function BusinessOwnerContent() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           <div className="space-y-4">
             <ProCard>
-              <SectionHeading icon={Building2} action={
-                <Button size="sm" variant="outline" className="gap-1.5 text-xs rounded-xl font-semibold border-gray-200 hover:border-orange-300" asChild>
-                  <Link href={`/dashboard/${business.id}/profile`}><Edit2 className="w-3 h-3" /> Edit</Link>
-                </Button>
-              }>
+              <SectionHeading icon={Building2} action={null}>
                 Business Details
               </SectionHeading>
               <div className="space-y-4">

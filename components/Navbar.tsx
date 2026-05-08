@@ -10,8 +10,8 @@ import {
 import { createClient } from '@/lib/supabase/client';
 import { signOut } from '@/lib/supabase/auth';
 import Link from 'next/link';
-import { NotificationDropdown } from '@/components/notifications/NotificationDropdown';
-import { UserDropdown } from '@/components/ui/user-dropdown';
+import { NotificationPopover } from '@/components/ui/notification-popover';
+import type { Notification } from '@/components/ui/notification-popover';import { UserDropdown } from '@/components/ui/user-dropdown';
 import { useState as useMotionState } from 'react';
 import { Menu, MenuItem, HoveredLink, ProductItem } from '@/components/ui/navbar-menu';
 import { useVoiceSearch } from '@/hooks/useVoiceSearch';
@@ -165,6 +165,8 @@ function ImageSearchModal({ onClose, onSearch }: {
     }
     setError(null);
     setFileName(file.name);
+    // Pre-fill analysis result with a cleaned version of the filename
+    setAnalysisResult(file.name.replace(/\.[^.]+$/, '').replace(/[_-]/g, ' '));
     const reader = new FileReader();
     reader.onload = (e) => setPreview(e.target?.result as string);
     reader.readAsDataURL(file);
@@ -207,8 +209,7 @@ function ImageSearchModal({ onClose, onSearch }: {
   };
 
   const handleSearch = () => {
-    const query = analysisResult || fileName.replace(/\.[^.]+$/, '');
-    onSearch(query, preview ?? undefined);
+    onSearch(analysisResult || fileName.replace(/\.[^.]+$/, ''), preview ?? undefined);
     onClose();
   };
 
@@ -291,14 +292,36 @@ function ImageSearchModal({ onClose, onSearch }: {
             </p>
           )}
 
-          {/* AI Analysis result */}
-          {analysisResult && (
-            <div className="flex items-start gap-2 p-3 rounded-xl bg-white/5 border border-white/10">
-              <span className="text-base mt-0.5">✨</span>
-              <div>
-                <p className="text-[11px] text-white/50 mb-0.5">AI detected</p>
-                <p className="text-sm text-white font-medium">{analysisResult}</p>
+          {/* Search Query / AI Analysis result */}
+          {preview && (
+            <div className="flex flex-col gap-2.5 p-4 rounded-2xl bg-white/5 border border-white/10 group focus-within:border-red-500/50 transition-all duration-200">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="w-5 h-5 rounded-md bg-red-500/20 flex items-center justify-center">
+                    <span className="text-[10px]">{analysisResult ? '✨' : '🔍'}</span>
+                  </div>
+                  <p className="text-[10px] text-white/50 uppercase tracking-widest font-bold">
+                    {isAnalyzing ? 'AI is analyzing...' : 'Search Keywords (Click to edit)'}
+                  </p>
+                </div>
+                {isAnalyzing && <Loader2 className="w-3.5 h-3.5 animate-spin text-red-500" />}
               </div>
+              
+              <div className="relative">
+                <input
+                  type="text"
+                  value={analysisResult}
+                  onChange={(e) => setAnalysisResult(e.target.value)}
+                  placeholder="Describe what you're looking for..."
+                  className="w-full bg-white/10 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder:text-white/20 focus:outline-none focus:ring-2 focus:ring-red-500/30 transition-all shadow-inner"
+                />
+              </div>
+              
+              {!isAnalyzing && !analysisResult && (
+                <p className="text-[10px] text-white/30 italic px-1">
+                  Tip: You can type your own keywords here or use AI below.
+                </p>
+              )}
             </div>
           )}
 
@@ -333,8 +356,17 @@ function ImageSearchModal({ onClose, onSearch }: {
 }
 
 // ─── Floating Category Menu (prompt-exact pattern) ───────────────────────────
-function CategoryFloatingMenu() {
+function CategoryFloatingMenu({ searchQuery, locationQuery }: { searchQuery: string, locationQuery: string }) {
   const [active, setActive] = useMotionState<string | null>(null);
+  
+  const getCombinedHref = (baseHref: string) => {
+    const [path, query] = baseHref.split('?');
+    const params = new URLSearchParams(query);
+    if (searchQuery) params.set('query', searchQuery);
+    if (locationQuery) params.set('location', locationQuery);
+    return `${path}?${params.toString()}`;
+  };
+
   return (
     <Menu setActive={setActive}>
 
@@ -343,25 +375,25 @@ function CategoryFloatingMenu() {
         <div className="grid grid-cols-2 gap-6 p-2 text-sm">
           <ProductItem
             title="Restaurants tunisiens"
-            href="/search?category=restaurants&sub=tunisien"
+            href={getCombinedHref("/search?category=restaurants&sub=tunisien")}
             src="https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=300&h=150&fit=crop"
             description="Saveurs authentiques et cuisine traditionnelle"
           />
           <ProductItem
             title="Fast Food"
-            href="/search?category=restaurants&sub=fastfood"
+            href={getCombinedHref("/search?category=restaurants&sub=fastfood")}
             src="https://images.unsplash.com/photo-1561758033-d89a9ad46330?w=300&h=150&fit=crop"
             description="Burgers, sandwichs et repas rapides"
           />
           <ProductItem
             title="Pizzerias"
-            href="/search?category=restaurants&sub=pizza"
+            href={getCombinedHref("/search?category=restaurants&sub=pizza")}
             src="https://images.unsplash.com/photo-1513104890138-7c749659a591?w=300&h=150&fit=crop"
             description="Pizzas artisanales cuites au feu de bois"
           />
           <ProductItem
             title="Cafés & Salons de thé"
-            href="/search?category=cafes"
+            href={getCombinedHref("/search?category=cafes")}
             src="https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?w=300&h=150&fit=crop"
             description="Pause café, thé et pâtisseries"
           />
@@ -371,16 +403,16 @@ function CategoryFloatingMenu() {
       {/* ── Services — simple HoveredLink list ── */}
       <MenuItem setActive={setActive} active={active} item="Services">
         <div className="flex flex-col space-y-1 text-sm">
-          <HoveredLink href="/search?category=services&sub=plomberie">
+          <HoveredLink href={getCombinedHref("/search?category=services&sub=plomberie")}>
             <Wrench className="w-3.5 h-3.5" /> Plomberie
           </HoveredLink>
-          <HoveredLink href="/search?category=services&sub=electricite">
+          <HoveredLink href={getCombinedHref("/search?category=services&sub=electricite")}>
             <Wrench className="w-3.5 h-3.5" /> Électricité
           </HoveredLink>
-          <HoveredLink href="/search?category=services&sub=clim">
+          <HoveredLink href={getCombinedHref("/search?category=services&sub=clim")}>
             <Wrench className="w-3.5 h-3.5" /> Climatisation
           </HoveredLink>
-          <HoveredLink href="/search?category=services&sub=demenagement">
+          <HoveredLink href={getCombinedHref("/search?category=services&sub=demenagement")}>
             <Wrench className="w-3.5 h-3.5" /> Déménagement
           </HoveredLink>
         </div>
@@ -391,25 +423,25 @@ function CategoryFloatingMenu() {
         <div className="grid grid-cols-2 gap-6 p-2 text-sm">
           <ProductItem
             title="Vêtements"
-            href="/search?category=shopping&sub=vetements"
+            href={getCombinedHref("/search?category=shopping&sub=vetements")}
             src="https://images.unsplash.com/photo-1558769132-cb1aea458c5e?w=300&h=150&fit=crop"
             description="Mode homme, femme et enfant"
           />
           <ProductItem
             title="Électronique"
-            href="/search?category=shopping&sub=electronique"
+            href={getCombinedHref("/search?category=shopping&sub=electronique")}
             src="https://images.unsplash.com/photo-1468495244123-6c6c332eeece?w=300&h=150&fit=crop"
             description="Smartphones, PC, TV et accessoires"
           />
           <ProductItem
             title="Maison & Déco"
-            href="/search?category=shopping&sub=maison"
+            href={getCombinedHref("/search?category=shopping&sub=maison")}
             src="https://images.unsplash.com/photo-1555041469-a586c61ea9bc?w=300&h=150&fit=crop"
             description="Meubles, décoration et art de vivre"
           />
           <ProductItem
             title="Sport & Loisirs"
-            href="/search?category=shopping&sub=sport"
+            href={getCombinedHref("/search?category=shopping&sub=sport")}
             src="https://images.unsplash.com/photo-1517649763962-0c623066013b?w=300&h=150&fit=crop"
             description="Équipements sportifs et loisirs"
           />
@@ -419,16 +451,16 @@ function CategoryFloatingMenu() {
       {/* ── Santé — simple list ── */}
       <MenuItem setActive={setActive} active={active} item="Santé">
         <div className="flex flex-col space-y-1 text-sm">
-          <HoveredLink href="/search?category=sante&sub=medecins">
+          <HoveredLink href={getCombinedHref("/search?category=sante&sub=medecins")}>
             <Stethoscope className="w-3.5 h-3.5" /> Médecins
           </HoveredLink>
-          <HoveredLink href="/search?category=sante&sub=pharmacies">
+          <HoveredLink href={getCombinedHref("/search?category=sante&sub=pharmacies")}>
             <Stethoscope className="w-3.5 h-3.5" /> Pharmacies
           </HoveredLink>
-          <HoveredLink href="/search?category=sante&sub=dentistes">
+          <HoveredLink href={getCombinedHref("/search?category=sante&sub=dentistes")}>
             <Stethoscope className="w-3.5 h-3.5" /> Dentistes
           </HoveredLink>
-          <HoveredLink href="/search?category=sante&sub=labo">
+          <HoveredLink href={getCombinedHref("/search?category=sante&sub=labo")}>
             <Stethoscope className="w-3.5 h-3.5" /> Laboratoires
           </HoveredLink>
         </div>
@@ -437,16 +469,16 @@ function CategoryFloatingMenu() {
       {/* ── Éducation — simple list ── */}
       <MenuItem setActive={setActive} active={active} item="Éducation">
         <div className="flex flex-col space-y-1 text-sm">
-          <HoveredLink href="/search?category=education&sub=cours">
+          <HoveredLink href={getCombinedHref("/search?category=education&sub=cours")}>
             <GraduationCap className="w-3.5 h-3.5" /> Cours particuliers
           </HoveredLink>
-          <HoveredLink href="/search?category=education&sub=langues">
+          <HoveredLink href={getCombinedHref("/search?category=education&sub=langues")}>
             <GraduationCap className="w-3.5 h-3.5" /> Langues
           </HoveredLink>
-          <HoveredLink href="/search?category=education&sub=info">
+          <HoveredLink href={getCombinedHref("/search?category=education&sub=info")}>
             <GraduationCap className="w-3.5 h-3.5" /> Informatique
           </HoveredLink>
-          <HoveredLink href="/search?category=education&sub=musique">
+          <HoveredLink href={getCombinedHref("/search?category=education&sub=musique")}>
             <GraduationCap className="w-3.5 h-3.5" /> Musique
           </HoveredLink>
         </div>
@@ -457,25 +489,25 @@ function CategoryFloatingMenu() {
         <div className="grid grid-cols-2 gap-6 p-2 text-sm">
           <ProductItem
             title="Garages & Réparation"
-            href="/search?category=auto&sub=garages"
+            href={getCombinedHref("/search?category=auto&sub=garages")}
             src="https://images.unsplash.com/photo-1625047509168-a7026f36de04?w=300&h=150&fit=crop"
             description="Mécaniciens et centres auto agréés"
           />
           <ProductItem
             title="Concessionnaires"
-            href="/search?category=auto&sub=concessionnaires"
+            href={getCombinedHref("/search?category=auto&sub=concessionnaires")}
             src="https://images.unsplash.com/photo-1552519507-da3b142c6e3d?w=300&h=150&fit=crop"
             description="Vente de véhicules neufs et d'occasion"
           />
           <ProductItem
             title="Location de voitures"
-            href="/search?category=auto&sub=location"
+            href={getCombinedHref("/search?category=auto&sub=location")}
             src="https://images.unsplash.com/photo-1541899481282-d53bffe3c35d?w=300&h=150&fit=crop"
             description="Louez une voiture au meilleur prix"
           />
           <ProductItem
             title="Auto-école"
-            href="/search?category=auto&sub=autoecole"
+            href={getCombinedHref("/search?category=auto&sub=autoecole")}
             src="https://images.unsplash.com/photo-1449965408869-eaa3f722e40d?w=300&h=150&fit=crop"
             description="Permis de conduire et formation"
           />
@@ -487,25 +519,25 @@ function CategoryFloatingMenu() {
         <div className="grid grid-cols-2 gap-6 p-2 text-sm">
           <ProductItem
             title="Agences immobilières"
-            href="/search?category=immobilier&sub=agences"
+            href={getCombinedHref("/search?category=immobilier&sub=agences")}
             src="https://images.unsplash.com/photo-1560518883-ce09059eeffa?w=300&h=150&fit=crop"
             description="Trouvez l'agence idéale près de chez vous"
           />
           <ProductItem
             title="Location"
-            href="/search?category=immobilier&sub=location"
+            href={getCombinedHref("/search?category=immobilier&sub=location")}
             src="https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=300&h=150&fit=crop"
             description="Appartements et maisons à louer"
           />
           <ProductItem
             title="Vente"
-            href="/search?category=immobilier&sub=vente"
+            href={getCombinedHref("/search?category=immobilier&sub=vente")}
             src="https://images.unsplash.com/photo-1570129477492-45c003edd2be?w=300&h=150&fit=crop"
             description="Achat de biens neufs et anciens"
           />
           <ProductItem
             title="Architectes"
-            href="/search?category=immobilier&sub=architectes"
+            href={getCombinedHref("/search?category=immobilier&sub=architectes")}
             src="https://images.unsplash.com/photo-1503387762-592deb58ef4e?w=300&h=150&fit=crop"
             description="Conception et rénovation de projets"
           />
@@ -515,16 +547,16 @@ function CategoryFloatingMenu() {
       {/* ── Beauté — simple list ── */}
       <MenuItem setActive={setActive} active={active} item="Beauté">
         <div className="flex flex-col space-y-1 text-sm">
-          <HoveredLink href="/search?category=beaute&sub=coiffeurs">
+          <HoveredLink href={getCombinedHref("/search?category=beaute&sub=coiffeurs")}>
             <Scissors className="w-3.5 h-3.5" /> Coiffeurs
           </HoveredLink>
-          <HoveredLink href="/search?category=beaute&sub=spa">
+          <HoveredLink href={getCombinedHref("/search?category=beaute&sub=spa")}>
             <Scissors className="w-3.5 h-3.5" /> Spa & Massage
           </HoveredLink>
-          <HoveredLink href="/search?category=beaute&sub=esthetique">
+          <HoveredLink href={getCombinedHref("/search?category=beaute&sub=esthetique")}>
             <Scissors className="w-3.5 h-3.5" /> Esthétique
           </HoveredLink>
-          <HoveredLink href="/search?category=beaute&sub=tatouage">
+          <HoveredLink href={getCombinedHref("/search?category=beaute&sub=tatouage")}>
             <Scissors className="w-3.5 h-3.5" /> Tatouage
           </HoveredLink>
         </div>
@@ -533,16 +565,16 @@ function CategoryFloatingMenu() {
       {/* ── Sport — simple list ── */}
       <MenuItem setActive={setActive} active={active} item="Sport">
         <div className="flex flex-col space-y-1 text-sm">
-          <HoveredLink href="/search?category=sport&sub=salles">
+          <HoveredLink href={getCombinedHref("/search?category=sport&sub=salles")}>
             <Dumbbell className="w-3.5 h-3.5" /> Salles de sport
           </HoveredLink>
-          <HoveredLink href="/search?category=sport&sub=yoga">
+          <HoveredLink href={getCombinedHref("/search?category=sport&sub=yoga")}>
             <Dumbbell className="w-3.5 h-3.5" /> Yoga & Pilates
           </HoveredLink>
-          <HoveredLink href="/search?category=sport&sub=natation">
+          <HoveredLink href={getCombinedHref("/search?category=sport&sub=natation")}>
             <Dumbbell className="w-3.5 h-3.5" /> Natation
           </HoveredLink>
-          <HoveredLink href="/search?category=sport&sub=artsmartiaux">
+          <HoveredLink href={getCombinedHref("/search?category=sport&sub=artsmartiaux")}>
             <Dumbbell className="w-3.5 h-3.5" /> Arts martiaux
           </HoveredLink>
         </div>
@@ -551,16 +583,16 @@ function CategoryFloatingMenu() {
       {/* ── Informatique — simple list ── */}
       <MenuItem setActive={setActive} active={active} item="Informatique">
         <div className="flex flex-col space-y-1 text-sm">
-          <HoveredLink href="/search?category=informatique&sub=reparation">
+          <HoveredLink href={getCombinedHref("/search?category=informatique&sub=reparation")}>
             <Laptop className="w-3.5 h-3.5" /> Réparation PC
           </HoveredLink>
-          <HoveredLink href="/search?category=informatique&sub=devweb">
+          <HoveredLink href={getCombinedHref("/search?category=informatique&sub=devweb")}>
             <Laptop className="w-3.5 h-3.5" /> Développement web
           </HoveredLink>
-          <HoveredLink href="/search?category=informatique&sub=securite">
+          <HoveredLink href={getCombinedHref("/search?category=informatique&sub=securite")}>
             <Laptop className="w-3.5 h-3.5" /> Sécurité réseau
           </HoveredLink>
-          <HoveredLink href="/search?category=informatique&sub=formation">
+          <HoveredLink href={getCombinedHref("/search?category=informatique&sub=formation")}>
             <Laptop className="w-3.5 h-3.5" /> Formation bureautique
           </HoveredLink>
         </div>
@@ -587,6 +619,14 @@ export default function Navbar() {
 
 
   const [profileOpen, setProfileOpen] = useState(false);
+
+  // Notifications State
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+
+  const handleNotificationsChange = (updatedNotifications: Notification[]) => {
+    setNotifications(updatedNotifications);
+  };
+  
   const [imageSearchOpen, setImageSearchOpen] = useState(false);
   const profileRef = useRef<HTMLDivElement>(null);
   
@@ -1158,7 +1198,16 @@ export default function Navbar() {
                       </Link>
 
                       {/* Notification Dropdown */}
-                      <NotificationDropdown />
+                      <NotificationPopover
+  notifications={notifications}
+  onNotificationsChange={handleNotificationsChange}
+  buttonClassName="relative group/notification w-10 h-10 flex items-center justify-center rounded-2xl bg-[#11111198] hover:bg-[#111111d1] backdrop-blur-sm border border-white/10 transition-all duration-300"
+  popoverClassName="bg-[#11111198] backdrop-blur-sm border border-white/10"
+  textColor="text-white"
+  hoverBgColor="hover:bg-white/10"
+  dividerColor="divide-white/10"
+  headerBorderColor="border-white/10"
+/>
                     </div>
 
                     <div className="relative inline-flex items-center justify-center ml-2">
@@ -1230,9 +1279,48 @@ export default function Navbar() {
           </div>
         </div>
 
-        {/* Category line removed as requested */}
+        {/* ── Floating Category Menu — exactly as per prompt ─────────── */}
+        {/* Desktop only: floating pill below navbar */}
+        {isHome && (
+          <div className="hidden md:flex justify-center w-full mt-3 px-4">
+            <CategoryFloatingMenu searchQuery={searchQuery} locationQuery={locationQuery} />
+          </div>
+        )}
 
-    </nav>
+        {/* Mobile: horizontal scroll chips */}
+        {isHome && (
+          <div className="md:hidden border-t border-white/10 bg-black/50 backdrop-blur-md px-4 py-2">
+          <div className="flex items-center gap-2 overflow-x-auto scrollbar-none">
+            {categoryMenuItems.map((cat) => {
+              const Icon = cat.icon;
+              const [path, query] = cat.href.split('?');
+              const params = new URLSearchParams(query);
+              if (searchQuery) params.set('query', searchQuery);
+              if (locationQuery) params.set('location', locationQuery);
+              const combinedHref = `${path}?${params.toString()}`;
+
+              return (
+                <Link
+                  key={cat.label}
+                  href={combinedHref}
+                  className="flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/8 border border-white/10 text-xs text-white/70 hover:text-white hover:bg-white/15 transition-all active:scale-95"
+                >
+                  <Icon className="w-3 h-3" />
+                  {cat.label}
+                </Link>
+              );
+            })}
+            <Link
+              href="/categories"
+              className="flex-shrink-0 px-3 py-1.5 rounded-full bg-red-600/20 border border-red-500/30 text-xs text-red-400 font-semibold hover:bg-red-600/30 transition-all"
+            >
+              Tout voir
+            </Link>
+          </div>
+        </div>
+        )}
+
+      </header>
     </>
   );
 }

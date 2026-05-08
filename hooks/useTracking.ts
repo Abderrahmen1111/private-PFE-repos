@@ -343,6 +343,22 @@ export function useTracking() {
         }, true); // immediate
     }, []);
 
+    /** Track a comment on an item. */
+    const trackComment = useCallback((
+        surface: Surface,
+        itemId: string,
+        merchantId?: string,
+        commentId?: string | number,
+    ) => {
+        trackEvent({
+            surface,
+            event_type: 'comment',
+            item_id: itemId,
+            merchant_id: merchantId,
+            metadata: { comment_id: commentId },
+        }, true); // immediate
+    }, []);
+
     /** Track sharing an item to an external platform. */
     const trackShare = useCallback((
         surface: Surface,
@@ -578,6 +594,7 @@ export function useTracking() {
         trackUnlike,
         trackSave,
         trackUnsave,
+        trackComment,
         trackShare,
         trackFollow,
         trackUnfollow,

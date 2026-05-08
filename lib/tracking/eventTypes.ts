@@ -40,6 +40,7 @@ export type EventType =
   | "unlike"
   | "save"
   | "unsave"
+  | "comment"
   | "share"
   | "follow"
   | "unfollow"
