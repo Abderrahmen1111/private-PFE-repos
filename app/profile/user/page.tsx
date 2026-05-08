@@ -11,12 +11,14 @@ import OrderCard from '@/components/profile/order-card';
 import EmptyState from '@/components/profile/empty-state';
 import ActivityItem from '@/components/profile/activity-item';
 import UserReservationsList from '@/components/profile/UserReservationsList';
-import { Save, Lock, Trash2, Loader2, ShoppingBag, Star, Heart, Activity as ActivityIcon, CalendarDays } from 'lucide-react';
+import { Save, Lock, Trash2, Loader2, ShoppingBag, Star, Heart, Activity as ActivityIcon, CalendarDays, AlertTriangle } from 'lucide-react';
 import { getUserProfileData } from '@/lib/actions/profile';
 import { updateProfile, updateAvatar, deleteAccount } from '@/lib/actions/users';
 import { sendPasswordResetEmail } from '@/lib/actions/auth';
 import { toggleSaveAction } from '@/lib/actions/favorites';
 import { toast } from 'sonner';
+import Navbar from '@/components/Navbar';
+import Footer from '@/components/Footer';
 
 // ─── Settings Tab ─────────────────────────────────────────────────────────────
 
@@ -27,7 +29,9 @@ function SettingsTab({ user, onUpdate, router }: { user: any, onUpdate: () => vo
   const [form, setForm] = useState({ 
     name: user?.profile?.full_name || '', 
     email: user?.email || '', 
-    city: user?.profile?.city || '' 
+    city: user?.profile?.city || '',
+    phone: user?.profile?.phone || '',
+    bio: user?.profile?.bio || ''
   });
 
   const handleSave = async () => {
@@ -35,7 +39,9 @@ function SettingsTab({ user, onUpdate, router }: { user: any, onUpdate: () => vo
     try {
       const { error } = await updateProfile(user.id, {
         full_name: form.name,
-        city: form.city
+        city: form.city,
+        phone: form.phone,
+        bio: form.bio
       });
       if (error) throw error;
       toast.success('Profil mis à jour avec succès');
@@ -86,9 +92,10 @@ function SettingsTab({ user, onUpdate, router }: { user: any, onUpdate: () => vo
           {[
             { label: 'Nom complet', key: 'name', type: 'text', placeholder: 'Votre nom complet' },
             { label: 'Adresse e-mail', key: 'email', type: 'email', placeholder: 'votre@email.com', disabled: true },
+            { label: 'Téléphone', key: 'phone', type: 'tel', placeholder: '+216 -- --- ---' },
             { label: 'Ville', key: 'city', type: 'text', placeholder: 'Votre ville' },
           ].map(({ label, key, type, placeholder, disabled }) => (
-            <div key={key} className={key === 'city' ? 'sm:col-span-2' : ''}>
+            <div key={key}>
               <label className="block text-[10px] uppercase font-black text-gray-400 tracking-widest mb-3 ml-1">{label}</label>
               <input
                 type={type}
@@ -100,6 +107,17 @@ function SettingsTab({ user, onUpdate, router }: { user: any, onUpdate: () => vo
               />
             </div>
           ))}
+          <div className="sm:col-span-2">
+            <label className="block text-[10px] uppercase font-black text-gray-400 tracking-widest mb-3 ml-1">Biographie</label>
+            <textarea
+              value={form.bio}
+              onChange={e => setForm(f => ({ ...f, bio: e.target.value }))}
+              placeholder="Parlez-nous de vous..."
+              rows={3}
+              className="w-full px-5 py-4 rounded-2xl border border-gray-100 bg-gray-50/50 text-sm font-bold text-gray-900 focus:outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all placeholder-gray-400 resize-none"
+            />
+          </div>
+
         </div>
         <button 
           onClick={handleSave}
@@ -216,7 +234,30 @@ function ProfileContent() {
 
   return (
     <div className="min-h-screen bg-gray-50/30 selection:bg-indigo-100 selection:text-indigo-900">
+      <Navbar />
       <div className="max-w-5xl mx-auto px-4 sm:px-10 py-10 space-y-8">
+        {/* Rejection Alert */}
+        {user.ownedStoreStatus === 'REJECTED' && (
+          <motion.div 
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="bg-rose-50 border border-rose-200 rounded-[2rem] p-6 sm:p-8 flex flex-col sm:flex-row items-center gap-6 shadow-xl shadow-rose-500/5"
+          >
+            <div className="w-14 h-14 rounded-2xl bg-rose-500 flex items-center justify-center shrink-0 shadow-lg shadow-rose-200">
+              <AlertTriangle className="w-7 h-7 text-white" />
+            </div>
+            <div className="text-center sm:text-left flex-1">
+              <h3 className="text-lg font-black text-gray-900 tracking-tight uppercase">Demande refusée</h3>
+              <p className="text-sm font-bold text-gray-500 mt-1">Désolé, votre demande de création de boutique a été refusée par l'administrateur. Votre compte a été repassé en mode Client.</p>
+            </div>
+            <button 
+              onClick={() => router.push('/support')}
+              className="px-6 py-3 bg-gray-900 hover:bg-black text-white text-[10px] font-black uppercase tracking-widest rounded-xl transition-all shadow-lg shadow-gray-200"
+            >
+              Contacter le support
+            </button>
+          </motion.div>
+        )}
 
         {/* Header */}
         <ProfileHeader
@@ -226,11 +267,14 @@ function ProfileContent() {
           memberSince={user.profile?.created_at ? new Date(user.profile.created_at).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' }) : 'Inconnu'}
           isVerified={true}
           avatarUrl={user.profile?.avatar_url}
+          phone={user.profile?.phone}
+          bio={user.profile?.bio}
           onEditProfile={() => setActiveTab('settings')}
           userUrl={typeof window !== 'undefined' ? `${window.location.origin}/profile/user` : ''}
           onAvatarUpdate={handleAvatarUpdate}
           isUpdatingAvatar={isUpdatingAvatar}
         />
+
 
         {/* Stats */}
         <ProfileStats
@@ -407,6 +451,7 @@ function ProfileContent() {
           </AnimatePresence>
         </main>
       </div>
+      <Footer />
     </div>
   );
 }

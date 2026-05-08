@@ -3,6 +3,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
+import { generateEmbedding } from '@/lib/openrouter-embeddings'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -238,6 +239,7 @@ export async function addBusiness(formData: FormData) {
                     data_source: 'user_created',
                     website: website || null,
                     description: description || null,
+                    embedding: await generateEmbedding(`${name} ${description || ''} ${category}`).catch(() => null),
                 })
                 .select('id')
                 .single()
@@ -265,6 +267,7 @@ export async function addBusiness(formData: FormData) {
                     longitude: lng,
                     status: 'ACTIVE',
                     description: description || null,
+                    embedding: await generateEmbedding(`${name} ${description || ''} ${category}`).catch(() => null),
                 })
                 .select('service_id')
                 .single()
@@ -326,6 +329,7 @@ export async function addBusiness(formData: FormData) {
         rne: rne || null,
         business_registration: rne || null,
         status: 'PENDING',
+        embedding: await generateEmbedding(`${name} ${description || ''} ${category}`).catch(() => null),
     }
 
     // Lier selon le type

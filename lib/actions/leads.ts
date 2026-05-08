@@ -10,12 +10,13 @@ import { syncOrderTransaction } from './transactions';
 export async function getLeadActions(storeId: number) {
     const supabase = createClient()
     
-    // Get orders with item details
+    // Get orders with item details and fraud signals
     const { data: orders } = await supabase
         .from('orders')
         .select(`
             id, 
             order_number,
+            customer_id,
             customer_name, 
             customer_phone,
             customer_email,
@@ -30,18 +31,26 @@ export async function getLeadActions(storeId: number) {
                 id,
                 name,
                 main_image
+            ),
+            fraud:order_fraud_checks (
+                score,
+                level,
+                recommendation,
+                ai_reasoning,
+                signals
             )
         `)
         .eq('store_id', storeId)
         .order('created_at', { ascending: false })
         .limit(50)
     
-    // Get bookings with item details
+    // Get bookings with item details and fraud signals
     const { data: bookings } = await supabase
         .from('bookings')
         .select(`
             id, 
             booking_number,
+            customer_id,
             customer_name, 
             customer_phone,
             customer_email,
@@ -56,6 +65,13 @@ export async function getLeadActions(storeId: number) {
                 id,
                 name,
                 main_image
+            ),
+            fraud:booking_fraud_checks (
+                score,
+                level,
+                recommendation,
+                ai_reasoning,
+                signals
             )
         `)
         .eq('store_id', storeId)

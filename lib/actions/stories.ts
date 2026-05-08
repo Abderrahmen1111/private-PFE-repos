@@ -123,6 +123,55 @@ export async function recordStoryView(storyId: number) {
 }
 
 // Upload a story media file to storage and return the public URL
+// Publier une Story avec Upload Cloudinary intégré
+export async function uploadAndPublishStory(formData: FormData) {
+    const file = formData.get('file') as File | null;
+    const storeId = Number(formData.get('storeId'));
+    const caption = formData.get('caption') as string;
+
+    if (!file) return { success: false, error: "Fichier manquant" };
+    if (!storeId) return { success: false, error: "Store ID manquant" };
+
+    const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
+    if (!cloudName) return { success: false, error: "Cloudinary non configuré" };
+
+    const isVideo = file.type.startsWith('video/');
+    const uploadEndpoint = isVideo
+        ? `https://api.cloudinary.com/v1_1/${cloudName}/video/upload`
+        : `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`;
+
+    const cloudinaryFormData = new FormData();
+    cloudinaryFormData.append('file', file);
+    cloudinaryFormData.append('upload_preset', 'ro2ya_reels'); // on peut réutiliser le preset ou en créer un autre
+
+    try {
+        const response = await fetch(uploadEndpoint, {
+            method: 'POST',
+            body: cloudinaryFormData,
+        });
+
+        if (!response.ok) {
+            console.error('Cloudinary error:', await response.text());
+            return { success: false, error: "Échec de l'upload Cloudinary" };
+        }
+
+        const data = await response.json();
+        const mediaUrl = data.secure_url;
+
+        // Save to Supabase
+        return await publishStory({
+            storeId,
+            mediaUrl,
+            mediaType: isVideo ? 'video' : 'image',
+            caption
+        });
+
+    } catch (error: any) {
+        console.error('Error in uploadAndPublishStory:', error);
+        return { success: false, error: error.message || "Erreur serveur" };
+    }
+}
+
 export async function uploadStoryMedia(formData: FormData): Promise<string | null> {
     const file = formData.get('file') as File | null;
     if (!file) return null;

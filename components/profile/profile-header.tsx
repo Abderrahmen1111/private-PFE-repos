@@ -1,10 +1,13 @@
 'use client';
 
-import { Camera, MapPin, Calendar, BadgeCheck, Share2, Twitter, Facebook, Linkedin, Link as LinkIcon, Loader2 } from 'lucide-react';
+import { Camera, MapPin, Calendar, BadgeCheck, Share2, Twitter, Facebook, Linkedin, Link as LinkIcon, Loader2, Phone } from 'lucide-react';
+
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRef } from 'react';
 import { ShareButton } from '@/components/ui/share-button';
 import { toast } from 'sonner';
+import { getAvatarUrl } from '@/lib/utils/avatar';
+
 
 interface ProfileHeaderProps {
   name: string;
@@ -17,10 +20,13 @@ interface ProfileHeaderProps {
   userUrl?: string;
   onAvatarUpdate?: (file: File) => void;
   isUpdatingAvatar?: boolean;
+  phone?: string;
+  bio?: string;
 }
 
+
 export default function ProfileHeader({ 
-  name, email, city, memberSince, avatarUrl, isVerified, onEditProfile, userUrl, onAvatarUpdate, isUpdatingAvatar 
+  name, email, city, memberSince, avatarUrl, isVerified, onEditProfile, userUrl, onAvatarUpdate, isUpdatingAvatar, phone, bio 
 }: ProfileHeaderProps) {
   const initials = name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -91,11 +97,13 @@ export default function ProfileHeader({
               animate={{ scale: 1, opacity: 1 }}
               className="w-24 h-24 sm:w-32 sm:h-32 rounded-[2rem] border-4 border-white shadow-2xl overflow-hidden bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center relative z-10"
             >
-              {avatarUrl
-                ? <img src={avatarUrl} alt={name} className="w-full h-full object-cover" />
-                : <span className="text-3xl sm:text-4xl font-black text-white tracking-tighter">{initials}</span>
-              }
+              <img 
+                src={getAvatarUrl(avatarUrl, name)} 
+                alt={name} 
+                className="w-full h-full object-cover" 
+              />
             </motion.div>
+
             
             {/* Pulsing glow behind avatar */}
             <div className="absolute inset-0 rounded-[2rem] bg-indigo-500/30 blur-xl scale-95 opacity-0 group-hover/avatar:opacity-100 transition-opacity duration-500 -z-0" />
@@ -151,13 +159,31 @@ export default function ProfileHeader({
           <div className="flex items-center gap-5 mt-5 flex-wrap">
             <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-gray-50 border border-gray-100 group/meta transition-colors hover:bg-white hover:border-indigo-100">
               <MapPin className="w-4 h-4 text-gray-400 group-hover/meta:text-indigo-500 transition-colors" />
-              <span className="text-xs font-bold text-gray-600">{city}</span>
+              <span className="text-xs font-bold text-gray-600">{city || 'Tunisie'}</span>
             </div>
+
+            {phone && (
+              <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-gray-50 border border-gray-100 group/meta transition-colors hover:bg-white hover:border-indigo-100">
+                <Phone className="w-4 h-4 text-gray-400 group-hover/meta:text-indigo-500 transition-colors" />
+                <span className="text-xs font-bold text-gray-600">{phone}</span>
+              </div>
+            )}
+
             <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-gray-50 border border-gray-100 group/meta transition-colors hover:bg-white hover:border-indigo-100">
               <Calendar className="w-4 h-4 text-gray-400 group-hover/meta:text-indigo-500 transition-colors" />
               <span className="text-xs font-bold text-gray-600">Joined {memberSince}</span>
             </div>
           </div>
+
+          {bio && (
+            <div className="mt-6 p-5 rounded-[2rem] bg-gray-50/50 border border-gray-100/50 relative overflow-hidden group/bio">
+              <div className="absolute top-0 left-0 w-1 h-full bg-indigo-500 opacity-20 group-hover/bio:opacity-100 transition-opacity" />
+              <p className="text-sm text-gray-600 leading-relaxed font-medium italic">
+                "{bio}"
+              </p>
+            </div>
+          )}
+
         </div>
       </div>
     </div>

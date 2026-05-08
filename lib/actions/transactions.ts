@@ -13,6 +13,9 @@ export type Transaction = {
   details?: string;
   original_id?: number;
   qr_code_token?: string | null;
+  fraud_score?: number;
+  fraud_level?: string;
+  fraud_ai_reasoning?: string;
 };
 
 const STATUS_MAP: Record<string, 'pending' | 'completed' | 'failed' | 'refunded'> = {
@@ -120,34 +123,42 @@ export async function getStoreTransactions(storeId: number): Promise<Transaction
   const orderNumbers = transactionsData.filter((t: any) => !t.booking_id).map((t: any) => t.order_number);
   const bookingIds = transactionsData.filter((t: any) => t.booking_id).map((t: any) => t.booking_id);
 
-  let orderMap = new Map<string, { id: number, name: string }>();
-  let bookingMap = new Map<number, { name: string }>();
+  let orderMap = new Map<string, { id: number, name: string, fraud?: any }>();
+  let bookingMap = new Map<number, { name: string, fraud?: any }>();
 
   if (orderNumbers.length > 0) {
     const { data: orders } = await supabase
       .from('orders')
-      .select('id, order_number, items(name)')
+      .select('id, order_number, items(name), fraud:order_fraud_checks(score, level, ai_reasoning)')
       .in('order_number', orderNumbers);
 
     (orders || []).forEach((o: any) => {
-      orderMap.set(o.order_number, { id: o.id, name: o.items?.name || 'Produit' });
+      orderMap.set(o.order_number, { 
+        id: o.id, 
+        name: o.items?.name || 'Produit',
+        fraud: o.fraud 
+      });
     });
   }
 
   if (bookingIds.length > 0) {
     const { data: bookings } = await supabase
       .from('bookings')
-      .select('id, items(name)')
+      .select('id, items(name), fraud:booking_fraud_checks(score, level, ai_reasoning)')
       .in('id', bookingIds);
 
     (bookings || []).forEach((b: any) => {
-      bookingMap.set(b.id, { name: b.items?.name || 'Service' });
+      bookingMap.set(b.id, { 
+        name: b.items?.name || 'Service',
+        fraud: b.fraud
+      });
     });
   }
 
   return transactionsData.map((t: any) => {
     const orderInfo = !t.booking_id ? orderMap.get(t.order_number) : null;
     const bookingInfo = t.booking_id ? bookingMap.get(t.booking_id) : null;
+    const fraud = orderInfo?.fraud || bookingInfo?.fraud;
 
     return {
       id: t.id,
@@ -160,6 +171,9 @@ export async function getStoreTransactions(storeId: number): Promise<Transaction
       details: bookingInfo?.name || orderInfo?.name || (t.booking_id ? 'Réservation service' : 'Vente produit'),
       original_id: t.booking_id || orderInfo?.id || undefined,
       qr_code_token: t.qr_code_token || null,
+      fraud_score: fraud?.score,
+      fraud_level: fraud?.level,
+      fraud_ai_reasoning: fraud?.ai_reasoning,
     };
   });
 }

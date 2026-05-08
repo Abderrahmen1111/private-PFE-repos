@@ -52,16 +52,30 @@ export async function getAdminItemsByStoreId(storeId: number): Promise<Item[]> {
     return items as Item[]
 }
 
+import { generateEmbedding } from '@/lib/openrouter-embeddings'
+
 /**
  * Creates or updates an item.
  */
 export async function upsertItem(item: Partial<Item> & { store_id: number }) {
     const supabase = createClient()
 
+    // Generate embedding automatically before saving
+    let embedding: number[] | null = null;
+    try {
+        const textToEmbed = `${item.name || ''} ${item.description || ''}`.trim();
+        if (textToEmbed.length > 2) {
+            embedding = await generateEmbedding(textToEmbed);
+        }
+    } catch (e) {
+        console.error('Failed to generate embedding for item:', e);
+    }
+
     const { data, error } = await supabase
         .from('items')
         .upsert({
             ...item,
+            embedding,
             updated_at: new Date().toISOString()
         } as any)
         .select()

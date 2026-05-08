@@ -461,6 +461,7 @@ function BusinessOwnerContent() {
                     { icon: Calendar, text: `Since ${owner.joinDate}` },
                     { icon: MapPin,   text: owner.location },
                     { icon: Mail,     text: owner.email },
+                    { icon: Phone,    text: owner.phone },
                   ].map(({ icon: Icon, text }) => (
                     <span key={text} className="flex items-center gap-1 text-[11px] text-gray-500">
                       <Icon className="w-3 h-3 opacity-60" />{text}
@@ -512,8 +513,6 @@ function BusinessOwnerContent() {
               {twoFactor ? <CheckCircle className="w-3 h-3" /> : <AlertTriangle className="w-3 h-3" />}
               2FA {twoFactor ? 'Enabled' : 'Disabled'}
             </Pill>
-            <Pill color="blue"><Wifi className="w-3 h-3" /> Last login: 2h ago</Pill>
-            <Pill><Phone className="w-3 h-3" /> {owner.phone}</Pill>
           </div>
         </div>
       </div>

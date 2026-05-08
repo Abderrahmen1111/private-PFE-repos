@@ -5,7 +5,7 @@ import { useRouter, usePathname } from 'next/navigation';
 import {
   FolderKanban, Search, MapPin, Plus, Camera, X, Upload, Loader2, Mic, MicOff, Navigation,
   Utensils, Wrench, ShoppingBag, Stethoscope, GraduationCap, Car, Home, Scissors,
-  Dumbbell, Laptop, Bell, MessageCircle, ShoppingCart
+  Dumbbell, Laptop, Bell, MessageCircle, ShoppingCart, AlertTriangle
 } from "lucide-react";
 import { createClient } from '@/lib/supabase/client';
 import { signOut } from '@/lib/supabase/auth';
@@ -580,7 +580,12 @@ export default function Navbar() {
   const [locationQuery, setLocationQuery] = useState('');
   const [user, setUser] = useState<any>(null);
   const [userRole, setUserRole] = useState<string | null>(null);
+  const [dbProfile, setDbProfile] = useState<{ name?: string, avatar?: string } | null>(null);
   const [storeId, setStoreId] = useState<string | null>(null);
+  const [storeStatus, setStoreStatus] = useState<string | null>(null);
+  const [ownedStores, setOwnedStores] = useState<any[]>([]);
+
+
   const [profileOpen, setProfileOpen] = useState(false);
   const [imageSearchOpen, setImageSearchOpen] = useState(false);
   const profileRef = useRef<HTMLDivElement>(null);
@@ -594,24 +599,67 @@ export default function Navbar() {
   const { search: doSmartSearch, results: searchResults, isLoading: isSearchLoading } = useSmartSearch();
   const [debouncedQuery, setDebouncedQuery] = useState('');
   const [showDropdown, setShowDropdown] = useState(false);
+  
+  // Geoapify Autocomplete state
+  const [debouncedLocQuery, setDebouncedLocQuery] = useState('');
+  const [locationSuggestions, setLocationSuggestions] = useState<any[]>([]);
+  const [showLocDropdown, setShowLocDropdown] = useState(false);
+  const [isLocLoading, setIsLocLoading] = useState(false);
   const saveCount = useSavesStore((state) => state.saveCount);
   const cartItemCount = useCartStore((state) => state.getTotalItems());
 
   useEffect(() => {
     const handler = setTimeout(() => {
       setDebouncedQuery(searchQuery);
-    }, 400);
+    }, 300);
     return () => clearTimeout(handler);
   }, [searchQuery]);
 
   useEffect(() => {
-    if (debouncedQuery.trim().length > 2) {
-      doSmartSearch(debouncedQuery, { limit: 5 });
+    if (debouncedQuery.trim().length >= 2) {
+      doSmartSearch(debouncedQuery, { 
+        limit: 8, 
+        location: locationQuery, 
+        isSuggestion: true 
+      });
       setShowDropdown(true);
     } else {
       setShowDropdown(false);
     }
-  }, [debouncedQuery, doSmartSearch]);
+  }, [debouncedQuery, locationQuery, doSmartSearch]);
+
+  // Debounce for Location
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedLocQuery(locationQuery);
+    }, 400);
+    return () => clearTimeout(handler);
+  }, [locationQuery]);
+
+  // Fetch Geoapify Autocomplete
+  useEffect(() => {
+    const fetchLocations = async () => {
+      if (debouncedLocQuery.trim().length > 2) {
+        setIsLocLoading(true);
+        setShowLocDropdown(true);
+        try {
+          const res = await fetch(`/api/geo/autocomplete?text=${encodeURIComponent(debouncedLocQuery)}`);
+          if (res.ok) {
+            const data = await res.json();
+            setLocationSuggestions(data.features || []);
+          }
+        } catch (e) {
+          console.error('Autocomplete error', e);
+        } finally {
+          setIsLocLoading(false);
+        }
+      } else {
+        setShowLocDropdown(false);
+        setLocationSuggestions([]);
+      }
+    };
+    fetchLocations();
+  }, [debouncedLocQuery]);
 
   useEffect(() => {
     if (transcript) {
@@ -695,30 +743,41 @@ export default function Navbar() {
   useEffect(() => {
     const supabase = createClient();
     const fetchUserData = async (userId: string) => {
-      // 1. Fetch official role from database
+      // 1. Fetch official role and profile from database
       const { data: profile } = await supabase
         .from('users')
-        .select('role')
+        .select('role, full_name, avatar_url')
         .eq('id', userId)
         .single();
       
       if (profile) {
         setUserRole((profile as any).role);
+        setDbProfile({
+          name: (profile as any).full_name,
+          avatar: (profile as any).avatar_url
+        });
       }
 
-      // 2. Fetch ANY store owned by this user
-      const { data: store } = await supabase
+      // 2. Fetch ALL stores owned by this user
+      const { data: stores } = await supabase
         .from('stores')
-        .select('id')
+        .select('id, name, status, logo_url')
         .eq('owner_id', userId)
-        .order('created_at', { ascending: true })
-        .limit(1)
-        .maybeSingle();
+        .order('created_at', { ascending: true });
 
-      if (store) {
-        setStoreId((store as any).id.toString());
+      if (stores && stores.length > 0) {
+        setOwnedStores(stores.map(s => ({ 
+          id: s.id.toString(), 
+          name: s.name, 
+          status: s.status,
+          logo: s.logo_url 
+        })));
+        // Default storeId to the first one for the main dashboard link
+        setStoreId(stores[0].id.toString());
+        setStoreStatus(stores[0].status);
       }
     };
+
 
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null);
@@ -733,6 +792,7 @@ export default function Navbar() {
         fetchUserData(session.user.id);
       } else {
         setStoreId(null);
+        setStoreStatus(null);
         setUserRole(null);
       }
       if (event === 'SIGNED_IN') {
@@ -830,12 +890,28 @@ export default function Navbar() {
         />
       )}
 
-      <header className={`fixed top-0 left-0 right-0 z-50 transition-transform duration-300 ${hidden ? '-translate-y-full' : 'translate-y-0'}`}>
-        <div>
-          <div className="max-w-7xl mx-auto px-6 flex items-center gap-6 h-16">
+    <nav
+      className={`fixed top-0 left-0 right-0 z-[100] transition-all duration-500 ease-in-out ${
+        hidden ? '-translate-y-full opacity-0' : 'translate-y-0 opacity-100'
+      }`}
+    >
+      {/* Rejection Banner */}
+      {storeStatus === 'REJECTED' && (
+        <div className="bg-rose-600 text-white text-[10px] sm:text-xs py-2 px-4 flex items-center justify-center gap-2 font-black uppercase tracking-widest animate-in slide-in-from-top duration-500">
+          <AlertTriangle className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+          <span>Votre demande de boutique a été refusée par l'administrateur.</span>
+        </div>
+      )}
 
-            {/* Logo */}
-            <div className="flex items-center flex-shrink-0 h-full overflow-visible">
+      <div className={`mx-auto transition-all duration-500 ${
+        isHome ? 'max-w-[1400px] mt-2 sm:mt-4 px-2 sm:px-6' : 'max-w-full mt-0 px-0'
+      }`}>
+        <div className={`relative bg-black/80 backdrop-blur-2xl border border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.4)] ${
+          isHome ? 'rounded-2xl sm:rounded-3xl h-16 sm:h-20' : 'h-16 sm:h-20'
+        } flex items-center px-4 sm:px-8 gap-4 sm:gap-8`}>
+          
+          {/* Logo */}
+          <div className="flex items-center flex-shrink-0 h-full overflow-visible">
               <Link href="/" className="flex items-center hover:opacity-90 transition-opacity">
                 <img
                   src="/ro2ya_logo1.png"
@@ -857,7 +933,7 @@ export default function Navbar() {
                     type="text"
                     placeholder={displayText}
                     value={searchQuery}
-                    onFocus={() => { if (searchQuery.length > 2) setShowDropdown(true); }}
+                    onFocus={() => { if (searchQuery.length >= 2) setShowDropdown(true); }}
                     onBlur={() => setTimeout(() => setShowDropdown(false), 200)}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     className="w-full bg-transparent outline-none text-sm text-white placeholder-white/50"
@@ -879,8 +955,8 @@ export default function Navbar() {
                              <Loader2 className="w-5 h-5 animate-spin text-red-500" /> Analyse sémantique...
                           </div>
                        ) : searchResults && searchResults.length > 0 ? (
-                          <div className="py-2">
-                             {searchResults.slice(0, 5).map((res: any, idx: number) => {
+                          <div className="py-2 max-h-[450px] overflow-y-auto scrollbar-thin scrollbar-thumb-white/10">
+                             {searchResults.slice(0, 8).map((res: any, idx: number) => {
                                 // Déterminer le lien selon le type de résultat
                                 let href = '#';
                                 let badge = '';
@@ -939,12 +1015,14 @@ export default function Navbar() {
                 </div>
 
                 {/* Location */}
-                <div className="flex items-center gap-2 px-4 py-2 border-r border-white/10">
+                <div className="flex items-center gap-2 px-4 py-2 border-r border-white/10 relative">
                   <MapPin className="w-4 h-4 text-white/60 shrink-0" />
                   <input
                     type="text"
                     placeholder="Location"
                     value={locationQuery}
+                    onFocus={() => { if (locationQuery.length > 2) setShowLocDropdown(true); }}
+                    onBlur={() => setTimeout(() => setShowLocDropdown(false), 200)}
                     onChange={(e) => setLocationQuery(e.target.value)}
                     className="w-32 bg-transparent outline-none text-sm text-white placeholder-white/50"
                   />
@@ -958,6 +1036,43 @@ export default function Navbar() {
                       ? <Loader2 className="w-4 h-4 animate-spin" />
                       : <Navigation className="w-4 h-4" />}
                   </button>
+
+                  {/* LOCATION DROPDOWN */}
+                  {showLocDropdown && (
+                    <div className="absolute top-[115%] left-0 w-[250px] bg-zinc-900 border border-white/10 rounded-2xl shadow-[0_10px_40px_rgba(0,0,0,0.8)] overflow-hidden z-50 flex flex-col backdrop-blur-xl">
+                      {isLocLoading ? (
+                        <div className="p-4 text-center text-white/60 text-xs flex items-center justify-center gap-2 font-medium">
+                          <Loader2 className="w-4 h-4 animate-spin text-red-500" /> Recherche...
+                        </div>
+                      ) : locationSuggestions.length > 0 ? (
+                        <div className="py-2 max-h-[300px] overflow-y-auto">
+                          {locationSuggestions.map((feat: any, idx: number) => {
+                            const name = feat.properties.city || feat.properties.name || feat.properties.county;
+                            const state = feat.properties.state;
+                            if (!name) return null;
+                            const fullAddr = `${name}${state ? `, ${state}` : ''}`;
+                            return (
+                              <div 
+                                key={idx} 
+                                onClick={() => {
+                                  setLocationQuery(fullAddr);
+                                  setShowLocDropdown(false);
+                                }}
+                                className="block px-4 py-2 hover:bg-white/5 transition border-b border-white/5 last:border-0 cursor-pointer"
+                              >
+                                <div className="text-white text-sm font-semibold truncate">{name}</div>
+                                <div className="text-white/50 text-xs truncate mt-0.5">{state}</div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      ) : (
+                        <div className="p-4 text-center text-white/50 text-xs">
+                          Aucune adresse trouvée en Tunisie.
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 {/* 📷 Image search button — inside the bar */}
@@ -990,7 +1105,7 @@ export default function Navbar() {
                   {(() => {
                     const effectiveRole = userRole?.toLowerCase() || user.user_metadata?.role?.toLowerCase();
                     
-                    return storeId ? (
+                    return storeId && storeStatus !== 'REJECTED' ? (
                       <div className="flex items-center gap-2">
                         <Link href={`/dashboard/${storeId}`}>
                           <button className="flex items-center gap-2 px-4 py-2 rounded-xl bg-red-600 hover:shadow-lg hover:shadow-red-600/20 text-sm font-bold text-white transition-all ring-1 ring-white/10">
@@ -1054,15 +1169,20 @@ export default function Navbar() {
                       )}
                     <UserDropdown
                     user={{
-                      name: user.user_metadata?.full_name || user.email || 'User',
+                      name: dbProfile?.name || user.user_metadata?.full_name || user.email || 'User',
                       username: user.email || '',
-                      avatar: user.user_metadata?.avatar_url || '',
-                      initials: (user.user_metadata?.full_name || user.email || 'U')
+                      avatar: dbProfile?.avatar || user.user_metadata?.avatar_url || '',
+                      initials: (dbProfile?.name || user.user_metadata?.full_name || user.email || 'U')
                         .split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2),
                       status: 'online',
-                      role: userRole || user.user_metadata?.role
+                      role: userRole || user.user_metadata?.role,
+                      ownedStores: ownedStores
+                    }}
+                    onSwitchStore={(id) => {
+                      router.push(`/dashboard/${id}`);
                     }}
                     onAction={(action: string) => {
+
                       if (action === 'logout') handleSignOut();
                       
                       const currentRole = userRole?.toLowerCase() || user.user_metadata?.role?.toLowerCase();
@@ -1110,42 +1230,9 @@ export default function Navbar() {
           </div>
         </div>
 
-        {/* ── Floating Category Menu — exactly as per prompt ─────────── */}
-        {/* Desktop only: floating pill below navbar */}
-        {isHome && (
-          <div className="hidden md:flex justify-center w-full mt-3 px-4">
-            <CategoryFloatingMenu />
-          </div>
-        )}
+        {/* Category line removed as requested */}
 
-        {/* Mobile: horizontal scroll chips */}
-        {isHome && (
-          <div className="md:hidden border-t border-white/10 bg-black/50 backdrop-blur-md px-4 py-2">
-          <div className="flex items-center gap-2 overflow-x-auto scrollbar-none">
-            {categoryMenuItems.map((cat) => {
-              const Icon = cat.icon;
-              return (
-                <Link
-                  key={cat.label}
-                  href={cat.href}
-                  className="flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/8 border border-white/10 text-xs text-white/70 hover:text-white hover:bg-white/15 transition-all active:scale-95"
-                >
-                  <Icon className="w-3 h-3" />
-                  {cat.label}
-                </Link>
-              );
-            })}
-            <Link
-              href="/categories"
-              className="flex-shrink-0 px-3 py-1.5 rounded-full bg-red-600/20 border border-red-500/30 text-xs text-red-400 font-semibold hover:bg-red-600/30 transition-all"
-            >
-              Tout voir
-            </Link>
-          </div>
-        </div>
-        )}
-
-      </header>
+    </nav>
     </>
   );
 }

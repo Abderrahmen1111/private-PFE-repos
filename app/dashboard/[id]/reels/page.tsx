@@ -5,14 +5,12 @@ import { useParams, useRouter } from 'next/navigation';
 import { 
   getBusinessReels, 
   deleteReel,
-  publishReel,
-  uploadReelMedia
+  uploadAndPublishReel
 } from '@/lib/actions/reels';
 import { 
   getDashboardStories, 
   deleteStory, 
-  publishStory, 
-  uploadStoryMedia 
+  uploadAndPublishStory 
 } from '@/lib/actions/stories';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -138,40 +136,30 @@ export default function MediaManagementPage() {
     if (!selectedFile) return toast.error('Sélectionnez un média');
     setIsUploading(true);
     try {
-      const isVideo = selectedFile.type.startsWith('video/');
       const formData = new FormData();
       formData.append('file', selectedFile);
+      formData.append('storeId', storeId.toString());
+      formData.append('title', title);
+      formData.append('price', price || '0');
+      formData.append('category', category);
+      formData.append('filter', selectedFilter);
 
       if (activeTab === 'reels') {
-        const url = await uploadReelMedia(formData);
-        if (!url) throw new Error("Upload failed");
-        await publishReel({ 
-          storeId, 
-          mediaPath: url, 
-          mediaType: isVideo ? 'video' : 'image', 
-          title, 
-          price: parseFloat(price) || 0, 
-          category,
-          metadata: { filter: selectedFilter }
-        });
+        const result = await uploadAndPublishReel(formData);
+        if (!result.success) throw new Error(result.error);
       } else {
-        const url = await uploadStoryMedia(formData);
-        if (!url) throw new Error("Upload failed");
-        await publishStory({ 
-          storeId, 
-          mediaUrl: url, 
-          mediaType: isVideo ? 'video' : 'image', 
-          caption: title 
-        });
+        formData.append('caption', title);
+        const result = await uploadAndPublishStory(formData);
+        if (!result.success) throw new Error(result.error);
       }
       
       toast.success('Publié avec succès !');
       setIsDialogOpen(false);
       fetchData();
       resetForm();
-    } catch (error) {
+    } catch (error: any) {
       console.error(error);
-      toast.error('Erreur lors de la publication');
+      toast.error(error.message || 'Erreur lors de la publication');
     } finally {
       setIsUploading(false);
     }

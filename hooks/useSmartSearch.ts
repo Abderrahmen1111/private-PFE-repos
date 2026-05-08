@@ -33,13 +33,15 @@ export function useSmartSearch() {
       userLat?: number
       userLng?: number
       maxDistance?: number
+      location?: string
+      isSuggestion?: boolean
     }
   ) => {
     setIsLoading(true)
     setError(null)
 
     try {
-      // Modifié pour pointer vers la route API sémantique que nous venons de créer
+      console.log('🚀 Triggering Semantic Search API:', { query, options });
       const response = await fetch('/api/semantic-search', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -50,12 +52,18 @@ export function useSmartSearch() {
           userLat: options?.userLat,
           userLng: options?.userLng,
           maxDistance: options?.maxDistance,
+          location: options?.location,
+          isSuggestion: options?.isSuggestion,
         }),
       })
 
-      if (!response.ok) throw new Error('Search failed')
+      if (!response.ok) {
+        console.error('❌ Semantic Search API Failed:', response.status);
+        throw new Error('Search failed');
+      }
 
       const data = await response.json()
+      console.log('✅ Semantic Search Results:', data);
       
       setResults(data.results)
       setProcessing(data.processing)

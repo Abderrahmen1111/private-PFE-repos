@@ -13,11 +13,13 @@ import {
   Phone,
   Check,
   X as XIcon,
+  ShieldAlert,
 } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { updateBookingStatus } from '@/lib/actions/reservation';
 import { toast } from 'sonner';
+import { blockUser } from '@/lib/actions/friendships';
 
 type LeadType = 'all' | 'order' | 'booking';
 
@@ -74,13 +76,48 @@ export default function LeadsPage() {
     }
   };
 
+  const handleBlockCustomer = async (customerId: string, leadId: number, type: 'order' | 'booking') => {
+    if (!customerId) {
+      toast.error("Impossible de bloquer : ID client manquant");
+      return;
+    }
+    
+    if (window.confirm("Voulez-vous bloquer ce client et annuler sa demande ?")) {
+      setUpdatingIds(prev => ({ ...prev, [leadId]: true }));
+      try {
+        const { error } = await blockUser(customerId);
+        if (error) throw error;
+        
+        // Also cancel the order/booking
+        if (type === 'booking') {
+          await updateBookingStatus(leadId, 'CANCELLED');
+        } else {
+          await updateOrderStatus(leadId, 'CANCELLED');
+        }
+        
+        toast.success("Client bloqué et demande annulée");
+        fetchData();
+      } catch (err: any) {
+        toast.error("Erreur: " + (err.message || "Action impossible"));
+      } finally {
+        setUpdatingIds(prev => ({ ...prev, [leadId]: false }));
+      }
+    }
+  };
+
   const allLeads = useMemo(() => {
     const combined = [
       ...leads.orders.map(o => ({ ...o, leadType: 'order' as const, amount: o.total_price })),
       ...leads.bookings.map(b => ({ ...b, leadType: 'booking' as const, amount: b.price })),
     ];
 
-    let filtered = filterType === 'all' ? combined : combined.filter(l => l.leadType === filterType);
+    // On ne garde QUE les actions en attente (PENDING)
+    let filtered = combined.filter(l => l.status === 'PENDING');
+
+    if (filterType !== 'all') {
+      filtered = filtered.filter(l => l.leadType === filterType);
+    }
+    
     return filtered.sort((a, b) => {
       const dateA = new Date(a.created_at).getTime();
       const dateB = new Date(b.created_at).getTime();
@@ -90,8 +127,10 @@ export default function LeadsPage() {
 
   if (isLoading) return <div className="p-8 text-foreground flex items-center gap-2"><Loader2 className="w-4 h-4 animate-spin" /> Chargement des leads...</div>;
 
-  const ordersCount = leads.orders.length;
-  const bookingsCount = leads.bookings.length;
+  const pendingOrders = leads.orders.filter(o => o.status === 'PENDING').length;
+  const pendingBookings = leads.bookings.filter(b => b.status === 'PENDING').length;
+  const ordersCount = pendingOrders;
+  const bookingsCount = pendingBookings;
 
   return (
     <div className="p-4 md:p-8 space-y-8 max-w-6xl mx-auto">
@@ -193,6 +232,29 @@ export default function LeadsPage() {
                         <p className="text-sm text-muted-foreground mt-2 border-l-2 border-primary/20 pl-3">
                           Montant : <span className="font-black text-foreground">{lead.amount} DT</span>
                         </p>
+
+                        {/* Fraud Signals */}
+                        {lead.fraud && (
+                          <div className="mt-4 p-3 bg-muted/30 rounded-xl border border-border/50">
+                            <div className="flex items-center gap-2 mb-2">
+                              <ShieldAlert className={`w-4 h-4 ${
+                                lead.fraud.level === 'safe' ? 'text-emerald-500' :
+                                lead.fraud.level === 'suspicious' ? 'text-amber-500' :
+                                'text-rose-500'
+                              }`} />
+                              <span className={`text-[10px] font-black uppercase tracking-widest ${
+                                lead.fraud.level === 'safe' ? 'text-emerald-600' :
+                                lead.fraud.level === 'suspicious' ? 'text-amber-600' :
+                                'text-rose-600'
+                              }`}>
+                                Analyse de risque : {lead.fraud.level.replace('_', ' ')} ({lead.fraud.score}/100)
+                              </span>
+                            </div>
+                            <p className="text-[11px] text-muted-foreground leading-relaxed italic">
+                              "{lead.fraud.ai_reasoning}"
+                            </p>
+                          </div>
+                        )}
                       </div>
 
                       <div className="flex flex-col items-end gap-3 text-right">
@@ -236,6 +298,19 @@ export default function LeadsPage() {
                                 Refuser
                               </Button>
                             </div>
+                          )}
+                          
+                          {lead.customer_id && lead.status !== 'CANCELLED' && lead.status !== 'COMPLETED' && (
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => handleBlockCustomer(lead.customer_id, lead.id, lead.leadType)}
+                              disabled={updatingIds[lead.id]}
+                              className="h-8 px-3 text-[9px] font-black uppercase tracking-widest text-muted-foreground hover:text-rose-600 hover:bg-rose-50 transition-all rounded-lg mt-1"
+                            >
+                              <ShieldAlert className="w-3 h-3 mr-1" />
+                              Bloquer Client
+                            </Button>
                           )}
                         </div>
                       </div>

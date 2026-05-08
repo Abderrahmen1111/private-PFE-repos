@@ -2,7 +2,7 @@
 // Force refresh for Camera icon
 
 import React, { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import '@/app/globals.css';
 import { useParams, usePathname, useRouter } from 'next/navigation';
 import { Plus, LayoutDashboard, Briefcase, Package, Bell, Zap, Settings, Menu, ChevronDown, LogOut, Home, Search, MessageCircle, Video, LifeBuoy, HelpCircle, Mail, CreditCard, MessageSquare, Sparkles } from 'lucide-react';
@@ -575,8 +575,22 @@ export default function DashboardLayout({
           </div>
         </header>
 
-        <div className="flex-1 overflow-auto">
-          <div className="h-full">{children}</div>
+        <div className="flex-1 overflow-auto overflow-x-hidden relative">
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={pathname}
+              initial={{ opacity: 0, y: 8, filter: 'blur(4px)' }}
+              animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+              exit={{ opacity: 0, y: -8, filter: 'blur(4px)' }}
+              transition={{ 
+                duration: 0.25, 
+                ease: [0.23, 1, 0.32, 1] // Custom pro cubic-bezier
+              }}
+              className="h-full"
+            >
+              {children}
+            </motion.div>
+          </AnimatePresence>
         </div>
       </div>
 

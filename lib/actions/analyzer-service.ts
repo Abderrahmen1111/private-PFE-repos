@@ -95,8 +95,9 @@ export async function analyzeBatch(
     for (const r of chunkResults) {
       if (r.status === "fulfilled") {
         results.push(r.value);
+      } else {
+        console.error("❌ Comment analysis failed:", r.reason);
       }
-      // Silently skip failed comments in batch mode
     }
   }
 

@@ -10,8 +10,10 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { LogOut, User, Settings, Bell, CreditCard, ShoppingCart, Plus } from "lucide-react";
+import { getAvatarUrl } from "@/lib/utils/avatar";
 
 interface UserDropdownProps {
+
   user: {
     name: string;
     username: string;
@@ -19,18 +21,22 @@ interface UserDropdownProps {
     initials: string;
     status?: string;
     role?: string;
+    ownedStores?: Array<{ id: string; name: string; status: string; logo?: string }>;
   };
   onAction?: (action: string) => void;
+  onSwitchStore?: (storeId: string) => void;
 }
 
-export const UserDropdown = ({ user, onAction = () => {} }: UserDropdownProps) => {
+
+export const UserDropdown = ({ user, onAction = () => {}, onSwitchStore }: UserDropdownProps) => {
+
   const isClient = user.role?.toLowerCase() === 'client';
 
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Avatar className="cursor-pointer size-9 border border-white/20 hover:border-black/40 transition">
-          <AvatarImage src={user.avatar} alt={user.name} />
+          <AvatarImage src={getAvatarUrl(user.avatar, user.name)} alt={user.name} />
           <AvatarFallback className="bg-black/50 text-white text-sm font-semibold">
             {user.initials}
           </AvatarFallback>
@@ -45,7 +51,7 @@ export const UserDropdown = ({ user, onAction = () => {} }: UserDropdownProps) =
         {/* User info header */}
         <div className="flex items-center gap-3 px-3 py-3">
           <Avatar className="size-10 border border-white/20">
-            <AvatarImage src={user.avatar} alt={user.name} />
+            <AvatarImage src={getAvatarUrl(user.avatar, user.name)} alt={user.name} />
             <AvatarFallback className="bg-black/10 text-white text-sm font-semibold">
               {user.initials}
             </AvatarFallback>
@@ -82,6 +88,37 @@ export const UserDropdown = ({ user, onAction = () => {} }: UserDropdownProps) =
             <span className="text-sm font-medium">{isClient ? 'Panier' : 'Billing'}</span>
           </DropdownMenuItem>
         </DropdownMenuGroup>
+
+        {!isClient && user.ownedStores && user.ownedStores.length > 1 && (
+          <>
+            <DropdownMenuSeparator className="bg-white/10" />
+            <div className="px-3 py-2">
+              <p className="text-[10px] font-black text-white/30 uppercase tracking-widest px-1 mb-2">Mes Établissements</p>
+              <DropdownMenuGroup className="space-y-1">
+                {user.ownedStores.map((store) => (
+                  <DropdownMenuItem
+                    key={store.id}
+                    className="flex items-center gap-2.5 px-2 py-2 rounded-lg text-white/60 hover:text-white hover:bg-white/5 cursor-pointer transition"
+                    onClick={() => onSwitchStore?.(store.id)}
+                  >
+                    <div className="size-6 rounded-md bg-white/5 flex items-center justify-center overflow-hidden shrink-0">
+                      {store.logo ? (
+                        <img src={getAvatarUrl(store.logo, store.name)} alt={store.name} className="w-full h-full object-cover" />
+                      ) : (
+                        <Plus className="w-3 h-3" />
+                      )}
+                    </div>
+                    <span className="text-xs font-semibold truncate flex-1">{store.name}</span>
+                    {store.status !== 'APPROVED' && (
+                      <span className="text-[8px] px-1 bg-yellow-500/20 text-yellow-500 rounded">Wait</span>
+                    )}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuGroup>
+            </div>
+          </>
+        )}
+
 
         <DropdownMenuSeparator className="bg-white/10" />
 

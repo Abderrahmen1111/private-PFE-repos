@@ -8,6 +8,9 @@ import { getTicketMessages, sendTicketMessage } from '@/lib/actions/support';
 import { createClient } from '@/lib/supabase/client';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
+import { blockUser, getFriendshipStatus } from '@/lib/actions/friendships';
+import { ShieldAlert } from 'lucide-react';
+import { toast } from 'sonner';
 
 interface SupportChatDrawerProps {
   ticketId: string;
@@ -32,12 +35,45 @@ export default function SupportChatDrawer({ ticketId, isOpen, onClose, businessN
   const scrollRef = useRef<HTMLDivElement>(null);
   const supabase = createClient();
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [partnerId, setPartnerId] = useState<string | null>(null);
+  const [isBlocked, setIsBlocked] = useState(false);
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
       setCurrentUserId(user?.id || null);
     });
   }, [supabase]);
+
+  // Fetch ticket details to get the customer_id
+  useEffect(() => {
+    if (isOpen && ticketId) {
+      supabase
+        .from('support_tickets')
+        .select('customer_id')
+        .eq('id', ticketId)
+        .single()
+        .then(({ data }) => {
+          if (data?.customer_id) {
+            setPartnerId(data.customer_id);
+            // Check blocking status
+            getFriendshipStatus(data.customer_id).then(res => {
+              setIsBlocked(res?.status === 'BLOCKED');
+            });
+          }
+        });
+    }
+  }, [isOpen, ticketId, supabase]);
+
+  const handleBlock = async () => {
+    if (!partnerId) return;
+    if (window.confirm("Bloquer cet utilisateur ?")) {
+      const { error } = await blockUser(partnerId);
+      if (!error) {
+        toast.success("Utilisateur bloqué");
+        setIsBlocked(true);
+      }
+    }
+  };
 
   useEffect(() => {
     if (isOpen && ticketId) {
@@ -131,12 +167,27 @@ export default function SupportChatDrawer({ ticketId, isOpen, onClose, businessN
                   <p className="text-xs text-slate-500">Messagerie directe</p>
                 </div>
               </div>
-              <button
-                onClick={onClose}
-                className="p-2 hover:bg-slate-100 rounded-full transition-colors"
-              >
-                <X className="w-5 h-5 text-slate-400" />
-              </button>
+              <div className="flex items-center gap-1">
+                {partnerId && (
+                  <button
+                    onClick={handleBlock}
+                    className={cn(
+                      "p-2 rounded-full transition-colors",
+                      isBlocked ? "text-red-600 bg-red-50" : "text-slate-400 hover:bg-slate-100 hover:text-red-500"
+                    )}
+                    title={isBlocked ? "Déjà bloqué" : "Bloquer l'utilisateur"}
+                    disabled={isBlocked}
+                  >
+                    <ShieldAlert className="w-5 h-5" />
+                  </button>
+                )}
+                <button
+                  onClick={onClose}
+                  className="p-2 hover:bg-slate-100 rounded-full transition-colors"
+                >
+                  <X className="w-5 h-5 text-slate-400" />
+                </button>
+              </div>
             </div>
 
             {/* Messages Area */}
@@ -195,10 +246,11 @@ export default function SupportChatDrawer({ ticketId, isOpen, onClose, businessN
                   onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
                   placeholder="Écrivez votre message..."
                   className="rounded-full bg-slate-50 border-slate-100 focus:ring-red-500"
+                  disabled={isBlocked}
                 />
                 <Button
                   onClick={handleSendMessage}
-                  disabled={!messageText.trim() || isSending}
+                  disabled={!messageText.trim() || isSending || isBlocked}
                   className="rounded-full w-10 h-10 p-0 bg-red-500 hover:bg-red-600 shadow-lg shadow-red-200 shrink-0"
                 >
                   {isSending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}

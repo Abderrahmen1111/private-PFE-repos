@@ -11,8 +11,10 @@ export function useUser() {
 
   useEffect(() => {
     const getUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser()
-      setUser(user)
+      // OPTIMISATION: Utiliser getSession pour lire instantanément depuis le localStorage
+      // au lieu de getUser qui fait un appel réseau lent.
+      const { data: { session } } = await supabase.auth.getSession()
+      setUser(session?.user || null)
       setLoading(false)
     }
     

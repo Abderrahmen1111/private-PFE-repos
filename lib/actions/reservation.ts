@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server';
 import { Database } from '@/types/supabase';
 import { revalidatePath } from 'next/cache';
 import { syncBookingTransaction } from './transactions';
+import { analyzeFraud, saveFraudAnalysis } from './fraud-detection';
 
 export type BookingInsert = Database['public']['Tables']['bookings']['Insert'];
 export type BookingRow = Database['public']['Tables']['bookings']['Row'];
@@ -57,6 +58,21 @@ export async function createBooking(data: Omit<BookingInsert, 'booking_number' |
   if (booking) {
     // Sync to transactions immediately (even if PENDING)
     await syncBookingTransaction(booking, supabase);
+
+    // ─── FRAUD ANALYSIS ───────────────────────────────────────────────────────
+    try {
+      const fraudAnalysis = await analyzeFraud({
+        customer_id: user.id,
+        store_id: data.store_id as number,
+        item_id: data.item_id as number,
+        total: data.price as number,
+        entity_type: 'BOOKING'
+      });
+      await saveFraudAnalysis(booking.id, fraudAnalysis, 'BOOKING');
+    } catch (fraudErr) {
+      console.error('[createBooking] Fraud Analysis failed:', fraudErr);
+    }
+    // ──────────────────────────────────────────────────────────────────────────
   }
 
   revalidatePath(`/merchants/business/${data.store_id}`);

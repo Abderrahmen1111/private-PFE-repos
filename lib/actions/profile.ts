@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
+import { revalidatePath } from 'next/cache'
 
 export async function getOwnerProfileData(businessId?: number | string) {
     const supabase = createClient()
@@ -415,13 +416,14 @@ export async function getUserProfileData() {
             })
         }));
 
-    // 8. Fetch owned store ID if applicable
-    const { data: ownedStore } = await (supabase
+    // 8. Fetch all owned stores
+    const { data: ownedStores } = await (supabase
         .from('stores' as any)
-        .select('id')
+        .select('id, name, logo_url, status')
         .eq('owner_id', user.id)
-        .limit(1)
-        .single() as any);
+        .order('created_at', { ascending: true }) as any);
+
+    const primaryStore = ownedStores && ownedStores.length > 0 ? ownedStores[0] : null;
 
     return {
         user: {
@@ -429,7 +431,9 @@ export async function getUserProfileData() {
             profile: userData,
             avatar: userData?.avatar_url || null,
             email: user.email,
-            ownedStoreId: ownedStore?.id || null,
+            ownedStoreId: primaryStore?.id || null,
+            ownedStoreStatus: primaryStore?.status || null,
+            ownedStores: ownedStores || [],
         },
         stats: {
             reviewsCount: reviewsCount || 0,
@@ -471,4 +475,67 @@ export async function getUserProfileData() {
         bookings: userBookings || [],
         activity: sortedActivity,
     }
+}
+
+/**
+ * Updates the user's profile image (avatar).
+ */
+export async function updateUserAvatar(formData: FormData) {
+    const supabase = createClient()
+
+    // 1. Authenticate user
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    if (authError || !user) {
+        return { error: 'You must be logged in to update your profile.' }
+    }
+
+    const file = formData.get('avatar') as File
+    if (!file || file.size === 0) {
+        return { error: 'No image provided.' }
+    }
+
+    // 2. Upload to Storage
+    // We use the 'store-images' bucket as it's already configured for public access
+    const fileExt = file.name.split('.').pop()
+    const fileName = `${user.id}/avatar-${Date.now()}.${fileExt}`
+    const filePath = `avatars/${fileName}`
+
+    const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('store-images')
+        .upload(filePath, file, {
+            cacheControl: '3600',
+            upsert: true
+        })
+
+    if (uploadError) {
+        console.error('Upload error:', uploadError)
+        return { error: 'Failed to upload image.' }
+    }
+
+    // 3. Get Public URL
+    const { data: { publicUrl } } = supabase.storage
+        .from('store-images')
+        .getPublicUrl(uploadData.path)
+
+    // 4. Update Database (public.users table)
+    const { error: updateError } = await supabase
+        .from('users' as any)
+        .update({ avatar_url: publicUrl })
+        .eq('id', user.id)
+
+    if (updateError) {
+        console.error('DB Update error:', updateError)
+        return { error: 'Failed to update profile data.' }
+    }
+
+    // 5. Update Auth Metadata (optional but good for consistency)
+    await supabase.auth.updateUser({
+        data: { avatar_url: publicUrl }
+    })
+
+    // 6. Revalidate
+    revalidatePath('/', 'layout')
+    revalidatePath('/profile')
+
+    return { success: true, avatarUrl: publicUrl }
 }

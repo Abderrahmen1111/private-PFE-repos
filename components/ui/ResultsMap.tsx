@@ -1,6 +1,8 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import mapboxgl from 'mapbox-gl';
+import 'mapbox-gl/dist/mapbox-gl.css';
 import { Business } from '@/types/business';
 
 interface ResultsMapProps {
@@ -12,7 +14,10 @@ interface ResultsMapProps {
   searchLocation?: string;
 }
 
-const DEFAULT_CENTER: [number, number] = [36.8065, 10.1815]; // Tunis fallback
+// Access token should be in .env.local
+mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN ;
+
+const DEFAULT_CENTER: [number, number] = [10.1815, 36.8065]; // Tunis fallback [lng, lat] for Mapbox
 const DEFAULT_ZOOM = 6;
 
 export default function ResultsMap({
@@ -21,272 +26,142 @@ export default function ResultsMap({
   onMarkerClick,
   searchLocation,
 }: ResultsMapProps) {
-  const mapRef = useRef<HTMLDivElement>(null);
-  const mapInstanceRef = useRef<any>(null);
-  const markersRef = useRef<Map<string, any>>(new Map());
-  const locationCenterRef = useRef<{ lat: number; lng: number } | null>(null);
-  const lastSearchLocationRef = useRef<string>('');
-  const geocodedCacheRef = useRef<Map<string, { lat: number; lng: number }>>(new Map());
-  const [mapReady, setMapReady] = useState(false);
+  const mapContainerRef = useRef<HTMLDivElement>(null);
+  const mapRef = useRef<mapboxgl.Map | null>(null);
+  const markersRef = useRef<{ [key: string]: mapboxgl.Marker }>({});
+  const [mapLoaded, setMapLoaded] = useState(false);
 
-  // ——— 1. Create map once on mount; remove on unmount ———
+  // ——— 1. Initialize Map ———
   useEffect(() => {
-    if (typeof window === 'undefined' || !mapRef.current) return;
+    if (!mapContainerRef.current) return;
 
-    let mounted = true;
-    const initMapOnce = async () => {
-      const L = (await import('leaflet')).default;
+    const map = new mapboxgl.Map({
+      container: mapContainerRef.current,
+      style: 'mapbox://styles/mapbox/dark-v11', // Premium dark style
+      center: DEFAULT_CENTER,
+      zoom: DEFAULT_ZOOM,
+      attributionControl: false,
+    });
 
-      if (typeof document !== 'undefined' && !document.getElementById('leaflet-css')) {
-        const link = document.createElement('link');
-        link.id = 'leaflet-css';
-        link.rel = 'stylesheet';
-        link.href = 'https://unpkg.com/leaflet@1.7.1/dist/leaflet.css';
-        document.head.appendChild(link);
-        await new Promise<void>((resolve) => {
-          link.onload = () => resolve();
-        });
-      }
+    map.on('load', () => {
+      setMapLoaded(true);
+      mapRef.current = map;
+    });
 
-      delete (L.Icon.Default.prototype as any)._getIconUrl;
-      L.Icon.Default.mergeOptions({
-        iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
-        iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
-        shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
-      });
+    // Add navigation controls
+    map.addControl(new mapboxgl.NavigationControl(), 'top-right');
 
-      if (!mounted || !mapRef.current) return;
-      const map = L.map(mapRef.current, { attributionControl: false })
-        .setView(DEFAULT_CENTER, DEFAULT_ZOOM);
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
-      mapInstanceRef.current = map;
-      setMapReady(true);
-    };
-
-    initMapOnce();
     return () => {
-      mounted = false;
-      setMapReady(false);
-      if (mapInstanceRef.current) {
-        mapInstanceRef.current.remove();
-        mapInstanceRef.current = null;
-      }
-      markersRef.current.clear();
+      map.remove();
+      mapRef.current = null;
     };
   }, []);
 
-  // ——— 2. When map is ready and businesses/search change: update center and markers (dynamic from Supabase). ———
+  // ——— 2. Handle Markers and Centering ———
   useEffect(() => {
-    if (typeof window === 'undefined' || !mapReady || !mapInstanceRef.current) return;
+    if (!mapLoaded || !mapRef.current) return;
 
-    let cancelled = false;
-    const map = mapInstanceRef.current;
+    const map = mapRef.current;
 
-    const run = async () => {
-      const L = (await import('leaflet')).default;
-      if (cancelled || !mapInstanceRef.current) return;
+    // Clear existing markers
+    Object.values(markersRef.current).forEach(marker => marker.remove());
+    markersRef.current = {};
 
-    if (lastSearchLocationRef.current !== (searchLocation ?? '')) {
-      lastSearchLocationRef.current = searchLocation ?? '';
-      locationCenterRef.current = null;
-    }
+    if (businesses.length === 0) return;
 
-    let avgLat = DEFAULT_CENTER[0];
-    let avgLng = DEFAULT_CENTER[1];
+    const bounds = new mapboxgl.LngLatBounds();
 
-    const validBusinesses = businesses.filter(
-      (b) =>
-        typeof b.location?.lat === 'number' &&
-        !isNaN(b.location.lat) &&
-        typeof b.location?.lng === 'number' &&
-        !isNaN(b.location.lng)
-    );
-
-    const allSameDefault =
-      validBusinesses.length > 0 &&
-      validBusinesses.every((b) => b.location.lat === DEFAULT_CENTER[0] && b.location.lng === DEFAULT_CENTER[1]);
-
-    if (validBusinesses.length > 0 && !allSameDefault) {
-      avgLat = validBusinesses.reduce((s, b) => s + b.location.lat, 0) / validBusinesses.length;
-      avgLng = validBusinesses.reduce((s, b) => s + b.location.lng, 0) / validBusinesses.length;
-    } else if (searchLocation?.trim()) {
-      if (locationCenterRef.current) {
-        avgLat = locationCenterRef.current.lat;
-        avgLng = locationCenterRef.current.lng;
-      } else {
-        fetch(
-          `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchLocation.trim())}&limit=1`,
-          { headers: { 'User-Agent': 'PhantomMarketplace/1.0' } }
-        )
-          .then((r) => r.json())
-          .then((data: any) => {
-            if (data?.[0]) {
-              const lat = parseFloat(data[0].lat);
-              const lng = parseFloat(data[0].lon);
-              locationCenterRef.current = { lat, lng };
-              if (mapInstanceRef.current) {
-                mapInstanceRef.current.setView([lat, lng], 11, { animate: true });
-              }
-            }
-          })
-          .catch((e) => console.error('Geocode search location:', e));
-      }
-    }
-
-    const zoom = validBusinesses.length > 0 ? 11 : DEFAULT_ZOOM;
-    map.setView([avgLat, avgLng], zoom, { animate: true });
-
-    // Clear existing markers only; keep map instance
-    markersRef.current.forEach((marker) => marker.remove());
-    markersRef.current.clear();
-
-    const createIcon = (isActive: boolean) =>
-      L.divIcon({
-        className: 'custom-marker',
-        html: `
-          <div style="
-            width: ${isActive ? '28px' : '24px'};
-            height: ${isActive ? '28px' : '24px'};
-            background-color: ${isActive ? '#3b82f6' : '#ef4444'};
-            border: 3px solid white;
-            border-radius: 50%;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-            transition: all 0.2s;
-          "></div>
-        `,
-        iconSize: [isActive ? 28 : 24, isActive ? 28 : 24],
-        iconAnchor: [isActive ? 14 : 12, isActive ? 14 : 12],
-      });
-
-    // Add one marker per business using coordinates from Supabase (business.location.lat/lng)
     businesses.forEach((business) => {
-      const lat = business.location.lat;
-      const lng = business.location.lng;
-      const marker = L.marker([lat, lng], {
-        icon: createIcon(false),
-      }).addTo(map);
+      const { lat, lng } = business.location;
+      
+      if (!lat || !lng) return;
 
-      marker.bindPopup(
-        `
-        <div style="min-width: 200px;">
-          <h3 style="font-weight: 600; margin-bottom: 8px;">${business.name}</h3>
-          <p style="font-size: 14px; color: #666; margin-bottom: 4px;">${business.category}</p>
-          <p style="font-size: 14px; color: #666;">Rating: ${business.rating} ⭐</p>
-        </div>
-      `
-      );
+      // Create custom marker element
+      const el = document.createElement('div');
+      el.className = 'custom-marker';
+      el.style.width = '24px';
+      el.style.height = '24px';
+      el.style.backgroundColor = '#ef4444';
+      el.style.border = '3px solid white';
+      el.style.borderRadius = '50%';
+      el.style.cursor = 'pointer';
+      el.style.boxShadow = '0 2px 8px rgba(0,0,0,0.3)';
+      el.style.transition = 'all 0.2s';
 
-      marker.on('click', () => {
+      const marker = new mapboxgl.Marker(el)
+        .setLngLat([lng, lat])
+        .setPopup(
+          new mapboxgl.Popup({ offset: 25 })
+            .setHTML(`
+              <div style="min-width: 150px; padding: 5px;">
+                <h3 style="font-weight: 600; margin-bottom: 4px; color: #1f2937;">${business.name}</h3>
+                <p style="font-size: 12px; color: #6b7280; margin-bottom: 2px;">${business.category}</p>
+                <div style="display: flex; align-items: center; gap: 4px;">
+                  <span style="font-size: 12px; font-weight: 600; color: #f59e0b;">${business.rating}</span>
+                  <span style="font-size: 12px; color: #9ca3af;">⭐</span>
+                </div>
+              </div>
+            `)
+        )
+        .addTo(map);
+
+      el.addEventListener('click', () => {
         onMarkerClick?.(business.id);
       });
 
-      markersRef.current.set(business.id, marker);
+      markersRef.current[business.id] = marker;
+      bounds.extend([lng, lat]);
     });
-    };
 
-    run();
-    return () => {
-      cancelled = true;
-    };
-  }, [businesses, searchLocation, mapReady]);
+    if (businesses.length > 0) {
+      map.fitBounds(bounds, { padding: 50, maxZoom: 14 });
+    }
+  }, [businesses, mapLoaded]);
 
-  // ——— 3. Background geocoding for businesses with default coords (optional improvement) ———
+  // ——— 3. Handle Active Business Highlight ———
   useEffect(() => {
-    if (typeof window === 'undefined') return;
-    let cancelled = false;
-    const queue = businesses.filter(
-      (b) =>
-        b.location.lat === DEFAULT_CENTER[0] &&
-        b.location.lng === DEFAULT_CENTER[1] &&
-        !geocodedCacheRef.current.has(b.id)
-    );
-    const run = async () => {
-      for (const business of queue) {
-        if (cancelled) break;
-        try {
-          const res = await fetch(
-            `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
-              `${business.name}, ${business.location.address}`
-            )}&limit=1`,
-            { headers: { 'User-Agent': 'PhantomMarketplace/1.0' } }
-          );
-          const data = await res.json();
-          if (data?.[0] && !cancelled) {
-            const lat = parseFloat(data[0].lat);
-            const lng = parseFloat(data[0].lon);
-            geocodedCacheRef.current.set(business.id, { lat, lng });
-            const marker = markersRef.current.get(business.id);
-            if (marker) marker.setLatLng([lat, lng]);
-          }
-        } catch (e) {
-          console.error(`Geocode ${business.name}:`, e);
-        }
-        await new Promise((r) => setTimeout(r, 1000));
-      }
-    };
-    run();
-    return () => {
-      cancelled = true;
-    };
-  }, [businesses]);
+    if (!mapLoaded || !mapRef.current || !activeBusinessId) return;
 
-  // ——— 4. Sync active business: highlight marker, center map, open/close popup ———
-  useEffect(() => {
-    if (typeof window === 'undefined' || !mapInstanceRef.current) return;
-    const map = mapInstanceRef.current;
+    const activeMarker = markersRef.current[activeBusinessId];
+    if (activeMarker) {
+      const el = activeMarker.getElement();
+      el.style.backgroundColor = '#3b82f6';
+      el.style.width = '32px';
+      el.style.height = '32px';
+      el.style.zIndex = '10';
 
-    const run = async () => {
-      const L = (await import('leaflet')).default;
-
-    const createIcon = (isActive: boolean) =>
-      L.divIcon({
-        className: 'custom-marker',
-        html: `
-          <div style="
-            width: ${isActive ? '28px' : '24px'};
-            height: ${isActive ? '28px' : '24px'};
-            background-color: ${isActive ? '#3b82f6' : '#ef4444'};
-            border: 3px solid white;
-            border-radius: 50%;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-            transition: all 0.2s;
-          "></div>
-        `,
-        iconSize: [isActive ? 28 : 24, isActive ? 28 : 24],
-        iconAnchor: [isActive ? 14 : 12, isActive ? 14 : 12],
+      const lngLat = activeMarker.getLngLat();
+      mapRef.current.flyTo({
+        center: lngLat,
+        zoom: 15,
+        essential: true,
+        duration: 1000
       });
 
-    markersRef.current.forEach((marker, id) => {
-      if (id === activeBusinessId) {
-        marker.setIcon(createIcon(true));
-        marker.setZIndexOffset(1000);
-        const business = businesses.find((b) => b.id === id);
-        if (business) {
-          let lat = business.location.lat;
-          let lng = business.location.lng;
-          if (geocodedCacheRef.current.has(id)) {
-            const c = geocodedCacheRef.current.get(id)!;
-            lat = c.lat;
-            lng = c.lng;
-          }
-          marker.setLatLng([lat, lng]);
-          map.flyTo([lat, lng], 14, { animate: true, duration: 0.5 });
-          marker.openPopup();
-        }
-      } else {
-        marker.setIcon(createIcon(false));
-        marker.setZIndexOffset(0);
-        marker.closePopup();
+      activeMarker.togglePopup();
+    }
+
+    // Reset others
+    Object.entries(markersRef.current).forEach(([id, marker]) => {
+      if (id !== activeBusinessId) {
+        const el = marker.getElement();
+        el.style.backgroundColor = '#ef4444';
+        el.style.width = '24px';
+        el.style.height = '24px';
+        el.style.zIndex = '1';
+        if (marker.getPopup()?.isOpen()) marker.togglePopup();
       }
     });
-    };
-
-    run();
-  }, [activeBusinessId, businesses]);
+  }, [activeBusinessId, mapLoaded]);
 
   return (
-    <div className="h-full w-full">
-      <div ref={mapRef} className="w-full h-full rounded-lg shadow-lg" />
+    <div className="h-full w-full relative">
+      <div ref={mapContainerRef} className="w-full h-full rounded-xl shadow-2xl border border-white/10" />
+      
+      {/* Map Overlay for Premium Look */}
+      <div className="absolute top-4 left-4 z-10 bg-black/60 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/20">
+        <span className="text-[10px] font-bold text-white/70 uppercase tracking-widest">Mapbox Premium Engine</span>
+      </div>
     </div>
   );
 }

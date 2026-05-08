@@ -6,11 +6,11 @@ import { cn } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
 import { fr } from "date-fns/locale";
 import { useState, useEffect } from "react";
-import { Search, Users, Check, X, Bell } from "lucide-react";
+import { Search, Users, Check, X, Bell, ShieldOff, ShieldAlert } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import Link from "next/link";
 import { Conversation } from "@/types/messaging";
-import { getPendingRequests, acceptFriendRequest, declineFriendRequest, getFriends } from "@/lib/actions/friendships";
+import { getPendingRequests, acceptFriendRequest, declineFriendRequest, getFriends, getBlockedUsers, unblockUser } from "@/lib/actions/friendships";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -33,6 +33,7 @@ export function ConversationSidebar({ activeId: propsActiveId, onSelect }: Conve
   const activeId = propsActiveId || storeActiveId;
   const [pendingRequests, setPendingRequests] = useState<any[]>([]);
   const [friends, setFriends] = useState<any[]>([]);
+  const [blockedUsers, setBlockedUsers] = useState<any[]>([]);
   const [showRequests, setShowRequests] = useState(false);
 
   useEffect(() => {
@@ -44,8 +45,13 @@ export function ConversationSidebar({ activeId: propsActiveId, onSelect }: Conve
       const data = await getFriends();
       setFriends(data);
     };
+    const fetchBlockedData = async () => {
+      const data = await getBlockedUsers();
+      setBlockedUsers(data);
+    };
     fetchRequests();
     fetchFriendsData();
+    fetchBlockedData();
   }, []);
 
   const handleAccept = async (senderId: string) => {
@@ -62,6 +68,14 @@ export function ConversationSidebar({ activeId: propsActiveId, onSelect }: Conve
     if (!error) {
       setPendingRequests(prev => prev.filter(r => r.user_id !== senderId));
       toast.info("Invitation déclinée");
+    }
+  };
+
+  const handleUnblock = async (targetId: string) => {
+    const { error } = await unblockUser(targetId);
+    if (!error) {
+      setBlockedUsers(prev => prev.filter(u => u.id !== targetId));
+      toast.success("Utilisateur débloqué");
     }
   };
 
@@ -141,9 +155,10 @@ export function ConversationSidebar({ activeId: propsActiveId, onSelect }: Conve
       
       <ScrollArea className="flex-1 px-2">
         <Tabs defaultValue="conversations" className="w-full">
-          <TabsList className="w-full grid grid-cols-2 mb-2 bg-muted/50 rounded-xl h-10 p-1">
-            <TabsTrigger value="conversations" className="rounded-lg text-xs font-semibold">Conversations</TabsTrigger>
-            <TabsTrigger value="friends" className="rounded-lg text-xs font-semibold">Amis</TabsTrigger>
+          <TabsList className="w-full grid grid-cols-3 mb-2 bg-muted/50 rounded-xl h-10 p-1">
+            <TabsTrigger value="conversations" className="rounded-lg text-[10px] font-semibold">Conversations</TabsTrigger>
+            <TabsTrigger value="friends" className="rounded-lg text-[10px] font-semibold">Amis</TabsTrigger>
+            <TabsTrigger value="blocked" className="rounded-lg text-[10px] font-semibold">Bloqués</TabsTrigger>
           </TabsList>
           
           <TabsContent value="conversations" className="space-y-1 m-0 focus-visible:outline-none">
@@ -238,6 +253,41 @@ export function ConversationSidebar({ activeId: propsActiveId, onSelect }: Conve
                     {friend.full_name}
                   </span>
                 </button>
+              ))
+            )}
+          </TabsContent>
+
+          <TabsContent value="blocked" className="space-y-1 m-0 focus-visible:outline-none animate-in fade-in">
+            {blockedUsers.length === 0 ? (
+              <div className="p-4 text-center text-sm text-muted-foreground">
+                Aucun utilisateur bloqué.
+              </div>
+            ) : (
+              blockedUsers.map((user) => (
+                <div
+                  key={user.id}
+                  className="flex items-center gap-3 w-full p-3 rounded-xl bg-red-50/5 border border-red-500/5 group"
+                >
+                  <Avatar className="h-10 w-10 border-2 border-red-500/10 grayscale">
+                    <AvatarImage src={user.avatar_url} />
+                    <AvatarFallback>{user.full_name?.substring(0, 2).toUpperCase()}</AvatarFallback>
+                  </Avatar>
+                  <div className="flex-1 min-w-0">
+                    <span className="font-semibold text-foreground truncate block">
+                      {user.full_name}
+                    </span>
+                    <span className="text-[10px] text-red-500 font-bold uppercase tracking-tighter">Bloqué</span>
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-8 px-2 text-[10px] font-bold text-red-500 hover:text-red-600 hover:bg-red-50"
+                    onClick={() => handleUnblock(user.id)}
+                  >
+                    <ShieldOff className="h-3 w-3 mr-1" />
+                    Débloquer
+                  </Button>
+                </div>
               ))
             )}
           </TabsContent>

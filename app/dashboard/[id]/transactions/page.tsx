@@ -7,7 +7,7 @@ import {
   Loader2, Search, Filter, ShieldCheck, CreditCard, 
   Calendar, ArrowRight, TrendingUp, Info, MoreVertical, 
   CheckCircle, XCircle, Clock, Download, ChevronLeft, ChevronRight,
-  QrCode
+  QrCode, ShieldAlert
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
@@ -413,7 +413,7 @@ export default function TransactionsPage() {
                 <thead className="bg-muted border-b border-border">
                   <tr>
                     {[
-                      'Date', 'Référence', 'Type', 'Client', 'Détails', 'Montant', 'Statut'
+                      'Date', 'Référence', 'Type', 'Client', 'Détails', 'Montant', 'Fraude', 'Statut'
                     ].map(col => (
                       <th key={col} className="px-6 py-3 text-left text-xs font-semibold text-muted-foreground whitespace-nowrap uppercase tracking-wider">
                         {col}
@@ -458,6 +458,26 @@ export default function TransactionsPage() {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap font-extrabold text-foreground text-sm">
                         {txn.amount.toLocaleString()} DT
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        {txn.fraud_level ? (
+                          <div className="flex items-center gap-1.5" title={txn.fraud_ai_reasoning}>
+                            <ShieldAlert className={`w-3.5 h-3.5 ${
+                              txn.fraud_level === 'safe' ? 'text-emerald-500' :
+                              txn.fraud_level === 'suspicious' ? 'text-amber-500' :
+                              'text-rose-500'
+                            }`} />
+                            <span className={`text-[10px] font-bold uppercase ${
+                              txn.fraud_level === 'safe' ? 'text-emerald-600' :
+                              txn.fraud_level === 'suspicious' ? 'text-amber-600' :
+                              'text-rose-600'
+                            }`}>
+                              {txn.fraud_level.replace('_', ' ')}
+                            </span>
+                          </div>
+                        ) : (
+                          <span className="text-[10px] text-muted-foreground italic">Non analysé</span>
+                        )}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <Badge className={`text-[10px] font-bold uppercase border ${statusColors[txn.status] || ''}`}>
@@ -560,6 +580,32 @@ export default function TransactionsPage() {
                 <p className="text-sm font-semibold text-foreground">Confirmer la prestation</p>
                 <p className="text-xs text-muted-foreground">Demandez au client de vous montrer son code QR pour valider la prestation et garantir votre paiement.</p>
               </div>
+
+              {selectedTxn?.fraud_level && (
+                <div className={`p-4 rounded-lg border flex flex-col gap-2 ${
+                  selectedTxn.fraud_level === 'safe' ? 'bg-emerald-500/10 border-emerald-500/20' :
+                  selectedTxn.fraud_level === 'suspicious' ? 'bg-amber-500/10 border-amber-500/20' :
+                  'bg-rose-500/10 border-rose-500/20'
+                }`}>
+                  <div className="flex items-center gap-2">
+                    <ShieldAlert className={`w-4 h-4 ${
+                      selectedTxn.fraud_level === 'safe' ? 'text-emerald-500' :
+                      selectedTxn.fraud_level === 'suspicious' ? 'text-amber-500' :
+                      'text-rose-500'
+                    }`} />
+                    <p className={`text-sm font-bold uppercase tracking-widest ${
+                      selectedTxn.fraud_level === 'safe' ? 'text-emerald-600' :
+                      selectedTxn.fraud_level === 'suspicious' ? 'text-amber-600' :
+                      'text-rose-600'
+                    }`}>
+                      Analyse de fraude ({selectedTxn.fraud_score}/100)
+                    </p>
+                  </div>
+                  <p className="text-xs text-muted-foreground italic leading-relaxed">
+                    "{selectedTxn.fraud_ai_reasoning}"
+                  </p>
+                </div>
+              )}
 
               <Button 
                 className="w-full font-bold" 

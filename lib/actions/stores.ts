@@ -143,37 +143,40 @@ export async function deleteStore(id: number) {
         }
 
         // 3. Sequential deletion using admin client to bypass RLS
-        // Delete story views first (foreign key to stories)
+        
+        // --- STORIES ---
         const { data: stories } = await (adminSupabase as any).from('stories').select('id').eq('store_id', id)
         if (stories && (stories as any[]).length > 0) {
             const storyIds = (stories as any[]).map(s => s.id)
             await (adminSupabase as any).from('story_views').delete().in('story_id', storyIds)
         }
-
-        // Delete stories/reels
         await (adminSupabase as any).from('stories').delete().eq('store_id', id)
 
-        // Delete service schedules first (foreign key to items)
+        // --- REELS ---
+        const { data: reels } = await (adminSupabase as any).from('reels').select('id').eq('store_id', id)
+        if (reels && (reels as any[]).length > 0) {
+            const reelIds = (reels as any[]).map(r => r.id)
+            await (adminSupabase as any).from('reel_stats').delete().in('reel_id', reelIds)
+            await (adminSupabase as any).from('reel_comments').delete().in('reel_id', reelIds)
+            await (adminSupabase as any).from('reel_sponsorships').delete().in('reel_id', reelIds)
+        }
+        await (adminSupabase as any).from('reels').delete().eq('store_id', id)
+
+        // --- ITEMS & PROMOTIONS ---
         const { data: items } = await (adminSupabase as any).from('items').select('id').eq('store_id', id)
         if (items && (items as any[]).length > 0) {
             const itemIds = (items as any[]).map(i => i.id)
             await (adminSupabase as any).from('service_schedules').delete().in('item_id', itemIds)
+            await (adminSupabase as any).from('promotion_items').delete().in('item_id', itemIds)
         }
-
-        // Delete items (products/services)
+        await (adminSupabase as any).from('promotions').delete().eq('store_id', id)
         await (adminSupabase as any).from('items').delete().eq('store_id', id)
 
-        // Delete reviews
+        // --- OTHER ASSETS & DATA ---
+        await (adminSupabase as any).from('banners').delete().eq('store_id', id)
         await (adminSupabase as any).from('reviews').delete().eq('store_id', id)
-
-        // Delete bookings
         await (adminSupabase as any).from('bookings').delete().eq('store_id', id)
-
-        // Delete orders
         await (adminSupabase as any).from('orders').delete().eq('store_id', id)
-
-        // Delete promotions
-        await (adminSupabase as any).from('promotions').delete().eq('store_id', id)
 
         // 4. Handle business directory unclaiming
         const directoryId = storeData.business_directory_id || storeData.id_business;
@@ -216,5 +219,51 @@ export async function deleteStore(id: number) {
     } catch (err: any) {
         console.error('Error during full store deletion:', err)
         return { error: err.message || 'Une erreur est survenue lors de la suppression.' }
+    }
+}
+export async function updateStoreStatus(storeId: number, status: 'APPROVED' | 'REJECTED' | 'PUBLISHED' | 'SUSPENDED') {
+    const supabase = createClient()
+    const adminSupabase = createAdminClient()
+
+    try {
+        // 1. Get the store to find the owner
+        const { data: store, error: fetchError } = await supabase
+            .from('stores')
+            .select('owner_id')
+            .eq('id', storeId)
+            .single()
+
+        if (fetchError || !store) {
+            return { success: false, error: "Boutique introuvable." }
+        }
+
+        // 2. Update store status
+        const { error: updateError } = await (adminSupabase as any)
+            .from('stores')
+            .update({ status })
+            .eq('id', storeId)
+
+        if (updateError) throw updateError
+
+        // 3. If REJECTED, revert user role to CLIENT
+        if (status === 'REJECTED') {
+            const { error: roleError } = await (adminSupabase as any)
+                .from('users')
+                .update({ role: 'CLIENT' })
+                .eq('id', store.owner_id)
+
+            if (roleError) {
+                console.error("Error reverting role to CLIENT:", roleError)
+            }
+        }
+
+        revalidatePath('/')
+        revalidatePath('/dashboard')
+        revalidatePath('/profile')
+
+        return { success: true }
+    } catch (err: any) {
+        console.error('Error updating store status:', err)
+        return { error: err.message || 'Une erreur est survenue.' }
     }
 }

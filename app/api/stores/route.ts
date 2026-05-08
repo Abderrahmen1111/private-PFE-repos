@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
-import { searchStores } from '@/lib/actions/search_bus'
+import { searchStores } from '@/lib/actions/search'
 import { updateStoreProfile } from '@/lib/actions/stores'
 
 export async function GET(request: Request) {

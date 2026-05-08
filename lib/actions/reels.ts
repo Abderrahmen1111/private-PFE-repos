@@ -191,7 +191,6 @@ export async function publishReel(input: ReelInput) {
             cta_value: input.ctaValue || null,
             category: input.category || null,
             item_id: input.itemId || null,
-            metadata: input.metadata || null,
             status: 'active'
         })
         .select('id')
@@ -208,12 +207,62 @@ export async function publishReel(input: ReelInput) {
     return { success: true, reelId: data.id }
 }
 
-// Upload a reel media file to storage
-// ============================================
-// ONLY MODIFY THIS FUNCTION - REST OF FILE STAYS THE SAME
-// ============================================
+// Publier un Reel avec Upload Cloudinary intégré
+export async function uploadAndPublishReel(formData: FormData) {
+    const file = formData.get('file') as File | null;
+    const storeId = Number(formData.get('storeId'));
+    const title = formData.get('title') as string;
+    const price = Number(formData.get('price')) || 0;
+    const category = formData.get('category') as string;
+    const filter = formData.get('filter') as string;
 
-// Upload a reel media file to Cloudinary
+    if (!file) return { success: false, error: "Fichier manquant" };
+    if (!storeId) return { success: false, error: "Store ID manquant" };
+
+    const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
+    if (!cloudName) return { success: false, error: "Cloudinary non configuré" };
+
+    const isVideo = file.type.startsWith('video/');
+    const uploadEndpoint = isVideo
+        ? `https://api.cloudinary.com/v1_1/${cloudName}/video/upload`
+        : `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`;
+
+    const cloudinaryFormData = new FormData();
+    cloudinaryFormData.append('file', file);
+    cloudinaryFormData.append('upload_preset', 'ro2ya_reels');
+
+    try {
+        const response = await fetch(uploadEndpoint, {
+            method: 'POST',
+            body: cloudinaryFormData,
+        });
+
+        if (!response.ok) {
+            console.error('Cloudinary error:', await response.text());
+            return { success: false, error: "Échec de l'upload Cloudinary" };
+        }
+
+        const data = await response.json();
+        const mediaUrl = data.secure_url;
+
+        // Save to Supabase
+        return await publishReel({
+            storeId,
+            mediaPath: mediaUrl,
+            mediaType: isVideo ? 'video' : 'image',
+            title,
+            price,
+            category,
+            metadata: { filter }
+        });
+
+    } catch (error: any) {
+        console.error('Error in uploadAndPublishReel:', error);
+        return { success: false, error: error.message || "Erreur serveur" };
+    }
+}
+
+// Upload a reel media file to Cloudinary (Legacy/Fallback)
 export async function uploadReelMedia(formData: FormData): Promise<string | null> {
     const file = formData.get('file') as File | null;
     if (!file) return null;

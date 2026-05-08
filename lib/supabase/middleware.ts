@@ -47,30 +47,40 @@ export async function updateSession(request: NextRequest) {
     }
   )
 
-  /**
-   * SECURITY: Always use getUser() — it verifies the token with Supabase servers.
-   * Never use getSession() alone in middleware — it only reads the cookie (spoofable).
-   */
-  const {
-    data: { user },
-    error: userError,
-  } = await supabase.auth.getUser()
-
   const pathname = request.nextUrl.pathname
 
-  // ── 1. UNAUTHENTICATED USER trying to access a protected route ──────────────
   const isProtected = Object.keys(PROTECTED_ROUTES).some((prefix) =>
     pathname.startsWith(prefix)
   )
+  const isAuthRoute = AUTH_ROUTES.some((route) => pathname.startsWith(route))
 
+  /**
+   * OPTIMISATION DE PERFORMANCE :
+   * 1. On utilise getUser() (qui interroge le serveur Auth) UNIQUEMENT pour les routes protégées.
+   * 2. Pour les autres routes (API publiques, page d'accueil), getSession() lit juste le cookie JWT très rapidement.
+   */
+  let user = null
+  let userError = null
+
+  if (isProtected || isAuthRoute) {
+    const { data: userData, error } = await supabase.auth.getUser()
+    user = userData?.user
+    userError = error
+  } else {
+    const { data: sessionData } = await supabase.auth.getSession()
+    user = sessionData?.session?.user || null
+  }
+
+  // ── 1. UNAUTHENTICATED USER trying to access a protected route ──────────────
   if (isProtected && (!user || userError)) {
     const redirectUrl = new URL('/login', request.url)
     redirectUrl.searchParams.set('redirectTo', pathname)
     return NextResponse.redirect(redirectUrl)
   }
 
-  // ── 2. AUTHENTICATED USER — fetch role from DB (never trust user_metadata) ──
-  if (user) {
+  // ── 2. AUTHENTICATED USER — fetch role from DB (ONLY FOR PROTECTED ROUTES) ──
+  // Évite une requête SQL inutile sur chaque page publique ou appel API.
+  if (user && isProtected) {
     const { data: profile, error: profileError } = await supabase
       .from('users')
       .select('role')
@@ -79,11 +89,8 @@ export async function updateSession(request: NextRequest) {
 
     // If we can't read the profile, treat as unauthenticated for protected routes
     if (profileError || !profile) {
-      if (isProtected) {
-        await supabase.auth.signOut()
-        return NextResponse.redirect(new URL('/login', request.url))
-      }
-      return response
+      await supabase.auth.signOut()
+      return NextResponse.redirect(new URL('/login', request.url))
     }
 
     const userRole = profile.role as string
@@ -99,18 +106,20 @@ export async function updateSession(request: NextRequest) {
         return NextResponse.redirect(new URL(fallback, request.url))
       }
     }
-
-    // ── 4. AUTHENTICATED USER trying to access auth routes ───────────────────
-    const isAuthRoute = AUTH_ROUTES.some((route) => pathname.startsWith(route))
-    if (isAuthRoute) {
-      const redirectTo = request.nextUrl.searchParams.get('redirectTo') || '/'
-      // Validate redirectTo to prevent open redirect attacks
-      const safeRedirect = redirectTo.startsWith('/') ? redirectTo : '/'
-      return NextResponse.redirect(new URL(safeRedirect, request.url))
-    }
-
-    // ── 5. Pass role as header for Server Components (optional but useful) ───
+    
+    // Pass role as header for Server Components 
     response.headers.set('x-user-role', userRole)
+  }
+
+  // ── 4. AUTHENTICATED USER trying to access auth routes ───────────────────
+  if (user && isAuthRoute) {
+    const redirectTo = request.nextUrl.searchParams.get('redirectTo') || '/'
+    // Validate redirectTo to prevent open redirect attacks
+    const safeRedirect = redirectTo.startsWith('/') ? redirectTo : '/'
+    return NextResponse.redirect(new URL(safeRedirect, request.url))
+  }
+
+  if (user) {
     response.headers.set('x-user-id', user.id)
   }
 

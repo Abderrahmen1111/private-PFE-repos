@@ -39,6 +39,7 @@ const ALLOWED_COLUMNS = new Set([
   'hide_reason',
   'block_duration_days',
   'report_reason',
+  'platform',
   'metadata',
 ])
 

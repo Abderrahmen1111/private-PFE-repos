@@ -159,3 +159,79 @@ export async function getFriends() {
 
   return Array.from(friendsMap.values());
 }
+
+export async function blockUser(targetId: string) {
+  const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (!user) return { error: 'Non authentifié' };
+  if (user.id === targetId) return { error: 'Vous ne pouvez pas vous bloquer vous-même' };
+
+  // Check if a friendship already exists
+  const { data: existing } = await (supabase.from('friendships') as any)
+    .select('*')
+    .or(`and(user_id.eq.${user.id},friend_id.eq.${targetId}),and(user_id.eq.${targetId},friend_id.eq.${user.id})`)
+    .maybeSingle();
+
+  let error;
+  if (existing) {
+    // Update existing relationship to BLOCKED
+    const { error: updateError } = await (supabase.from('friendships') as any)
+      .update({ 
+        status: 'BLOCKED', 
+        user_id: user.id, // The one who blocks is now the user_id in the record
+        friend_id: targetId,
+        updated_at: new Date().toISOString() 
+      })
+      .eq('id', existing.id);
+    error = updateError;
+  } else {
+    // Create new BLOCKED relationship
+    const { error: insertError } = await (supabase.from('friendships') as any)
+      .insert([
+        {
+          user_id: user.id,
+          friend_id: targetId,
+          status: 'BLOCKED'
+        }
+      ]);
+    error = insertError;
+  }
+
+  if (!error) revalidatePath('/messages');
+  return { error };
+}
+
+export async function unblockUser(targetId: string) {
+  const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (!user) return { error: 'Non authentifié' };
+
+  const { error } = await (supabase.from('friendships') as any)
+    .delete()
+    .match({ user_id: user.id, friend_id: targetId, status: 'BLOCKED' });
+
+  if (!error) revalidatePath('/messages');
+  return { error };
+}
+
+export async function getBlockedUsers() {
+  const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (!user) return [];
+
+  const { data, error } = await (supabase.from('friendships') as any)
+    .select('friend:users!friendships_friend_id_fkey(id, full_name, avatar_url)')
+    .eq('user_id', user.id)
+    .eq('status', 'BLOCKED');
+
+  if (error) {
+    console.error('Error fetching blocked users:', error);
+    return [];
+  }
+
+  return (data || []).map((f: any) => f.friend).filter(Boolean);
+}
+

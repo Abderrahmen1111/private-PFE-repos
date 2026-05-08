@@ -11,7 +11,7 @@ import {
 import Link from 'next/link';
 import { toast } from 'sonner';
 import { getPublicUserProfile } from '@/lib/actions/public-profile';
-import { getFriendshipStatus, sendFriendRequest, acceptFriendRequest } from '@/lib/actions/friendships';
+import { getFriendshipStatus, sendFriendRequest, acceptFriendRequest, blockUser, unblockUser } from '@/lib/actions/friendships';
 import PublicStarRating from '@/components/profile/PublicStarRating';
 import PublicReviewCard from '@/components/profile/PublicReviewCard';
 import PublicBadge from '@/components/profile/PublicBadge';
@@ -87,7 +87,66 @@ function ContactButton({ userId }: { userId: string }) {
   );
 }
 
+function BlockUserButton({ userId }: { userId: string }) {
+  const [status, setStatus] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    getFriendshipStatus(userId).then(res => {
+      setStatus(res);
+      setLoading(false);
+    });
+  }, [userId]);
+
+  const handleBlock = async () => {
+    if (window.confirm("Êtes-vous sûr de vouloir bloquer cet utilisateur ?")) {
+      setLoading(true);
+      const { error } = await blockUser(userId);
+      if (!error) {
+        toast.success("Utilisateur bloqué");
+        setStatus({ status: 'BLOCKED', direction: 'SENT' });
+      } else {
+        toast.error("Erreur lors du blocage");
+      }
+      setLoading(false);
+    }
+  };
+
+  const handleUnblock = async () => {
+    setLoading(true);
+    const { error } = await unblockUser(userId);
+    if (!error) {
+      toast.success("Utilisateur débloqué");
+      setStatus({ status: null, direction: null });
+    } else {
+      toast.error("Erreur lors du déblocage");
+    }
+    setLoading(false);
+  };
+
+  if (loading) return null;
+
+  const isBlockedByMe = status?.status === 'BLOCKED' && status?.direction === 'SENT';
+
+  return (
+    <button
+      onClick={isBlockedByMe ? handleUnblock : handleBlock}
+      className={cn (
+        "flex items-center justify-center gap-2 px-4 py-2.5 text-xs font-bold rounded-xl transition-all shadow-sm h-11 border",
+        isBlockedByMe 
+          ? "bg-red-50 text-red-600 border-red-200 hover:bg-red-100" 
+          : "bg-white text-gray-400 border-gray-200 hover:text-red-500 hover:border-red-200"
+      )}
+      title={isBlockedByMe ? "Débloquer" : "Bloquer"}
+    >
+      <Shield className={cn("w-3.5 h-3.5", isBlockedByMe && "fill-red-500")} />
+      {isBlockedByMe ? "Débloquer" : "Bloquer"}
+    </button>
+  );
+}
+
 import { Clock } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 // ─── Tabs ─────────────────────────────────────────────────────────────────────
 type Tab = 'reviews' | 'badges';
@@ -274,42 +333,48 @@ export default function PublicUserProfilePage() {
                 </div>
               </div>
 
-              {/* Share & Contact */}
-              <div className="flex items-center gap-2 self-start sm:self-auto">
+              {/* Share & Block & Contact */}
+              <div className="flex flex-wrap items-center gap-2 self-start sm:self-auto">
                 <ContactButton userId={userId} />
-                <div className="relative">
-                  <button
-                    onClick={() => setShareOpen(v => !v)}
-                    className="flex items-center gap-2 px-4 py-2.5 text-xs font-bold rounded-xl bg-white border border-gray-200 text-gray-700 hover:border-indigo-300 hover:text-indigo-600 transition-all shadow-sm h-11"
-                  >
-                    <Share2 className="w-3.5 h-3.5"/> Partager
-                  </button>
-                  <AnimatePresence>
-                    {shareOpen && (
-                      <motion.div
-                        initial={{ opacity:0, scale:0.94, y:-4 }}
-                        animate={{ opacity:1, scale:1, y:0 }}
-                        exit={{ opacity:0, scale:0.94, y:-4 }}
-                        transition={{ duration:0.15 }}
-                        className="absolute right-0 top-full mt-2 bg-white rounded-2xl shadow-xl border border-gray-100 p-2 z-50 min-w-[180px]"
-                      >
-                        {[
-                          { id:'twitter',  Icon:Twitter,  label:'Twitter'      },
-                          { id:'facebook', Icon:Facebook, label:'Facebook'     },
-                          { id:'linkedin', Icon:Linkedin, label:'LinkedIn'     },
-                          { id:'copy',     Icon:Copy,     label:'Copier le lien'},
-                        ].map(s=>(
-                          <button
-                            key={s.id}
-                            onClick={()=>handleShare(s.id)}
-                            className="flex items-center gap-2.5 w-full px-3 py-2 text-xs font-medium text-gray-700 rounded-xl hover:bg-indigo-50 hover:text-indigo-600 transition-colors"
-                          >
-                            <s.Icon className="w-3.5 h-3.5"/>{s.label}
-                          </button>
-                        ))}
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
+                
+                <div className="flex items-center gap-2">
+                  <div className="relative">
+                    <button
+                      onClick={() => setShareOpen(v => !v)}
+                      className="flex items-center gap-2 px-4 py-2.5 text-xs font-bold rounded-xl bg-white border border-gray-200 text-gray-700 hover:border-indigo-300 hover:text-indigo-600 transition-all shadow-sm h-11"
+                    >
+                      <Share2 className="w-3.5 h-3.5"/> Partager
+                    </button>
+                    <AnimatePresence>
+                      {shareOpen && (
+                        <motion.div
+                          initial={{ opacity:0, scale:0.94, y:-4 }}
+                          animate={{ opacity:1, scale:1, y:0 }}
+                          exit={{ opacity:0, scale:0.94, y:-4 }}
+                          transition={{ duration:0.15 }}
+                          className="absolute right-0 top-full mt-2 bg-white rounded-2xl shadow-xl border border-gray-100 p-2 z-50 min-w-[180px]"
+                        >
+                          {[
+                            { id:'twitter',  Icon:Twitter,  label:'Twitter'      },
+                            { id:'facebook', Icon:Facebook, label:'Facebook'     },
+                            { id:'linkedin', Icon:Linkedin, label:'LinkedIn'     },
+                            { id:'copy',     Icon:Copy,     label:'Copier le lien'},
+                          ].map(s=>(
+                            <button
+                              key={s.id}
+                              onClick={()=>handleShare(s.id)}
+                              className="flex items-center gap-2.5 w-full px-3 py-2 text-xs font-medium text-gray-700 rounded-xl hover:bg-indigo-50 hover:text-indigo-600 transition-colors"
+                            >
+                              <s.Icon className="w-3.5 h-3.5"/>{s.label}
+                            </button>
+                          ))}
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
+
+                  {/* Block Button */}
+                  <BlockUserButton userId={userId} />
                 </div>
               </div>
             </div>

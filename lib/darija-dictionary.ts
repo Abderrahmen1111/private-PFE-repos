@@ -24,12 +24,37 @@ export const DARIJA_TUNISIAN_DICTIONARY: Record<string, { french: string; catego
   'نبحث': { french: 'chercher', category: 'verb' },
   'nba7eth': { french: 'chercher', category: 'verb' },
   
+  // "Manger"
+  'نأكل': { french: 'manger', category: 'verb' },
+  'nekel': { french: 'manger', category: 'verb' },
+  'nkel': { french: 'manger', category: 'verb' },
+  'nkl': { french: 'manger', category: 'verb' },
+  'nekil': { french: 'manger', category: 'verb' },
+  'n7ib nekel': { french: 'je veux manger', category: 'verb' },
+  'nhb nkl': { french: 'je veux manger', category: 'verb' },
+  'nhb nkel': { french: 'je veux manger', category: 'verb' },
+  
   // "Acheter"
   'نشري': { french: 'acheter', category: 'verb' },
   'nechri': { french: 'acheter', category: 'verb' },
   'nchri': { french: 'acheter', category: 'verb' },
+
+  // "Réparer / En panne"
+  'fsdet': { french: 'en panne / cassé', category: 'verb' },
+  'fesdet': { french: 'en panne / cassé', category: 'verb' },
+  'makhdoum': { french: 'réparé / travaillé', category: 'verb' },
+  'صلح': { french: 'réparer', category: 'verb' },
+  'asla7': { french: 'réparer', category: 'verb' },
   
-  // ========== ADJECTIFS & ÉTATS ==========
+  // ========== TRANSPORT & AUTO ==========
+  'كراهب': { french: 'voitures', category: 'auto' },
+  'krahba': { french: 'voiture', category: 'auto' },
+  'karhba': { french: 'voiture', category: 'auto' },
+  'krhba': { french: 'voiture', category: 'auto' },
+  'camion': { french: 'camion', category: 'auto' },
+  'mecanique': { french: 'mécanique', category: 'auto' },
+  'mecanicien': { french: 'mécanicien', category: 'auto' },
+  'dhina': { french: 'peinture (auto)', category: 'auto' },
   
   // "Ouvert"
   'مفتوح': { french: 'ouvert', category: 'state' },
@@ -111,6 +136,11 @@ export const DARIJA_TUNISIAN_DICTIONARY: Record<string, { french: string; catego
   'شوية': { french: 'un peu', category: 'quantity' },
   'chwaya': { french: 'un peu', category: 'quantity' },
   'chwiya': { french: 'un peu', category: 'quantity' },
+  
+  // "Quelque chose"
+  'حاجة': { french: 'quelque chose', category: 'noun' },
+  '7aja': { french: 'quelque chose', category: 'noun' },
+  'haja': { french: 'quelque chose', category: 'noun' },
   
   // ========== NOURRITURE & VÉHICULES ==========
   
@@ -199,6 +229,25 @@ export const DARIJA_TUNISIAN_DICTIONARY: Record<string, { french: string; catego
   'بكداش': { french: 'combien', category: 'question' },
   'bkdech': { french: 'combien', category: 'question' },
   'b9adech': { french: 'combien', category: 'question' },
+  // ========== PRODUITS SPÉCIFIQUES ==========
+  'صباط': { french: 'chaussure', category: 'product' },
+  'sabbat': { french: 'chaussure', category: 'product' },
+  'sabbet': { french: 'chaussure', category: 'product' },
+  'مريول': { french: 'chemise t-shirt', category: 'product' },
+  'maryoul': { french: 'chemise t-shirt', category: 'product' },
+  'serouel': { french: 'pantalon', category: 'product' },
+  'serwel': { french: 'pantalon', category: 'product' },
+  'سروال': { french: 'pantalon', category: 'product' },
+  'saboun': { french: 'savon lessive', category: 'product' },
+  'صابون': { french: 'savon lessive', category: 'product' },
+  'zit': { french: 'huile', category: 'product' },
+  'زيت': { french: 'huile', category: 'product' },
+  'khobz': { french: 'pain', category: 'product' },
+  'خبز': { french: 'pain', category: 'product' },
+  '9ahwa': { french: 'café', category: 'product' },
+  'قهوة': { french: 'café', category: 'product' },
+  'atay': { french: 'thé', category: 'product' },
+  'تاي': { french: 'thé', category: 'product' },
 }
 
 /**

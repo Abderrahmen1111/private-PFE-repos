@@ -11,6 +11,7 @@ export async function trackEvent(
     params: {
         surface: 'search' | 'discover' | 'reels' | 'category' | 'nearby' | 'profile' | 'home';
         event_type: string;
+        platform?: 'web' | 'mobile' | 'admin';
         item_id?: string;
         merchant_id?: string;
         category_id?: string;

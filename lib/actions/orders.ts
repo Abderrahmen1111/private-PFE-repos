@@ -6,6 +6,7 @@ import { revalidatePath } from 'next/cache';
 import { syncOrderTransaction } from './transactions';
 import { createNotification } from './notifications';
 import { decrementStock } from './items';
+import { analyzeFraud, saveFraudAnalysis } from './fraud-detection';
 import { Client as QStashClient } from '@upstash/qstash';
 
 const qstash = process.env.QSTASH_TOKEN ? new QStashClient({ token: process.env.QSTASH_TOKEN }) : null;
@@ -103,6 +104,24 @@ export async function createOrder(data: Omit<OrderInsert, 'order_number' | 'stat
       link: `/dashboard/${data.store_id}/leads`,
       metadata: { orderId: order.id, storeId: data.store_id }
     });
+
+    // ─── FRAUD ANALYSIS ───────────────────────────────────────────────────────
+    try {
+      const fraudAnalysis = await analyzeFraud({
+        customer_id: user.id,
+        store_id: data.store_id as number,
+        item_id: data.item_id as number,
+        quantity: data.quantity as number,
+        total: data.total_price as number,
+        delivery_address: data.delivery_address,
+        entity_type: 'ORDER'
+      });
+      await saveFraudAnalysis(order.id, fraudAnalysis, 'ORDER');
+    } catch (fraudErr) {
+      console.error('[createOrder] Fraud Analysis failed:', fraudErr);
+      // We don't block the order if fraud analysis fails, but we log it
+    }
+    // ──────────────────────────────────────────────────────────────────────────
   }
 
   revalidatePath(`/merchants/business/${data.store_id}`);

@@ -9,13 +9,14 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import dynamic from "next/dynamic";
 import { Theme } from "emoji-picker-react";
 const EmojiPicker = dynamic(() => import('emoji-picker-react'), { ssr: false, loading: () => <div className="p-4 flex justify-center"><span className="animate-spin h-6 w-6 border-b-2 border-primary rounded-full"></span></div> });
-import { Send, Phone, Video, Info, Paperclip, Smile, Mic, X, Image as ImageIcon, Trash2, UserPlus, UserCheck } from "lucide-react";
+import { Send, Phone, Video, Info, Paperclip, Smile, Mic, X, Image as ImageIcon, Trash2, UserPlus, UserCheck, Ban, ShieldAlert } from "lucide-react";
 import { ChatMessage } from "./ChatMessage";
 import { Message, Conversation } from "@/types/messaging";
 import { useMessaging } from "@/hooks/useMessaging";
 import { useWebRTCCall } from "@/hooks/useWebRTCCall";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { trackEvent } from "@/lib/tracking/trackEvent";
 
 interface ChatWindowProps {
   partner: Conversation | null;
@@ -214,9 +215,93 @@ export function ChatWindow({ partner, messages, currentUserId, onSendMessage, on
           <Button variant="ghost" size="icon" className="h-9 w-9 text-muted-foreground hover:text-primary">
             <Video className="h-4 w-4" />
           </Button>
-          <Button variant="ghost" size="icon" className="h-9 w-9 text-muted-foreground hover:text-primary">
-            <Info className="h-4 w-4" />
-          </Button>
+          
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-9 w-9 text-muted-foreground hover:text-primary">
+                <Info className="h-4 w-4" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-60 p-4" align="end">
+              <div className="space-y-4">
+                <div className="flex flex-col items-center text-center space-y-2 pb-2 border-b border-border/50">
+                  <Avatar className="h-16 w-16 ring-2 ring-primary/10">
+                    <AvatarImage src={partner.avatar_url} />
+                    <AvatarFallback>{partner.full_name?.substring(0, 2).toUpperCase()}</AvatarFallback>
+                  </Avatar>
+                  <div>
+                    <h4 className="font-bold text-sm">{partner.full_name}</h4>
+                    <p className="text-[10px] text-muted-foreground">ID: {partner.user_id?.substring(0, 8)}...</p>
+                  </div>
+                </div>
+
+                <div className="space-y-1">
+                  {friendshipStatus?.status === 'BLOCKED' ? (
+                    friendshipStatus.direction === 'SENT' ? (
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="w-full justify-start text-xs text-emerald-500 hover:text-emerald-600 hover:bg-emerald-50"
+                        onClick={async () => {
+                          const { unblockUser } = await import("@/lib/actions/friendships");
+                          if (partner.user_id) {
+                            const { error } = await unblockUser(partner.user_id);
+                            if (!error) {
+                              toast.success("Utilisateur débloqué");
+                              trackEvent({
+                                surface: 'profile',
+                                event_type: 'USER_UNBLOCKED',
+                                target_user_id: partner.user_id
+                              });
+                              onFriendshipUpdate?.();
+                            }
+                          }
+                        }}
+                      >
+                        <UserCheck className="mr-2 h-4 w-4" />
+                        Débloquer
+                      </Button>
+                    ) : (
+                      <div className="p-2 bg-red-50 rounded-md">
+                        <p className="text-[10px] text-red-600 font-medium">Vous avez été bloqué par cet utilisateur.</p>
+                      </div>
+                    )
+                  ) : (
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      className="w-full justify-start text-xs text-red-500 hover:text-red-600 hover:bg-red-50"
+                      onClick={async () => {
+                        if (confirm(`Êtes-vous sûr de vouloir bloquer ${partner.full_name} ?`)) {
+                          const { blockUser } = await import("@/lib/actions/friendships");
+                          if (partner.user_id) {
+                            const { error } = await blockUser(partner.user_id);
+                            if (!error) {
+                              toast.success("Utilisateur bloqué");
+                              trackEvent({
+                                surface: 'profile',
+                                event_type: 'USER_BLOCKED',
+                                target_user_id: partner.user_id
+                              });
+                              onFriendshipUpdate?.();
+                            }
+                          }
+                        }
+                      }}
+                    >
+                      <Ban className="mr-2 h-4 w-4" />
+                      Bloquer l'utilisateur
+                    </Button>
+                  )}
+                  
+                  <Button variant="ghost" size="sm" className="w-full justify-start text-xs text-red-500 hover:text-red-600 hover:bg-red-50">
+                    <ShieldAlert className="mr-2 h-4 w-4" />
+                    Signaler
+                  </Button>
+                </div>
+              </div>
+            </PopoverContent>
+          </Popover>
         </div>
       </div>
 
@@ -413,6 +498,45 @@ export function ChatWindow({ partner, messages, currentUserId, onSendMessage, on
               {isRecording ? "Enregistrement en cours..." : "Partagez des messages, images ou notes vocales"}
             </p>
           </>
+        ) : friendshipStatus?.status === 'BLOCKED' ? (
+          <div className="flex flex-col items-center justify-center py-6 text-center space-y-3 bg-red-50/50 rounded-2xl border border-red-100">
+            <div className="h-10 w-10 bg-red-100 rounded-full flex items-center justify-center">
+              <Ban className="h-5 w-5 text-red-600" />
+            </div>
+            <div className="space-y-1">
+              <h4 className="text-sm font-semibold text-red-900">Conversation bloquée</h4>
+              <p className="text-xs text-red-600 max-w-[280px]">
+                {friendshipStatus.direction === 'SENT' 
+                  ? "Vous avez bloqué cet utilisateur. Débloquez-le pour reprendre la conversation."
+                  : "Cet utilisateur vous a bloqué. Vous ne pouvez plus lui envoyer de messages."
+                }
+              </p>
+            </div>
+            {friendshipStatus.direction === 'SENT' && (
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="rounded-full px-6 border-red-200 text-red-600 hover:bg-red-50"
+                onClick={async () => {
+                  const { unblockUser } = await import("@/lib/actions/friendships");
+                  if (partner.user_id) {
+                    const { error } = await unblockUser(partner.user_id);
+                    if (!error) {
+                      toast.success("Utilisateur débloqué");
+                      trackEvent({
+                        surface: 'profile',
+                        event_type: 'USER_UNBLOCKED',
+                        target_user_id: partner.user_id
+                      });
+                      onFriendshipUpdate?.();
+                    }
+                  }
+                }}
+              >
+                Débloquer l'utilisateur
+              </Button>
+            )}
+          </div>
         ) : (
           <div className="flex flex-col items-center justify-center py-4 text-center space-y-3">
             <div className="h-10 w-10 bg-primary/5 rounded-full flex items-center justify-center">
