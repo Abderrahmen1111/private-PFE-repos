@@ -147,7 +147,6 @@ export const DARIJA_TUNISIAN_DICTIONARY: Record<string, { french: string; catego
   'mekla': { french: 'nourriture', category: 'product' },
   'makla': { french: 'nourriture', category: 'product' },
   'ماكلة': { french: 'nourriture', category: 'product' },
-  'karhba': { french: 'voiture', category: 'product' },
   'كرهبة': { french: 'voiture', category: 'product' },
   
   // ========== QUESTIONS & EXISTENCE ==========
