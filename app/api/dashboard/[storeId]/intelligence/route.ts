@@ -26,31 +26,43 @@ export async function GET(
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
-    // 1. Fetch latest comments for this store's reels
-    const { data: comments, error: commentsError } = await (supabase
-      .from('reel_comments' as any)
-      .select(`
-        id,
-        content,
-        reel_id,
-        user_id,
-        created_at,
-        reels!inner(store_id)
-      `)
-      .eq('reels.store_id', storeId)
-      .order('created_at', { ascending: false })
-      .limit(15) as any);
+    // 1. Get all reel IDs for this store first
+    const { data: storeReels, error: reelsError } = await (supabase as any)
+      .from('reels')
+      .select('id')
+      .eq('store_id', storeId)
 
-    // 1b. Fetch latest reviews for this store
+    const reelIds = (storeReels || []).map((r: any) => r.id)
+    console.log(`[Intelligence] Store ${storeId}: found ${reelIds.length} reels:`, reelIds)
+
+    // 2. Fetch latest comments for these reels
+    let comments: any[] = []
+    let commentsError: any = null
+
+    if (reelIds.length > 0) {
+      const result = await (supabase as any)
+        .from('reel_comments')
+        .select('id, content, reel_id, user_id, created_at')
+        .in('reel_id', reelIds)
+        .order('created_at', { ascending: false })
+        .limit(15)
+      comments = result.data || []
+      commentsError = result.error
+      console.log(`[Intelligence] Found ${comments.length} comments for reels`, commentsError ? `ERROR: ${commentsError.message}` : '')
+    }
+
+    // 3. Fetch latest reviews for this store
     const { data: reviews, error: reviewsError } = await supabase
       .from('reviews')
       .select('id, comment, rating, author_id, created_at')
       .eq('store_id', storeId)
       .order('created_at', { ascending: false })
-      .limit(15);
+      .limit(15)
 
-    if (commentsError || reviewsError) {
-      return NextResponse.json({ error: (commentsError || reviewsError)?.message }, { status: 400 });
+    console.log(`[Intelligence] Found ${reviews?.length || 0} reviews`, reviewsError ? `ERROR: ${reviewsError.message}` : '')
+
+    if (commentsError || reviewsError || reelsError) {
+      return NextResponse.json({ error: (commentsError || reviewsError || reelsError)?.message }, { status: 400 })
     }
 
     const allData = [
@@ -67,6 +79,8 @@ export async function GET(
         type: 'REVIEW'
       }))
     ];
+
+    console.log(`[Intelligence] Total items to analyze: ${allData.length}`)
 
     if (allData.length === 0) {
       return NextResponse.json({ 

@@ -13,7 +13,7 @@ import type {
 const OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions";
 
 // Upgrade to a more powerful model for better Darija/Arabic support
-const MODEL = process.env.OPENROUTER_MODEL ?? "google/gemini-2.0-flash-001";
+const MODEL = process.env.OPENROUTER_MODEL ?? "anthropic/claude-3-haiku";
 
 // ─── Prompt Builder ────────────────────────────
 
