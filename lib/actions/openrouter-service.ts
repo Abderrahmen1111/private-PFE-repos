@@ -13,7 +13,12 @@ import type {
 const OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions";
 
 // Upgrade to a more powerful model for better Darija/Arabic support
-const MODEL = process.env.OPENROUTER_MODEL ?? "anthropic/claude-3-haiku";
+let MODEL = process.env.OPENROUTER_MODEL ?? "anthropic/claude-3-haiku";
+
+// Safety check: if MODEL is an API key, fallback to default
+if (MODEL.startsWith("sk-or-v1")) {
+  MODEL = "anthropic/claude-3-haiku";
+}
 
 // ─── Prompt Builder ────────────────────────────
 

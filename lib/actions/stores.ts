@@ -177,6 +177,20 @@ export async function deleteStore(id: number) {
         await (adminSupabase as any).from('reviews').delete().eq('store_id', id)
         await (adminSupabase as any).from('bookings').delete().eq('store_id', id)
         await (adminSupabase as any).from('orders').delete().eq('store_id', id)
+        await (adminSupabase as any).from('ad_campaigns').delete().eq('store_id', id)
+        await (adminSupabase as any).from('messages').delete().eq('store_id', id)
+        await (adminSupabase as any).from('saved_places').delete().eq('store_id', id)
+        await (adminSupabase as any).from('sponsored_campaigns').delete().eq('store_id', id)
+        await (adminSupabase as any).from('store_analytics').delete().eq('store_id', id)
+        await (adminSupabase as any).from('transactions').delete().eq('merchant_id', id)
+
+        // --- SUPPORT TICKETS & MESSAGES ---
+        const { data: tickets } = await (adminSupabase as any).from('support_tickets').select('id').eq('store_id', id)
+        if (tickets && (tickets as any[]).length > 0) {
+            const ticketIds = (tickets as any[]).map(t => t.id)
+            await (adminSupabase as any).from('support_messages').delete().in('ticket_id', ticketIds)
+        }
+        await (adminSupabase as any).from('support_tickets').delete().eq('store_id', id)
 
         // 4. Handle business directory unclaiming
         const directoryId = storeData.business_directory_id || storeData.id_business;
@@ -199,16 +213,23 @@ export async function deleteStore(id: number) {
 
         if (deleteError) throw deleteError
 
-        // 6. Revert user role to CLIENT
-        const { error: roleError } = await (adminSupabase as any)
-            .from('users')
-            .update({ role: 'CLIENT' })
-            .eq('id', user.id);
+        // 6. Conditional Role Revert: Only if no other stores remain
+        const { count: remainingStores, error: countError } = await (adminSupabase as any)
+            .from('stores')
+            .select('*', { count: 'exact', head: true })
+            .eq('owner_id', user.id);
 
-        if (roleError) {
-            console.error("CRITICAL: Error reverting role to CLIENT:", roleError);
-        } else {
-            console.log(`Successfully downgraded user ${user.id} to CLIENT`);
+        if (!countError && (remainingStores === 0)) {
+            const { error: roleError } = await (adminSupabase as any)
+                .from('users')
+                .update({ role: 'CLIENT' })
+                .eq('id', user.id);
+
+            if (roleError) {
+                console.error("CRITICAL: Error reverting role to CLIENT:", roleError);
+            } else {
+                console.log(`Successfully downgraded user ${user.id} to CLIENT (no stores remaining)`);
+            }
         }
 
         revalidatePath('/')

@@ -96,7 +96,11 @@ export async function GET(
     };
 
     // 3. Analyze
-    const apiKey = process.env.OPENROUTER_API_KEY!;
+    const apiKey = process.env.OPENROUTER_API_KEY;
+    if (!apiKey) {
+      console.error("[Intelligence] CRITICAL: OPENROUTER_API_KEY is missing in environment variables!");
+      return NextResponse.json({ error: "Configuration error: AI service unavailable" }, { status: 500 });
+    }
     const result = await analyzeBatch(batchReq, apiKey);
 
     return NextResponse.json(result);
