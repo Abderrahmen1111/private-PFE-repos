@@ -416,11 +416,11 @@ export async function getUserProfileData() {
             })
         }));
 
-    // 8. Fetch all owned stores
+    // 8. Fetch all owned stores (Matched by UID or Email)
     const { data: ownedStores } = await (supabase
         .from('stores' as any)
-        .select('id, name, logo_url, status')
-        .eq('owner_id', user.id)
+        .select('id, name, logo_url, status, email, owner_id')
+        .or(`owner_id.eq.${user.id},email.eq.${user.email}`)
         .order('created_at', { ascending: true }) as any);
 
     const primaryStore = ownedStores && ownedStores.length > 0 ? ownedStores[0] : null;
