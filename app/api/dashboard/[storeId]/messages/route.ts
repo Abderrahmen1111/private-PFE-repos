@@ -1,9 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 
-// The admin UUID that handles support tickets
-const ADMIN_UUID = '00000000-0000-0000-0000-000000000000'
-
 export async function GET(
   request: Request,
   { params }: { params: { storeId: string } }
@@ -17,6 +14,7 @@ export async function GET(
     const storeId = parseInt(params.storeId)
     if (isNaN(storeId)) return NextResponse.json({ error: 'Invalid store ID' }, { status: 400 })
 
+    // Verify ownership
     const { data: store, error: storeError } = await supabase
       .from('stores')
       .select('owner_id, email')
@@ -27,7 +25,7 @@ export async function GET(
       return NextResponse.json({ error: 'Store not found or forbidden' }, { status: 403 })
     }
 
-    // Fetch support messages (where receiver is admin or sender is admin, and metadata->>store_id matches)
+    // Fetch messages for this store
     const { data: messages, error } = await supabase
       .from('messages')
       .select(`
@@ -36,12 +34,36 @@ export async function GET(
         receiver:users!messages_receiver_id_fkey(id, full_name, avatar_url)
       `)
       .eq('metadata->>store_id', storeId.toString())
-      .eq('metadata->>chat_type', 'support')
-      .order('created_at', { ascending: true })
+      .order('created_at', { ascending: false })
 
-    if (error) return NextResponse.json({ error: error.message }, { status: 400 })
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 400 })
+    }
 
-    return NextResponse.json(messages || [])
+    // Group into conversations
+    const conversationMap = new Map<string, any>()
+
+    ;(messages || []).forEach(msg => {
+      // The partner is the other user (not the current logged-in store owner)
+      const partner = msg.sender_id === user.id ? msg.receiver : msg.sender
+      if (!partner) return
+
+      if (!conversationMap.has(partner.id)) {
+        conversationMap.set(partner.id, {
+          id: partner.id,
+          partner_name: partner.full_name || 'Utilisateur',
+          partner_avatar: partner.avatar_url || '',
+          last_message: msg.content,
+          last_message_at: msg.created_at,
+          unread: !msg.is_read && msg.receiver_id === user.id,
+          messages: []
+        })
+      }
+    })
+
+    const conversations = Array.from(conversationMap.values())
+    return NextResponse.json(conversations)
+
   } catch (error: any) {
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
@@ -60,6 +82,7 @@ export async function POST(
     const storeId = parseInt(params.storeId)
     if (isNaN(storeId)) return NextResponse.json({ error: 'Invalid store ID' }, { status: 400 })
 
+    // Verify ownership
     const { data: store, error: storeError } = await supabase
       .from('stores')
       .select('owner_id, email')
@@ -70,34 +93,28 @@ export async function POST(
       return NextResponse.json({ error: 'Store not found or forbidden' }, { status: 403 })
     }
 
-    const body = await request.json()
-    const { message } = body
+    const { receiverId, content } = await request.json()
 
-    if (!message) {
-      return NextResponse.json({ error: 'Message is required' }, { status: 400 })
+    if (!receiverId || !content) {
+      return NextResponse.json({ error: 'Missing receiverId or content' }, { status: 400 })
     }
 
     const { data, error } = await supabase
       .from('messages')
-      .insert([
-        {
-          sender_id: user.id,
-          receiver_id: ADMIN_UUID,
-          content: message,
-          type: 'text',
-          is_read: false,
-          metadata: { chat_type: 'support', store_id: storeId }
-        }
-      ])
+      .insert([{
+        sender_id: user.id,
+        receiver_id: receiverId,
+        content,
+        type: 'text',
+        is_read: false,
+        metadata: { chat_type: 'store', store_id: storeId }
+      }])
       .select()
       .single()
 
-    if (error) {
-      console.warn('Could not insert support ticket:', error)
-      return NextResponse.json({ error: 'Failed to submit support ticket' }, { status: 500 })
-    }
+    if (error) return NextResponse.json({ error: error.message }, { status: 400 })
 
-    return NextResponse.json({ data, message: 'Support message sent' }, { status: 201 })
+    return NextResponse.json({ data, message: 'Message sent successfully' }, { status: 201 })
   } catch (error: any) {
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }

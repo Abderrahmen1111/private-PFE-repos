@@ -18,10 +18,10 @@ export async function GET(
       return NextResponse.json({ error: 'Invalid store ID' }, { status: 400 })
     }
 
-    // Verify ownership
+    // Unified ownership check: owner_id OR email
     const { data: store, error: storeError } = await supabase
       .from('stores')
-      .select('owner_id')
+      .select('owner_id, email')
       .eq('id', storeId)
       .single()
 
@@ -29,27 +29,31 @@ export async function GET(
       return NextResponse.json({ error: 'Store not found' }, { status: 404 })
     }
 
-    if (store.owner_id !== user.id) {
+    if (store.owner_id !== user.id && store.email !== user.email) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
     // Fetch stats
-    // Note: These are example queries, adapt to exact schema if needed
     const [
       { count: productsCount },
       { count: ordersCount },
-      { count: reviewsCount }
+      { count: reviewsCount },
+      { data: impressions }
     ] = await Promise.all([
       supabase.from('items').select('*', { count: 'exact', head: true }).eq('store_id', storeId),
       supabase.from('orders').select('*', { count: 'exact', head: true }).eq('store_id', storeId),
-      supabase.from('reviews').select('*', { count: 'exact', head: true }).eq('store_id', storeId)
+      supabase.from('reviews').select('*', { count: 'exact', head: true }).eq('store_id', storeId),
+      supabase.from('store_analytics').select('profile_views, phone_clicks, direction_requests').eq('store_id', storeId).maybeSingle()
     ])
 
     const stats = {
       totalProducts: productsCount || 0,
-      totalOrders: ordersCount || 0,
+      totalActions: ordersCount || 0,
       totalReviews: reviewsCount || 0,
-      totalRevenue: 0, // Placeholder for actual revenue calculation
+      totalRevenue: 0, 
+      profileViews: impressions?.profile_views || 0,
+      phoneClicks: impressions?.phone_clicks || 0,
+      directionRequests: impressions?.direction_requests || 0
     }
 
     return NextResponse.json(stats)

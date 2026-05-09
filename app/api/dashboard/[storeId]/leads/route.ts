@@ -14,14 +14,14 @@ export async function GET(
     const storeId = parseInt(params.storeId)
     if (isNaN(storeId)) return NextResponse.json({ error: 'Invalid store ID' }, { status: 400 })
 
-    // Verify ownership
+    // Unified ownership check: owner_id OR email
     const { data: store, error: storeError } = await supabase
       .from('stores')
-      .select('owner_id')
+      .select('owner_id, email')
       .eq('id', storeId)
       .single()
 
-    if (storeError || !store || store.owner_id !== user.id) {
+    if (storeError || !store || (store.owner_id !== user.id && store.email !== user.email)) {
       return NextResponse.json({ error: 'Store not found or forbidden' }, { status: 403 })
     }
 
@@ -30,8 +30,8 @@ export async function GET(
       { data: orders, error: ordersError },
       { data: bookings, error: bookingsError }
     ] = await Promise.all([
-      supabase.from('orders' as any).select('*').eq('store_id', storeId).order('created_at', { ascending: false }),
-      supabase.from('bookings' as any).select('*').eq('store_id', storeId).order('created_at', { ascending: false })
+      supabase.from('orders').select('*').eq('store_id', storeId).order('created_at', { ascending: false }),
+      supabase.from('bookings').select('*').eq('store_id', storeId).order('created_at', { ascending: false })
     ]);
 
     if (ordersError || bookingsError) {
