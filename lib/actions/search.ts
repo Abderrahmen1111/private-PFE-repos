@@ -14,20 +14,22 @@ import {
 } from '@/lib/darija-dictionary'
 import { logUserSearch } from './user-activity'
 import { generateQueryEmbedding } from '@/lib/openrouter-embeddings'
+import { Item } from './items'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-export interface SearchResultItem {
-  id: number
-  name: string
-  description: string
-  item_type: 'PRODUCT' | 'SERVICE'
-  main_image?: string
-  price?: number
-  store_id?: number
-  stores?: { name?: string; id?: number }
+export interface SearchResultItem extends Item {
+  stores?: {
+    id: number
+    name: string
+    logo_url?: string
+    status?: string
+    category?: string
+    [key: string]: any
+  }
   is_nearby?: boolean
   distance?: number
+  [key: string]: any
 }
 
 interface CacheEntry { ts: number; data: any }

@@ -200,7 +200,7 @@ function ProductSearchContent() {
                 style={{ animationDelay: `${i * 0.05}s`, animationFillMode: 'forwards' }}
               >
                 <ProductCard 
-                  item={item} 
+                  item={item as any} 
                   businessName={item.stores?.name}
                   compared={compared.includes(item.id)}
                   onCompare={() => toggleCompare(item.id)}
