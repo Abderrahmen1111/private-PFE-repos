@@ -47,7 +47,7 @@ async function seedTable(tableName: string, idColumn: string, textColumns: strin
 
     if (texts.length === 0) {
         // Skip these items if they have no text to embed
-        const ids = items.map(i => i[idColumn]);
+        const ids = items.map((i: any) => i[idColumn]);
         await supabase.from(tableName).update({ embedding: [] } as any).in(idColumn, ids);
         processed += items.length;
         continue;
@@ -61,7 +61,7 @@ async function seedTable(tableName: string, idColumn: string, textColumns: strin
           await supabase
             .from(tableName)
             .update({ embedding: embeddings[i] } as any)
-            .eq(idColumn, items[i][idColumn]);
+            .eq(idColumn, (items[i] as any)[idColumn]);
         }
       }
       
