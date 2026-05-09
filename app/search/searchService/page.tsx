@@ -5,7 +5,7 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import { Search, Loader2, SlidersHorizontal, Star, MapPin, Clock, ChevronDown, X, Package, Wrench, Stethoscope, GraduationCap, Car, Scissors, Dumbbell, Laptop, Home, ShoppingBag } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
-import { searchServicesDirectory } from '@/lib/actions/search_service';
+import { searchServicesDirectory } from '@/lib/actions/search';
 import { ServiceCard } from '@/components/ServiceCard';
 
 // ── Category chips ────────────────────────────────────────────────────────────

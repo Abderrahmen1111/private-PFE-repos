@@ -1,7 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 import { getLatestItems, upsertItem } from '@/lib/actions/items'
-import { searchItems } from '@/lib/actions/search_items'
+import { searchItems } from '@/lib/actions/search'
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url)
