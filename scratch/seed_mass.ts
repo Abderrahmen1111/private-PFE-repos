@@ -41,7 +41,7 @@ async function seedTable(tableName: string, idColumn: string, textColumns: strin
 
     if (fetchErr || !items || items.length === 0) break;
 
-    const texts = items.map(item => {
+    const texts = items.map((item: any) => {
       return textColumns.map(col => item[col] || '').join(' ').trim();
     }).filter(t => t.length > 0);
 
