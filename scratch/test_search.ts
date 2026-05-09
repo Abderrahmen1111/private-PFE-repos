@@ -11,8 +11,9 @@ async function testSearch() {
   try {
     const results = await doGlobalSemanticSearch(query);
     console.log(`✅ Found ${results.length} results`);
-    results.slice(0, 5).forEach((r, i) => {
-      console.log(`${i+1}. ${r.name || r.title} (${r.result_type}) - Distance: ${r.distance}`);
+    results.slice(0, 10).forEach((r: any, i: number) => {
+      const displayName = r.name || r.title || 'Unknown';
+      console.log(`${i+1}. ${displayName} (${r.result_type}) - Distance: ${r.distance?.toFixed(2) || 'N/A'}km`);
     });
   } catch (err) {
     console.error('❌ Search test failed:', err);

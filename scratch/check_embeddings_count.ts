@@ -33,7 +33,11 @@ async function checkEmbeddings() {
        continue;
     }
 
-    console.log(`${table.padEnd(25)}: ${withEmbedding}/${count} items indexed (${((withEmbedding/count)*100).toFixed(1)}%)`);
+    const total = count ?? 0;
+    const indexed = withEmbedding ?? 0;
+    const percentage = total > 0 ? ((indexed / total) * 100).toFixed(1) : '0.0';
+
+    console.log(`${table.padEnd(25)}: ${indexed}/${total} items indexed (${percentage}%)`);
   }
 }
 
