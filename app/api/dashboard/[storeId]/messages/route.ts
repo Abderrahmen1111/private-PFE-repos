@@ -25,7 +25,7 @@ export async function GET(
       return NextResponse.json({ error: 'Store not found or forbidden' }, { status: 403 })
     }
 
-    // Fetch messages for this store
+    // Fetch messages for this store (excluding support chats)
     const { data: messages, error } = await supabase
       .from('messages')
       .select(`
@@ -34,6 +34,7 @@ export async function GET(
         receiver:users!messages_receiver_id_fkey(id, full_name, avatar_url)
       `)
       .eq('metadata->>store_id', storeId.toString())
+      .neq('metadata->>chat_type', 'support')
       .order('created_at', { ascending: false })
 
     if (error) {

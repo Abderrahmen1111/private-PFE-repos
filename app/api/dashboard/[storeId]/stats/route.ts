@@ -43,7 +43,7 @@ export async function GET(
       supabase.from('items').select('*', { count: 'exact', head: true }).eq('store_id', storeId),
       supabase.from('orders').select('*', { count: 'exact', head: true }).eq('store_id', storeId),
       supabase.from('reviews').select('*', { count: 'exact', head: true }).eq('store_id', storeId),
-      supabase.from('store_analytics').select('profile_views, phone_clicks, direction_requests').eq('store_id', storeId).maybeSingle()
+      supabase.from('store_analytics' as any).select('*').eq('store_id', storeId).maybeSingle()
     ])
 
     const stats = {
@@ -51,9 +51,9 @@ export async function GET(
       totalActions: ordersCount || 0,
       totalReviews: reviewsCount || 0,
       totalRevenue: 0, 
-      profileViews: impressions?.profile_views || 0,
-      phoneClicks: impressions?.phone_clicks || 0,
-      directionRequests: impressions?.direction_requests || 0
+      profileViews: (impressions as any)?.profile_views || 0,
+      phoneClicks: (impressions as any)?.phone_clicks || 0,
+      directionRequests: (impressions as any)?.direction_requests || 0
     }
 
     return NextResponse.json(stats)

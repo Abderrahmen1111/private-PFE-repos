@@ -155,11 +155,13 @@ export async function DELETE(
     if (storeError || !store || (store.owner_id !== user.id && store.email !== user.email)) {
       return NextResponse.json({ error: 'Store not found or forbidden' }, { status: 403 })
     }
+    const promoId = parseInt(id, 10)
+    if (isNaN(promoId)) return NextResponse.json({ error: 'Invalid promotion ID' }, { status: 400 })
 
     const { error } = await supabase
       .from('promotions')
       .delete()
-      .eq('id', id)
+      .eq('id', promoId)
       .eq('store_id', storeId)
 
     if (error) return NextResponse.json({ error: error.message }, { status: 400 })
