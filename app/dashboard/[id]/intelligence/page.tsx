@@ -82,11 +82,13 @@ export default function IntelligencePage() {
     try {
       const response = await fetch(`/api/dashboard/${id}/intelligence`);
       const result = await response.json();
-      if (result.error) throw new Error(result.error);
+      if (result.error) {
+        throw new Error(result.details || result.error);
+      }
       setIntelData(result);
       return result;
     } catch (error: any) {
-      toast.error("Failed to load intelligence: " + error.message);
+      toast.error("Erreur Analyse: " + error.message);
       return null;
     } finally {
       setIsIntelLoading(false);

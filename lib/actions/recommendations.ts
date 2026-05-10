@@ -63,7 +63,9 @@ export async function getPersonalizedReels(): Promise<DiscoverFeedItem[]> {
             ),
             reel_stats (
                 views_count,
-                likes_count
+                likes_count,
+                saves_count,
+                clicks_count
             )
         `)
         .eq('status', 'active');
@@ -136,6 +138,8 @@ export async function getPersonalizedReels(): Promise<DiscoverFeedItem[]> {
             mediaType: reel.media_type,
             likes: reelLikesCount,
             comments: reelCommentsCount,
+            saves: stats.saves_count || 0,
+            shares: stats.clicks_count || 0,
             hasLiked: recentInteractions.some(i => i.reel_id === reel.id && i.type === 'like'),
             hasSaved: recentInteractions.some(i => i.reel_id === reel.id && i.type === 'save'),
             category: (reel.category || store.category || 'lifestyle').toLowerCase(),

@@ -256,7 +256,7 @@ async function hybridSearchText(
   const buildOrFilter = (fields: string[]) =>
     keywords.flatMap(k => fields.map(f => `${f}.ilike.%${k}%`)).join(',')
 
-  const [itemsRes, storesRes, businessRes, servicesRes] = await Promise.all([
+  const [itemsRes, storesRes, businessRes, servicesRes, reelsRes] = await Promise.all([
     // Items (produits)
     (async () => {
       let q = supabase
@@ -301,6 +301,17 @@ async function hybridSearchText(
       if (cityFilter.length > 2) q = q.ilike('city', `%${cityFilter}%`)
       return q.limit(25)
     })(),
+
+    // Reels (Nouveau!)
+    (async () => {
+      let q = supabase
+        .from('reels')
+        .select('*, stores!inner(*), reel_stats(*)')
+        .eq('status', 'active')
+        .or(buildOrFilter(['title', 'subtitle', 'category']))
+      if (cityFilter.length > 2) q = q.ilike('stores.city', `%${cityFilter}%`)
+      return q.limit(25)
+    })(),
   ])
 
   const results: any[] = []
@@ -338,6 +349,22 @@ async function hybridSearchText(
     image_url: null,
     location_city: i.city,
     metadata: { address: i.address },
+  }))
+  addRes(reelsRes, 'REEL', i => ({
+    ...i,
+    id: i.id,
+    name: i.title,
+    image_url: i.media_path, // media_path is the thumbnail/video URL
+    location_city: i.stores?.city,
+    category: i.category,
+    metadata: { 
+      price: i.price, 
+      store_name: i.stores?.name,
+      media_type: i.media_type,
+      cta_type: i.cta_type,
+      views: i.reel_stats?.[0]?.views_count || 0,
+      likes: i.reel_stats?.[0]?.likes_count || 0
+    },
   }))
 
   return results
@@ -479,6 +506,8 @@ export async function doGlobalSemanticSearch(
   const cached = queryCache.get(cacheKey)
   if (cached && Date.now() - cached.ts < CACHE_TTL_MS) return cached.data
 
+  const supabase = createClient()
+
   console.log(`🔍 [Ro2ya Search${isSuggestion ? ' - Suggest' : ''}] "${query}"`)
   const t0 = Date.now()
 
@@ -536,6 +565,42 @@ export async function doGlobalSemanticSearch(
     ? await hybridSearchVector(embedding, targetLat, targetLng)
     : []
 
+  // 5b. Enrichissement des Reels via les résultats vectoriels
+  // Si on a trouvé des produits sémantiquement, on cherche les reels associés
+  if (vectorResults.length > 0) {
+    const itemIds = vectorResults
+      .filter(r => r.result_type === 'ITEM')
+      .map(r => r.id)
+      .filter(Boolean);
+    
+    if (itemIds.length > 0) {
+      const { data: relatedReels } = await supabase
+        .from('reels')
+        .select('*, stores(*), reel_stats(*)')
+        .in('item_id', itemIds.slice(0, 10))
+        .limit(10);
+      
+      if (relatedReels && relatedReels.length > 0) {
+        relatedReels.forEach((reel: any) => {
+          // On les ajoute comme résultats vectoriels avec un score élevé car liés à un item matché
+          vectorResults.push({
+            ...reel,
+            result_type: 'REEL',
+            name: reel.title,
+            image_url: reel.media_path,
+            location_city: reel.stores?.city,
+            metadata: { 
+              store_name: reel.stores?.name, 
+              linked_to_item: true,
+              views: reel.reel_stats?.[0]?.views_count || 0,
+              likes: reel.reel_stats?.[0]?.likes_count || 0
+            }
+          });
+        });
+      }
+    }
+  }
+
   // 6. Fusion RRF
   const fused = reciprocalRankFusion(vectorResults, textResults)
 
@@ -560,13 +625,13 @@ export async function doGlobalSemanticSearch(
   reranked.sort((a, b) => {
     // En mode suggestion, on veut de la diversité
     if (isSuggestion) {
-        const typeOrder = { 'STORE': 1, 'ITEM': 2, 'SERVICE_DIR': 3, 'BUSINESS_DIR': 4 }
-        const aOrder = (typeOrder as any)[a.result_type] || 5
-        const bOrder = (typeOrder as any)[b.result_type] || 5
+        const typeOrder = { 'STORE': 1, 'REEL': 2, 'ITEM': 3, 'SERVICE_DIR': 4, 'BUSINESS_DIR': 5 }
+        const aOrder = (typeOrder as any)[a.result_type] || 6
+        const bOrder = (typeOrder as any)[b.result_type] || 6
         if (aOrder !== bOrder) return aOrder - bOrder
     } else {
-        const aIsNative = a.result_type === 'STORE' || a.result_type === 'ITEM'
-        const bIsNative = b.result_type === 'STORE' || b.result_type === 'ITEM'
+        const aIsNative = a.result_type === 'STORE' || a.result_type === 'ITEM' || a.result_type === 'REEL'
+        const bIsNative = b.result_type === 'STORE' || b.result_type === 'ITEM' || b.result_type === 'REEL'
         if (aIsNative !== bIsNative) return aIsNative ? -1 : 1
     }
     

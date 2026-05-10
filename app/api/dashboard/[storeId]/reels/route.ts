@@ -72,6 +72,16 @@ export async function POST(
 
     if (error) return NextResponse.json({ error: error.message }, { status: 400 })
 
+    // Initialize stats for the new reel
+    const { error: statsError } = await supabase
+      .from('reel_stats')
+      .insert([{ reel_id: data.id }])
+      
+    if (statsError) {
+      console.error('Failed to initialize reel stats:', statsError)
+      // We don't fail the request since the reel was created, but we log the error
+    }
+
     return NextResponse.json(data, { status: 201 })
   } catch (error: any) {
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })

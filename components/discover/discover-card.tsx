@@ -62,6 +62,13 @@ function DiscoverCardComponent({ item, priority = false }: DiscoverCardProps) {
     return baseLikes;
   }, [item.likes, item.hasLiked, liked]);
 
+  const displaySaves = useMemo(() => {
+    const baseSaves = item.saves || 0;
+    if (saved && !item.hasSaved) return baseSaves + 1;
+    if (!saved && item.hasSaved) return baseSaves - 1;
+    return baseSaves;
+  }, [item.saves, item.hasSaved, saved]);
+
   const triggerLike = useCallback(async () => {
     if (liked) return
     setLiked(true)
@@ -390,6 +397,8 @@ function DiscoverCardComponent({ item, priority = false }: DiscoverCardProps) {
       <FeedActions
         likes={displayLikes}
         comments={item.comments}
+        shares={item.shares || 0}
+        saves={displaySaves}
         liked={liked}
         onToggleLike={handleToggleLike}
         saved={saved}

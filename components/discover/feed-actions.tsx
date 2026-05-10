@@ -5,6 +5,8 @@ import { Bookmark, Heart, MessageCircle, Share2, Phone } from 'lucide-react'
 type FeedActionsProps = {
   likes: number
   comments: number
+  shares?: number
+  saves?: number
   liked?: boolean
   onToggleLike?: () => void
   saved?: boolean
@@ -21,6 +23,8 @@ const formatCount = (count: number) => {
 export function FeedActions({
   likes,
   comments,
+  shares = 0,
+  saves = 0,
   liked = false,
   onToggleLike,
   saved = false,
@@ -65,7 +69,7 @@ export function FeedActions({
 
       <button type="button" aria-label="Share" className={actionBaseClass}>
         <Share2 className="h-5 w-5 transition-transform duration-300 group-hover:scale-110" />
-        <span className="text-xs font-medium">Share</span>
+        <span className="text-xs font-medium">{formatCount(shares)}</span>
       </button>
 
       <button type="button" aria-label="Contact" className={actionBaseClass}>
@@ -84,7 +88,7 @@ export function FeedActions({
           fill={saved ? 'currentColor' : 'none'}
           style={saved ? { color: '#eab308' } : undefined}
         />
-        <span className="text-xs font-medium">{saved ? 'Saved' : 'Save'}</span>
+        <span className="text-xs font-medium">{formatCount(saves)}</span>
       </button>
     </div>
   )

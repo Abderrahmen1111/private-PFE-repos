@@ -12,14 +12,6 @@ import type {
 
 const OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions";
 
-// Upgrade to a more powerful model for better Darija/Arabic support
-let MODEL = process.env.OPENROUTER_MODEL ?? "anthropic/claude-3-haiku";
-
-// Safety check: if MODEL is an API key, fallback to default
-if (MODEL.startsWith("sk-or-v1")) {
-  MODEL = "anthropic/claude-3-haiku";
-}
-
 // ─── Prompt Builder ────────────────────────────
 
 function buildAnalysisPrompt(req: AnalyzeCommentRequest): string {
@@ -73,6 +65,16 @@ async function callOpenRouter(
   prompt: string,
   apiKey: string
 ): Promise<{ raw: AIAnalysisRaw; tokensUsed: number; model: string }> {
+  // Determine model dynamically
+  let selectedModel = process.env.OPENROUTER_MODEL ?? "meta-llama/llama-3.2-3b-instruct:free";
+  
+  // Force free model if misconfigured or if it's a paid one we can't afford
+  if (selectedModel.startsWith("sk-or-v1") || selectedModel.includes("claude") || selectedModel.includes("haiku")) {
+    selectedModel = "meta-llama/llama-3.2-3b-instruct:free";
+  }
+
+  console.log(`[OpenRouter] Requesting model: ${selectedModel} (Key: ...${apiKey.slice(-4)})`);
+
   const response = await fetch(OPENROUTER_API_URL, {
     method: "POST",
     headers: {
@@ -82,11 +84,11 @@ async function callOpenRouter(
       "X-Title": "Tunisian Marketplace Comment Analyzer",
     },
     body: JSON.stringify({
-      model: MODEL,
+      model: selectedModel,
       messages: [{ role: "user", content: prompt }],
-      temperature: 0.1,   // Low temp = deterministic JSON
+      temperature: 0.1,
       max_tokens: 1024,
-      response_format: { type: "json_object" }, // force JSON mode if model supports it
+      response_format: { type: "json_object" },
     }),
   });
 
@@ -115,7 +117,7 @@ async function callOpenRouter(
 
   validateAIResponse(parsed);
 
-  return { raw: parsed, tokensUsed, model: data.model ?? MODEL };
+  return { raw: parsed, tokensUsed, model: data.model || selectedModel };
 }
 
 // ─── Validation ────────────────────────────────

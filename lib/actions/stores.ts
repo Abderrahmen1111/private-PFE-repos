@@ -120,7 +120,7 @@ export async function updateStoreProfile(id: number, data: any) {
 
 export async function deleteStore(id: number) {
     const supabase = createClient()
-    const adminSupabase = createAdminClient()
+    const adminSupabase: any = createAdminClient()
     
     try {
         // 1. Get the store to find the owner and directory link
@@ -174,15 +174,32 @@ export async function deleteStore(id: number) {
 
         // --- OTHER ASSETS & DATA ---
         await (adminSupabase as any).from('banners').delete().eq('store_id', id)
-        await (adminSupabase as any).from('reviews').delete().eq('store_id', id)
-        await (adminSupabase as any).from('bookings').delete().eq('store_id', id)
-        await (adminSupabase as any).from('orders').delete().eq('store_id', id)
         await (adminSupabase as any).from('ad_campaigns').delete().eq('store_id', id)
         await (adminSupabase as any).from('messages').delete().eq('store_id', id)
         await (adminSupabase as any).from('saved_places').delete().eq('store_id', id)
         await (adminSupabase as any).from('sponsored_campaigns').delete().eq('store_id', id)
         await (adminSupabase as any).from('store_analytics').delete().eq('store_id', id)
+
+        // --- FINANCE & FRAUD (Must be deleted before bookings/orders) ---
         await (adminSupabase as any).from('transactions').delete().eq('merchant_id', id)
+        
+        // Delete fraud checks linked to the store's bookings/orders
+        const { data: storeBookings } = await (adminSupabase as any).from('bookings').select('id').eq('store_id', id)
+        if (storeBookings && (storeBookings as any[]).length > 0) {
+            const bIds = (storeBookings as any[]).map(b => b.id)
+            await (adminSupabase as any).from('booking_fraud_checks').delete().in('booking_id', bIds)
+        }
+        
+        const { data: storeOrders } = await (adminSupabase as any).from('orders').select('id').eq('store_id', id)
+        if (storeOrders && (storeOrders as any[]).length > 0) {
+            const oIds = (storeOrders as any[]).map(o => o.id)
+            await (adminSupabase as any).from('order_fraud_checks').delete().in('order_id', oIds)
+        }
+
+        // --- REVIEWS, BOOKINGS & ORDERS ---
+        await (adminSupabase as any).from('reviews').delete().eq('store_id', id)
+        await (adminSupabase as any).from('bookings').delete().eq('store_id', id)
+        await (adminSupabase as any).from('orders').delete().eq('store_id', id)
 
         // --- SUPPORT TICKETS & MESSAGES ---
         const { data: tickets } = await (adminSupabase as any).from('support_tickets').select('id').eq('store_id', id)

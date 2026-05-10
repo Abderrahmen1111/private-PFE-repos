@@ -1,6 +1,7 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
+import { generateEmbedding } from '@/lib/openrouter-embeddings'
 
 
 export interface ReelInput {
@@ -177,6 +178,16 @@ export async function publishReel(input: ReelInput) {
         ? JSON.stringify(input.mediaPath) 
         : input.mediaPath;
 
+    // Generate semantic embedding automatically
+    const embeddingText = `${input.title} ${input.subtitle || ''} ${input.category || ''}`.trim();
+    let embeddingVector: number[] | null = null;
+    try {
+        embeddingVector = await generateEmbedding(embeddingText);
+    } catch (e) {
+        console.error("Failed to generate reel embedding:", e);
+        // Continue anyway so publishing doesn't fail if AI API is down
+    }
+
     const { data, error } = await (supabase as any)
         .from('reels')
         .insert({
@@ -191,7 +202,8 @@ export async function publishReel(input: ReelInput) {
             cta_value: input.ctaValue || null,
             category: input.category || null,
             item_id: input.itemId || null,
-            status: 'active'
+            status: 'active',
+            embedding: embeddingVector ? `[${embeddingVector.join(',')}]` : null
         })
         .select('id')
         .single()

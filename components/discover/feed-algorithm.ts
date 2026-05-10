@@ -158,6 +158,8 @@ export type DiscoverFeedItem = {
 
   likes: number
   comments: number
+  shares?: number
+  saves?: number
   category: FeedCategory
   popularityScore: number
   engagementScore: number
