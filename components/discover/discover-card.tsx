@@ -188,6 +188,27 @@ function DiscoverCardComponent({ item, priority = false }: DiscoverCardProps) {
     }
   }, [item.itemId, item.itemType, item.merchantId, item.id, router, trackClick])
 
+  const handleShare = useCallback(async () => {
+    const shareData = {
+      title: item.product,
+      text: `Regardez ce reel sur Ro2ya : ${item.product}`,
+      url: `${window.location.origin}/reels/${item.id}`,
+    }
+
+    try {
+      if (navigator.share) {
+        await navigator.share(shareData)
+        if (numericId) trackReelInteraction(numericId, 'share' as any)
+      } else {
+        await navigator.clipboard.writeText(shareData.url)
+        toast.success('Lien copié dans le presse-papier !')
+        if (numericId) trackReelInteraction(numericId, 'share' as any)
+      }
+    } catch (err) {
+      console.error('Error sharing:', err)
+    }
+  }, [item.product, item.id, numericId])
+
   return (
     <article
       className="relative h-screen w-full snap-start snap-always overflow-hidden bg-black"
@@ -404,6 +425,7 @@ function DiscoverCardComponent({ item, priority = false }: DiscoverCardProps) {
         saved={saved}
         onToggleSave={handleToggleSave}
         onOpenComments={() => setCommentsOpen(true)}
+        onShare={handleShare}
       />
 
       {numericId && (

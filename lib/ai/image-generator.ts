@@ -34,10 +34,12 @@ export async function generateImageFromPrompt(prompt: string): Promise<Buffer | 
   }
 
   const enhancedPrompt = enhancePrompt(prompt)
-  const apiUrl = `https://api.cloudflare.com/client/v4/accounts/${accountId}/ai/run/@cf/bytedance/stable-diffusion-xl-lightning`
+  // Switching to a lighter model for more free generations (SDXL Base)
+  const model = '@cf/stabilityai/stable-diffusion-xl-base-1.0'
+  const apiUrl = `https://api.cloudflare.com/client/v4/accounts/${accountId}/ai/run/${model}`
   
   try {
-    console.log(`[ImageGen] Calling Cloudflare AI...`)
+    console.log(`[ImageGen] 🎨 Génération via Cloudflare (${model})...`)
     
     const response = await fetch(apiUrl, {
       method: 'POST',
@@ -47,22 +49,21 @@ export async function generateImageFromPrompt(prompt: string): Promise<Buffer | 
       },
       body: JSON.stringify({
         prompt: enhancedPrompt,
-        num_steps: 8, // SDXL Lightning performs best at 4-8 steps
+        num_steps: 20, // SDXL Base works well with 20-30 steps
       }),
-      // Cloudflare is fast, but let's give it up to 60s
       signal: AbortSignal.timeout(60000),
     })
 
     if (!response.ok) {
       const errText = await response.text().catch(() => '')
-      console.error(`[ImageGen] Cloudflare error ${response.status}:`, errText.slice(0, 200))
+      console.error(`❌ [ImageGen] Cloudflare Error ${response.status}:`, errText)
       return null
     }
 
     const contentType = response.headers.get('content-type') || ''
     if (!contentType.includes('image')) {
       const jsonText = await response.text().catch(() => '')
-      console.error('[ImageGen] Response is not an image:', contentType, jsonText)
+      console.error('❌ [ImageGen] Response is not an image:', contentType, jsonText)
       return null
     }
 

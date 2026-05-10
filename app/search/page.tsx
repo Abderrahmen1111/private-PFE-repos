@@ -2,8 +2,9 @@
 
 import { useState, useEffect, useRef, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
+import dynamic from 'next/dynamic';
 import BusinessCard from '@/components/ui/BusinessCard';
-import ResultsMap from '@/components/ui/ResultsMap';
+const ResultsMap = dynamic(() => import('@/components/ui/ResultsMap'), { ssr: false });
 import { Search, SlidersHorizontal, Loader2, Package, LayoutGrid, Store, Tags, Star } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
@@ -84,7 +85,17 @@ function SearchPageContent() {
           const prodResults: SearchResultItem[] = [];
           const servResults: SearchResultItem[] = [];
           
-          results.forEach((item: any) => {
+          // Filter out low-similarity BUSINESS_DIR results to avoid false positives.
+          // STORE/ITEM/REEL results from native platform are always kept.
+          const MIN_BDIR_SIMILARITY = 0.65;
+          const filteredResults = results.filter((item: any) => {
+            if (item.result_type === 'BUSINESS_DIR') {
+              return (item.similarity ?? 0) >= MIN_BDIR_SIMILARITY;
+            }
+            return true;
+          });
+          
+          filteredResults.forEach((item: any) => {
             if (item.result_type === 'ITEM') {
               prodResults.push({
                 id: item.id,
@@ -289,11 +300,16 @@ function SearchPageContent() {
             <div className="flex-1 min-w-0 space-y-12">
 
               {!hasExact && !hasNearby ? (
-                <div className="text-center py-16">
-                  <Search className="w-16 h-16 text-gray-200 mx-auto mb-4" />
-                  <h2 className="text-xl font-semibold text-stone-800 mb-2">Aucun résultat trouvé</h2>
-                  <p className="text-stone-500">Essayez d'autres mots-clés ou vérifiez votre localisation.</p>
-                </div>
+                  <div className="text-center py-20 flex flex-col items-center">
+                    <div className="w-20 h-20 rounded-full bg-stone-100 flex items-center justify-center mb-5">
+                      <Search className="w-9 h-9 text-stone-300" />
+                    </div>
+                    <h2 className="text-xl font-bold text-stone-800 mb-2">Aucun résultat trouvé</h2>
+                    <p className="text-stone-500 max-w-xs">
+                      Aucun établissement ne correspond à <span className="font-semibold text-stone-700">&ldquo;{query}&rdquo;</span>.
+                    </p>
+                    <p className="text-stone-400 text-sm mt-2">Essayez d&apos;autres mots-clés ou vérifiez la localisation.</p>
+                  </div>
               ) : (
                 <>
                   {/* --- RÉSULTATS EXACTS --- */}

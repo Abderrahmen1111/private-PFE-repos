@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
+import { analyzeComment } from '@/lib/ai/comment-analyzer'
 
 export interface ReelComment {
   id: number
@@ -56,6 +57,10 @@ export async function postReelComment(input: {
     return { success: false, error: 'Le commentaire ne peut pas être vide.' }
   }
 
+  // 1. AI Analysis via Groq
+  const analysis = input.content ? await analyzeComment(input.content) : null;
+
+  // 2. Insert into DB
   const { data, error } = await (supabase as any)
     .from('reel_comments')
     .insert({
@@ -63,7 +68,8 @@ export async function postReelComment(input: {
       user_id: user.id,
       content: input.content || null,
       attachment_url: input.attachmentUrl || null,
-      attachment_type: input.attachmentType || null
+      attachment_type: input.attachmentType || null,
+      metadata: analysis ? { ai_analysis: analysis } : null
     })
     .select()
     .single()

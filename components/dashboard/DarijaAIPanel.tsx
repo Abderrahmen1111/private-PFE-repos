@@ -231,7 +231,8 @@ export default function DarijaAIPanel({
         return
       }
       if (data.intent === 'unknown') {
-        setError(data.message || "Impossible de comprendre. Réessaie avec plus de détails.")
+        const isQuota = data.raw?.includes('429') || data.message?.includes('429') || data.raw === 'QUOTA_EXCEEDED_429'
+        setError(isQuota ? "⚠️ Quota IA dépassé (429). Patientez 1 minute ou utilisez une clé API personnelle." : (data.message || "Impossible de comprendre. Réessaie avec plus de détails."))
         return
       }
       setResult(data as ParsedResult)
@@ -479,12 +480,18 @@ export default function DarijaAIPanel({
           {/* ── Shared: Loading State ── */}
           {isProcessing && (
             <div className="rounded-xl border border-violet-500/20 bg-violet-500/5 p-4 space-y-2">
-              {['Lecture du prompt Darija…', 'Traduction via dictionnaire…', 'Extraction des données…', 'Génération de l\'image…'].map((step, i) => (
-                <div key={i} className="flex items-center gap-2 text-sm text-slate-400">
-                  <Loader2 className="w-3 h-3 animate-spin text-violet-400" />
-                  <span>{step}</span>
-                </div>
-              ))}
+              <div className="flex items-center gap-2 text-sm text-slate-400">
+                <Loader2 className="w-3 h-3 animate-spin text-violet-400" />
+                <span>Analyse du texte Darija...</span>
+              </div>
+              <div className="flex items-center gap-2 text-sm text-slate-400">
+                <Loader2 className="w-3 h-3 animate-spin text-indigo-400" />
+                <span>Extraction des caractéristiques...</span>
+              </div>
+              <div className="flex items-center gap-2 text-sm text-white font-medium">
+                <Sparkles className="w-3 h-3 animate-pulse text-yellow-400" />
+                <span>Génération de l&apos;image par l&apos;IA (attente ~15s)...</span>
+              </div>
             </div>
           )}
 

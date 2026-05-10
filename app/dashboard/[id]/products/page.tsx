@@ -11,7 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { useParams } from 'next/navigation';
-import { uploadFile } from '@/lib/supabase/storage';
+import { uploadToCloudinary, uploadMultipleToCloudinary } from '@/lib/cloudinary';
 import {
   Dialog,
   DialogContent,
@@ -118,35 +118,40 @@ export default function ProductsPage() {
       return;
     }
     const effectiveId = resolvedStoreId;
+    const cloudinaryFolder = `products/${effectiveId}`;
+
+    // Upload main image to Cloudinary
     let imageUrl = productData.image || '';
     if (productData.imageFile) {
-      const fileName = `${effectiveId}/${Date.now()}-main-${productData.imageFile.name}`;
-      const { url, error: uploadError } = await uploadFile('PRODUCTS', fileName, productData.imageFile);
-      if (uploadError) {
-        toast.error("Erreur lors de l'upload de l'image principale");
-      } else if (url) {
-        imageUrl = url;
+      toast.loading("Upload de l'image principale...");
+      const url = await uploadToCloudinary(productData.imageFile, cloudinaryFolder);
+      if (!url) {
+        toast.error("Échec de l'upload de l'image principale sur Cloudinary. L'enregistrement est annulé.");
+        return; // BLOCK SAVE if upload fails
       }
+      imageUrl = url;
     }
 
-    // Upload gallery images
-    const galleryUrls = [...(productData.galleryUrls || [])];
+    // Upload gallery images to Cloudinary → map to image_2 and image_3
+    const existingGallery = [...(productData.galleryUrls || [])];
     if (productData.galleryFiles && productData.galleryFiles.length > 0) {
-      for (const file of productData.galleryFiles) {
-        const fileName = `${effectiveId}/${Date.now()}-gallery-${file.name}`;
-        const { url } = await uploadFile('PRODUCTS', fileName, file);
-        if (url) galleryUrls.push(url);
+      toast.loading(`Upload de ${productData.galleryFiles.length} images de galerie...`);
+      const newUrls = await uploadMultipleToCloudinary(productData.galleryFiles, cloudinaryFolder);
+      if (newUrls.length < productData.galleryFiles.length) {
+        toast.warning("Certaines images de la galerie n'ont pas pu être uploadées.");
       }
+      existingGallery.push(...newUrls);
     }
 
-    // Upload videos
+    // Upload videos to Cloudinary
     const videoUrls = [...(productData.videoUrls || [])];
     if (productData.videoFiles && productData.videoFiles.length > 0) {
-      for (const file of productData.videoFiles) {
-        const fileName = `${effectiveId}/${Date.now()}-video-${file.name}`;
-        const { url } = await uploadFile('REELS', fileName, file);
-        if (url) videoUrls.push(url);
+      toast.loading(`Upload de ${productData.videoFiles.length} vidéos...`);
+      const newVideoUrls = await uploadMultipleToCloudinary(productData.videoFiles, cloudinaryFolder);
+      if (newVideoUrls.length < productData.videoFiles.length) {
+        toast.warning("Certaines vidéos n'ont pas pu être uploadées.");
       }
+      videoUrls.push(...newVideoUrls);
     }
 
     const itemData: any = {
@@ -160,10 +165,12 @@ export default function ProductsPage() {
       status: productData.available ? 'AVAILABLE' : 'UNAVAILABLE',
       stock_quantity: productData.itemType === 'SERVICE' ? 0 : (productData.stock || 0),
       main_image: imageUrl,
-      images: galleryUrls,
+      image_2: existingGallery[0] || null,
+      image_3: existingGallery[1] || null,
       metadata: {
         ...((products.find(p => p.id === parseInt(productData.id || '')) as any)?.metadata || {}),
-        videos: videoUrls
+        videos: videoUrls,
+        extra_images: existingGallery.slice(2), // Any images beyond image_2/image_3
       },
       slug: (productData.name.toLowerCase().replace(/ /g, '-') + '-' + Date.now()),
       price_unit: 'unit'
@@ -186,6 +193,13 @@ export default function ProductsPage() {
   };
 
   const handleEdit = (item: Item) => {
+    // Build gallery from image_2, image_3, and any extra_images in metadata
+    const galleryUrls: string[] = [];
+    if ((item as any).image_2) galleryUrls.push((item as any).image_2);
+    if ((item as any).image_3) galleryUrls.push((item as any).image_3);
+    const extraImages = ((item as any).metadata)?.extra_images || [];
+    galleryUrls.push(...extraImages);
+
     setEditingProduct({
       id: item.id.toString(),
       name: item.name,
@@ -196,7 +210,7 @@ export default function ProductsPage() {
       itemType: (item.item_type as 'PRODUCT' | 'SERVICE') || 'PRODUCT',
       stock: item.stock_quantity || 0,
       image: item.main_image,
-      galleryUrls: (item as any).images || [],
+      galleryUrls,
       videoUrls: ((item as any).metadata)?.videos || [],
     });
     setIsOpen(true);

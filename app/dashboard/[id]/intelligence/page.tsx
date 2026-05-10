@@ -306,7 +306,7 @@ export default function IntelligencePage() {
                                 ))}
                             </div>
                         </div>
-                        <div className="w-24 h-24 shrink-0 mx-auto md:mx-0">
+                        <div className="w-24 h-24 shrink-0 mx-auto md:mx-0 min-w-[96px] min-h-[96px]">
                             <ResponsiveContainer width="100%" height="100%">
                                 <PieChart>
                                     <Pie data={sentimentData} innerRadius={25} outerRadius={40} paddingAngle={5} dataKey="value">

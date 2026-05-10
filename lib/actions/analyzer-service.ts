@@ -13,7 +13,7 @@ import type {
   Sentiment,
   UserIntent,
 } from "@/types/comment.types";
-import { analyzeCommentWithAI, OpenRouterError, ParseError } from "./openrouter-service";
+import { analyzeCommentWithGroq, GroqError, ParseError } from "./groq-service";
 import { computeScores, generateAlerts, computeHealthScore } from "./alerts.engine";
 
 // ─── Single Comment Analysis ───────────────────
@@ -34,8 +34,8 @@ export async function analyzeComment(
     throw new ValidationError("Comment cannot be empty");
   }
 
-  // Call OpenRouter AI
-  const { raw, tokensUsed, model } = await analyzeCommentWithAI(sanitized, apiKey);
+  // Call Groq AI
+  const { raw, tokensUsed, model } = await analyzeCommentWithGroq(sanitized, apiKey);
 
   // Compute business scores
   const { engagementScore, conversionProbability, riskScore } = computeScores(raw);
@@ -96,7 +96,7 @@ export async function analyzeBatch(
       if (r.status === "fulfilled") {
         results.push(r.value);
       } else {
-        console.error("❌ Comment analysis failed:", r.reason);
+        console.error("❌ Comment analysis failed deep:", r.reason);
       }
     }
   }
@@ -235,4 +235,4 @@ export class ValidationError extends Error {
   }
 }
 
-export { OpenRouterError, ParseError };
+export { GroqError, ParseError };

@@ -102,7 +102,8 @@ async function classifyIntentWithEmbeddings(translatedPrompt: string): Promise<D
 
   } catch (err) {
     console.warn('[Darija Parser] Embedding classification failed, using keywords:', (err as Error).message)
-    return kw ?? 'create_product'
+    // Default to product if keywords fail but text exists
+    return kw ?? (translatedPrompt.trim().length > 3 ? 'create_product' : 'unknown')
   }
 }
 
@@ -172,76 +173,62 @@ Réponds UNIQUEMENT avec du JSON valide (pas de markdown) selon ce schéma: ${sc
 // Utilise la même clé OPENROUTER_API_KEY que les embeddings baai/bge-m3.
 // Free tier généreux, pas de 429 ni de problème d'auth.
 
-async function extractWithOpenRouter(
+async function extractWithCloudflare(
   originalPrompt: string,
   translatedPrompt: string,
   darijaWords: Array<{ original: string; french: string; category: string }>,
   intent: DarijaIntent
 ): Promise<Record<string, unknown>> {
-  const apiKey = process.env.OPENROUTER_API_KEY
-  if (!apiKey) throw new Error('OPENROUTER_API_KEY not configured')
+  const apiKey = process.env.CLOUDFLARE_AI_KEY
+  const accountId = process.env.CLOUDFLARE_ACCOUNT_ID
+  if (!apiKey || !accountId) throw new Error('Cloudflare non configuré (CLOUDFLARE_AI_KEY / ACCOUNT_ID)')
 
-  // Use the same model as the rest of the app (env-configured), fallback to free llama
-  const model = process.env.OPENROUTER_MODEL ?? 'meta-llama/llama-3.1-8b-instruct:free'
+  const model = '@cf/meta/llama-3.1-8b-instruct'
   const darijaContext = darijaWords.length
     ? `Mots Darija détectés: ${darijaWords.map(w => `${w.original}=${w.french}`).join(', ')}.`
     : ''
 
   const schemaInstructions = intent === 'create_product'
-    ? `Return ONLY valid JSON (no markdown):
+    ? `Return ONLY valid JSON:
 {
-  "name": "product name in French (capitalized)",
-  "description": "short description in French (1-2 sentences)",
+  "name": "product name in French",
+  "description": "short description in French",
   "price": <number or null>,
   "category": "category in French",
-  "image_prompt": "English prompt for image generation. Describe the item specifically (material, color, lighting). Style: professional product photo, high-end studio lighting, clean background, 8k."
+  "image_prompt": "English prompt for professional product photo"
 }`
-    : `Return ONLY valid JSON (no markdown):
+    : `Return ONLY valid JSON:
 {
   "title": "promotion title in French",
   "description": "offer description in French",
   "discount_percent": <number or null>,
-  "discount_text": "alternative text if no % (e.g. 2 for 1) or null",
-  "image_prompt": "English prompt for promotional image. Use vibrant colors, describe the discount and vibe. Style: premium sale banner, commercial marketing style, bold typography."
+  "discount_text": "text if no % or null",
+  "image_prompt": "English prompt for premium sale banner"
 }`
 
-  const systemPrompt = `You are an assistant for a Tunisian marketplace (Ro2ya).
-The user writes in Tunisian Darija (mix of Arabic, French, and phonetic).
-Translated approximation: "${translatedPrompt}".
-${darijaContext}
+  const systemPrompt = `You are a Tunisian marketplace assistant. Parse this Darija prompt into JSON.
+Translated: "${translatedPrompt}". ${darijaContext}
 ${schemaInstructions}`
 
-  const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+  const res = await fetch(`https://api.cloudflare.com/client/v4/accounts/${accountId}/ai/run/${model}`, {
     method: 'POST',
     headers: {
-      'Content-Type': 'application/json',
       'Authorization': `Bearer ${apiKey}`,
-      'HTTP-Referer': process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000',
-      'X-Title': 'Ro2ya Darija AI Parser',
+      'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      model,
       messages: [
         { role: 'system', content: systemPrompt },
-        { role: 'user', content: `Prompt original (Darija): "${originalPrompt}"` },
+        { role: 'user', content: originalPrompt },
       ],
-      max_tokens: 400,
-      temperature: 0.2,
-      response_format: { type: 'json_object' },
     }),
   })
 
-  if (!res.ok) {
-    const errText = await res.text().catch(() => '')
-    const err = new Error(`OpenRouter error ${res.status}: ${errText.slice(0, 200)}`)
-    ;(err as any).status = res.status
-    throw err
-  }
-
+  if (!res.ok) throw new Error(`Cloudflare AI error: ${res.status}`)
   const data = await res.json()
-  const rawContent: string = data.choices?.[0]?.message?.content ?? '{}'
-
-  // Groq with json_object format should return clean JSON, but strip markdown just in case
+  const rawContent: string = data.result?.response ?? '{}'
+  
+  // Clean potential markdown
   const jsonStr = rawContent.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
   return JSON.parse(jsonStr) as Record<string, unknown>
 }
@@ -259,19 +246,23 @@ export async function parseDarijaPrompt(prompt: string): Promise<ParsedDarijaRes
   const intent = await classifyIntentWithEmbeddings(translatedText)
   console.log(`[Darija Parser] Intent → ${intent}`)
 
-  // 3. Structured extraction: OpenRouter → fallback Gemini
+  // 3. Structured extraction: Cloudflare (Primary) → Fallback Gemini
   let parsed: Record<string, unknown>
   try {
-    parsed = await extractWithOpenRouter(prompt, translatedText, darijaWords, intent)
-  } catch (orErr) {
-    const status = (orErr as any).status
-    console.warn(`[Darija Parser] OpenRouter failed (${status}), trying Gemini fallback:`, (orErr as Error).message)
+    parsed = await extractWithCloudflare(prompt, translatedText, darijaWords, intent)
+    console.log('[Darija Parser] Cloudflare extraction succeeded')
+  } catch (cfErr) {
+    console.warn(`[Darija Parser] Cloudflare failed, trying Gemini fallback:`, (cfErr as Error).message)
     try {
       parsed = await extractWithGemini(prompt, translatedText, darijaWords, intent)
       console.log('[Darija Parser] Gemini fallback succeeded')
     } catch (geminiErr) {
+      const isQuota = (geminiErr as Error).message.includes('429');
       console.error('[Darija Parser] Gemini fallback also failed:', (geminiErr as Error).message)
-      return { intent: 'unknown', raw: (geminiErr as Error).message }
+      return { 
+        intent: 'unknown', 
+        raw: isQuota ? "QUOTA_EXCEEDED_429" : "Désolé, je n'ai pas pu extraire les détails. Essayez d'être plus précis (ex: 'PC Acer b 1200 DT')" 
+      }
     }
   }
 

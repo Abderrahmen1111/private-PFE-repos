@@ -1,7 +1,7 @@
 'use server'
 
 // ═══════════════════════════════════════════════════════════════
-// PIPELINE DE RECHERCHE SÉMANTIQUE GLOBALE — VERSION OPTIMISÉE
+// PIPELINE DE RECHERCHE SÉMANTIQUE GLOBALE — VERSION HAUTE PERF
 // Support natif Darija tunisien + arabe + français + code-switch
 // ═══════════════════════════════════════════════════════════════
 
@@ -32,13 +32,32 @@ export interface SearchResultItem extends Item {
   [key: string]: any
 }
 
-interface CacheEntry { ts: number; data: any }
+interface CacheEntry {
+  ts: number
+  data: any
+}
+
+interface LLMAnalysis {
+  normalized: string
+  expanded: string
+  intent: string
+  category: string
+}
+
+interface DarijaExpansion {
+  translated: string
+  expanded: string
+  variants: string[]
+  detectedCategories: string[]
+}
 
 // ─── Config ───────────────────────────────────────────────────────────────────
 
-const CACHE_TTL_MS = 1000 * 60 * 15 // 15 min (réduit de 24h → résultats plus frais)
-const queryCache = new Map<string, CacheEntry>()
+const CACHE_TTL_MS   = 1000 * 60 * 10        // 10 min — fresh enough for marketplace
+const MAX_CACHE_SIZE = 500                    // LRU eviction threshold
+const queryCache     = new Map<string, CacheEntry>()
 
+// Model chain ordered by quality/availability — nous gardons open models en tête
 const MODEL_CHAIN = [
   'meta-llama/llama-3.3-70b-instruct:free',
   'google/gemma-3-27b-it:free',
@@ -47,44 +66,101 @@ const MODEL_CHAIN = [
 ]
 const QUOTA_CODES = new Set([402, 429, 503])
 
+// Timeouts serrés pour ne pas bloquer la réponse utilisateur
+const LLM_TIMEOUT_MS      = 3500
+const EMBED_TIMEOUT_MS    = 2500
+const GEOCODE_TIMEOUT_MS  = 1500
+const RERANK_TIMEOUT_MS   = 2000
+
+// ─── Utilitaire de timeout ────────────────────────────────────────────────────
+
+function withTimeout<T>(promise: Promise<T>, ms: number, fallback: T): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<T>(resolve => setTimeout(() => resolve(fallback), ms)),
+  ])
+}
+
+// ─── LRU cache minimal ────────────────────────────────────────────────────────
+
+function cacheSet(key: string, data: any) {
+  if (queryCache.size >= MAX_CACHE_SIZE) {
+    // Evict the oldest entry
+    const oldest = queryCache.keys().next().value
+    if (oldest) queryCache.delete(oldest)
+  }
+  queryCache.set(key, { ts: Date.now(), data })
+}
+
+function cacheGet(key: string): any | null {
+  const entry = queryCache.get(key)
+  if (!entry) return null
+  if (Date.now() - entry.ts > CACHE_TTL_MS) {
+    queryCache.delete(key)
+    return null
+  }
+  // Move to end (LRU)
+  queryCache.delete(key)
+  queryCache.set(key, entry)
+  return entry.data
+}
+
 // ─── Détection de script ──────────────────────────────────────────────────────
 
 const ARABIC_REGEX = /[\u0600-\u06FF\u0750-\u077F]/
 const LATIN_REGEX  = /[a-zA-Z]/
 const DIGIT_REGEX  = /\d/
 
-/**
- * Détecte la langue/script d'une requête pour adapter le traitement
- */
-function detectQueryScript(query: string): 'arabic' | 'latin_darija' | 'french' | 'mixed' | 'numeric' {
-  if (DIGIT_REGEX.test(query) && !LATIN_REGEX.test(query) && !ARABIC_REGEX.test(query)) return 'numeric'
-  const hasArabic = ARABIC_REGEX.test(query)
-  const hasLatin  = LATIN_REGEX.test(query)
+function detectQueryScript(
+  query: string,
+): 'arabic' | 'latin_darija' | 'french' | 'mixed' | 'numeric' {
+  const trimmed = query.trim()
+  if (!trimmed) return 'french'
+
+  const hasArabic = ARABIC_REGEX.test(trimmed)
+  const hasLatin  = LATIN_REGEX.test(trimmed)
+  const hasDigit  = DIGIT_REGEX.test(trimmed)
+
+  if (hasDigit && !hasLatin && !hasArabic) return 'numeric'
   if (hasArabic && hasLatin) return 'mixed'
   if (hasArabic) return 'arabic'
-  // Vérifie si les mots latins sont dans le dictionnaire Darija
-  const words = query.toLowerCase().split(/\s+/)
+
+  // Check Darija coverage in Latin script
+  const words = trimmed.toLowerCase().split(/\s+/).filter(Boolean)
   const darijaCount = words.filter(w => DARIJA_TUNISIAN_DICTIONARY[w]).length
-  if (darijaCount / words.length > 0.3) return 'latin_darija'
+  if (words.length > 0 && darijaCount / words.length > 0.25) return 'latin_darija'
   return 'french'
 }
 
 // ─── Expansion Darija multi-couche ────────────────────────────────────────────
 
-/**
- * Traduit ET enrichit une requête Darija en français avec synonymes et catégories
- * Retourne plusieurs variantes pour maximiser la couverture sémantique
- */
-function expandDarijaQuery(query: string): {
-  translated: string
-  expanded: string
-  variants: string[]
-  detectedCategories: string[]
-} {
-  const words = query.trim().split(/\s+/)
-  const translatedWords: string[] = []
-  const detectedCategories: Set<string> = new Set()
-  const semanticExpansions: string[] = []
+// Map catégorie → mots-clés sémantiques (améliore le recall)
+const CATEGORY_SEMANTIC_MAP: Record<string, string[]> = {
+  verb:        ['action', 'service', 'prestation'],
+  auto:        ['voiture', 'mécanique', 'garage', 'pneu', 'huile', 'révision', 'carrosserie'],
+  nourriture:  ['restaurant', 'traiteur', 'plat', 'cuisine', 'repas', 'livraison', 'menu'],
+  commerce:    ['magasin', 'boutique', 'vente', 'achat', 'marché', 'shop'],
+  beaute:      ['coiffure', 'salon', 'soin', 'esthétique', 'manucure', 'hammam'],
+  santé:       ['médecin', 'clinique', 'pharmacie', 'docteur', 'soins'],
+  mode:        ['vêtements', 'habits', 'prêt-à-porter', 'confection', 'tissu'],
+  lieux:       ['quartier', 'adresse', 'local', 'espace', 'lieu'],
+  transports:  ['taxi', 'livraison', 'transport', 'chauffeur', 'déménagement'],
+  artisanat:   ['fait main', 'traditionnel', 'artisan', 'poterie', 'tissu'],
+  gastronomie: ['cuisine tunisienne', 'spécialité', 'plat traditionnel'],
+  product:     ['produit', 'article', 'vente', 'achat'],
+  business:    ['entreprise', 'boutique', 'service', 'professionnel'],
+  services:    ['prestataire', 'artisan', 'technicien', 'réparation'],
+  médical:     ['santé', 'médecin', 'clinique', 'pharmacie', 'soins'],
+  éducation:   ['cours', 'formation', 'école', 'enseignement', 'soutien'],
+  finance:     ['banque', 'assurance', 'crédit', 'prêt'],
+  sport:       ['fitness', 'salle', 'coach', 'musculation', 'yoga'],
+}
+
+function expandDarijaQuery(query: string): DarijaExpansion {
+  const words = query.trim().split(/\s+/).filter(Boolean)
+  const translatedWords: string[]      = []
+  const detectedCategories = new Set<string>()
+  const semanticExpansions: string[]   = []
 
   for (const word of words) {
     const normalized = word.toLowerCase().trim()
@@ -92,7 +168,6 @@ function expandDarijaQuery(query: string): {
     if (entry) {
       translatedWords.push(entry.french)
       detectedCategories.add(entry.category)
-      // Expansion sémantique par catégorie
       const catExpansions = CATEGORY_SEMANTIC_MAP[entry.category]
       if (catExpansions) semanticExpansions.push(...catExpansions)
     } else {
@@ -100,16 +175,12 @@ function expandDarijaQuery(query: string): {
     }
   }
 
-  const translated = translatedWords.join(' ')
-  const uniqueExpansions = [...new Set(semanticExpansions)].slice(0, 8)
-  const expanded = [translated, ...uniqueExpansions].join(', ')
+  const translated      = translatedWords.join(' ').trim() || query
+  const uniqueExp       = [...new Set(semanticExpansions)].slice(0, 8)
+  const expanded        = [translated, ...uniqueExp].join(', ')
 
-  // Variantes pour embeddings multiples
-  const variants = [
-    translated,
-    query, // original pour capturer le Darija natif dans les descriptions
-    expanded,
-  ].filter((v, i, arr) => arr.indexOf(v) === i)
+  // Deduplicated variants for multi-embedding support
+  const variants = [...new Set([translated, query, expanded])].filter(Boolean)
 
   return {
     translated,
@@ -119,29 +190,7 @@ function expandDarijaQuery(query: string): {
   }
 }
 
-// Map catégorie → mots-clés sémantiques (améliore le recall)
-const CATEGORY_SEMANTIC_MAP: Record<string, string[]> = {
-  'verb':         ['action', 'service', 'prestation'],
-  'auto':         ['voiture', 'mécanique', 'garage', 'pneu', 'huile', 'révision', 'carrosserie'],
-  'nourriture':   ['restaurant', 'traiteur', 'plat', 'cuisine', 'repas', 'livraison', 'menu'],
-  'commerce':     ['magasin', 'boutique', 'vente', 'achat', 'marché', 'shop'],
-  'beaute':       ['coiffure', 'salon', 'soin', 'esthétique', 'manucure', 'hammam'],
-  'santé':        ['médecin', 'clinique', 'pharmacie', 'docteur', 'soins'],
-  'mode':         ['vêtements', 'habits', 'prêt-à-porter', 'confection', 'tissu'],
-  'lieux':        ['quartier', 'adresse', 'local', 'espace', 'lieu'],
-  'transports':   ['taxi', 'livraison', 'transport', 'chauffeur', 'déménagement'],
-  'artisanat':    ['fait main', 'traditionnel', 'artisan', 'poterie', 'tissu'],
-  'gastronomie':  ['cuisine tunisienne', 'spécialité', 'plat traditionnel'],
-  'product':      ['produit', 'article', 'vente', 'achat'],
-  'business':     ['entreprise', 'boutique', 'service', 'professionnel'],
-  'services':     ['prestataire', 'artisan', 'technicien', 'réparation'],
-  'médical':      ['santé', 'médecin', 'clinique', 'pharmacie', 'soins'],
-  'éducation':    ['cours', 'formation', 'école', 'enseignement', 'soutien'],
-  'finance':      ['banque', 'assurance', 'crédit', 'prêt'],
-  'sport':        ['fitness', 'salle', 'coach', 'musculation', 'yoga'],
-}
-
-// ─── OpenRouter avec fallback ─────────────────────────────────────────────────
+// ─── OpenRouter avec fallback modèles ─────────────────────────────────────────
 
 async function openRouterChat(
   systemPrompt: string,
@@ -182,52 +231,75 @@ async function openRouterChat(
   throw lastError ?? new Error('All models failed')
 }
 
-// ─── Analyse LLM Darija avancée ───────────────────────────────────────────────
+// ─── Analyse LLM Darija ───────────────────────────────────────────────────────
 
 async function analyzeQueryWithLLM(
   query: string,
   hint: string,
   script: string,
-): Promise<{ normalized: string; expanded: string; intent: string; category: string }> {
-  const systemPrompt = `Tu es un expert en Darija TUNISIEN et en commerce local tunisien.
-Analyse cette requête de recherche pour une marketplace tunisienne (Ro2ya).
+): Promise<LLMAnalysis> {
+  const systemPrompt = `Tu es un expert en Darija TUNISIEN et commerce local tunisien.
+Analyse cette requête pour la marketplace Ro2ya (Tunisie).
 
-RÈGLES STRICTES:
-1. Darija tunisien: traduis avec précision (ex: "krhba"→"voiture", "nekel"→"manger", "nechri"→"acheter")
-2. Code-switch (arabe+français+darija): comprends le mix naturel
+RÈGLES:
+1. Darija tunisien: traduis précisément (ex: "krhba"→"voiture", "nekel"→"manger", "nechri"→"acheter")
+2. Code-switch arabic+français+darija: comprends le mix naturel
 3. Requête en arabe: traduis en français
-4. Ne jamais halluciner (ex: "krhba" ≠ "chaussures")
-5. Si ambigu, utilise ce contexte: ${hint || 'marketplace locale Tunisia'}
+4. Ne JAMAIS halluciner — si incertain, garde le mot tel quel
+5. Contexte hint: ${hint || 'marketplace locale Tunisie'}
 6. Script détecté: ${script}
 
-Retourne UNIQUEMENT ce JSON (sans markdown):
-{
-  "normalized": "traduction courte en français (3-6 mots max)",
-  "expanded": "normalized + 8 mots-clés marchands séparés par virgules",
-  "intent": "product|service|restaurant|beauty|auto|health|fashion|repair|other",
-  "category": "catégorie principale du commerce en français"
-}`
+Retourne UNIQUEMENT ce JSON valide (sans markdown, sans commentaires):
+{"normalized":"traduction courte (3-6 mots max)","expanded":"normalized + 8 mots-clés marchands séparés virgules","intent":"product|service|restaurant|beauty|auto|health|fashion|repair|other","category":"catégorie principale en français"}`
 
+  const fallback: LLMAnalysis = { normalized: query, expanded: query, intent: 'other', category: '' }
   try {
-    const { text } = await openRouterChat(systemPrompt, `Requête: "${query}"`, 300)
+    const { text } = await openRouterChat(systemPrompt, `Requête: "${query}"`, 256)
     const clean = text.replace(/```json|```/g, '').trim()
-    const json = JSON.parse(clean)
+    // Find the first { ... } block robustly
+    const match = clean.match(/\{[\s\S]*?\}/)
+    if (!match) return fallback
+    const json = JSON.parse(match[0])
     return {
-      normalized: json.normalized || query,
-      expanded: json.expanded || query,
-      intent: json.intent || 'other',
-      category: json.category || '',
+      normalized: typeof json.normalized === 'string' && json.normalized ? json.normalized : query,
+      expanded:   typeof json.expanded   === 'string' && json.expanded   ? json.expanded   : query,
+      intent:     typeof json.intent     === 'string' && json.intent     ? json.intent     : 'other',
+      category:   typeof json.category   === 'string'                    ? json.category   : '',
     }
   } catch {
-    return { normalized: query, expanded: query, intent: 'other', category: '' }
+    return fallback
   }
 }
 
 // ─── Recherche texte hybride (ilike multi-table) ──────────────────────────────
 
+/**
+ * Extrait une ville depuis une chaîne de localisation.
+ * Gère les cas: "Tunis, Tunisie", "près de moi", Arabic strings.
+ */
 function extractCity(location?: string): string {
-  if (!location) return ''
-  return location.split(',')[0].trim()
+  if (!location || location.trim().length < 2) return ''
+  const loc = location.trim()
+
+  // Expressions signifiant "près de moi" — pas de filtre ville
+  const PROXIMITY_PATTERNS = /\b(près|pres|7awli|moi|me|my|nearby|hna|houni)\b/i
+  if (PROXIMITY_PATTERNS.test(loc)) return ''
+
+  // Prend la première partie avant virgule, parenthèse ou tiret
+  const city = loc.split(/[,\-(]/)[0].trim()
+  // Minimum 2 chars, max 40 chars pour éviter les faux filtres
+  return city.length >= 2 && city.length <= 40 ? city : ''
+}
+
+/**
+ * Construit un filtre OR Supabase pour plusieurs champs et plusieurs mots-clés.
+ * Limit: Supabase accepte ~20 clauses OR par requête.
+ */
+function buildOrFilter(fields: string[], keywords: string[]): string {
+  return keywords
+    .slice(0, 5) // max 5 keywords × N fields
+    .flatMap(k => fields.map(f => `${f}.ilike.%${k}%`))
+    .join(',')
 }
 
 async function hybridSearchText(
@@ -235,26 +307,31 @@ async function hybridSearchText(
   normalizedQuery: string,
   location?: string,
   category?: string,
-  targetLat?: number,
-  targetLng?: number,
 ): Promise<any[]> {
-  const supabase = createClient()
+  const supabase  = createClient()
   const cityFilter = extractCity(location)
 
-  // Construire les mots-clés: inclure les variantes Darija ET le texte normalisé
+  // Merge original Darija words (translated) + normalized terms, deduplicated
   const rawKeywords = [
-    ...normalizedQuery.split(/\s+/),
-    ...originalQuery.split(/\s+/).map(w => DARIJA_TUNISIAN_DICTIONARY[w.toLowerCase()]?.french || w),
+    ...normalizedQuery.toLowerCase().split(/\s+/),
+    ...originalQuery.toLowerCase().split(/\s+/).map(
+      w => DARIJA_TUNISIAN_DICTIONARY[w]?.french ?? w,
+    ),
   ]
   const keywords = [...new Set(rawKeywords)]
+    .map(w => w.trim())
     .filter(w => w.length > 2)
-    .slice(0, 8) // Limite pour éviter les requêtes trop larges
+    .slice(0, 6) // keep tight — too many keywords = broad noise
 
   if (keywords.length === 0) return []
 
-  // Construction des filtres OR pour chaque mot-clé
-  const buildOrFilter = (fields: string[]) =>
-    keywords.flatMap(k => fields.map(f => `${f}.ilike.%${k}%`)).join(',')
+  // ── Parallel table queries ────────────────────────────────────────────────
+
+  const itemFilter   = buildOrFilter(['name', 'description'], keywords)
+  const storeFilter  = buildOrFilter(['name', 'description', 'address'], keywords)
+  const bizFilter    = buildOrFilter(['title', 'description', 'categoryName'], keywords)
+  const svcFilter    = buildOrFilter(['name', 'description', 'category'], keywords)
+  const reelFilter   = buildOrFilter(['title', 'subtitle', 'category'], keywords)
 
   const [itemsRes, storesRes, businessRes, servicesRes, reelsRes] = await Promise.all([
     // Items (produits)
@@ -263,10 +340,10 @@ async function hybridSearchText(
         .from('items')
         .select('*, stores!inner(*)')
         .eq('status', 'AVAILABLE')
-        .or(buildOrFilter(['name', 'description']))
-      if (cityFilter.length > 2) q = q.ilike('stores.city', `%${cityFilter}%`)
-      if (category) q = q.ilike('item_type', `%${category}%`)
-      return q.limit(25)
+        .or(itemFilter)
+      if (cityFilter) q = q.ilike('stores.city', `%${cityFilter}%`)
+      if (category)   q = q.ilike('item_type', `%${category}%`)
+      return q.limit(20)
     })(),
 
     // Stores natifs
@@ -275,10 +352,10 @@ async function hybridSearchText(
         .from('stores')
         .select('*')
         .in('status', ['APPROVED', 'PUBLISHED'])
-        .or(buildOrFilter(['name', 'description', 'address']))
-      if (cityFilter.length > 2) q = q.ilike('city', `%${cityFilter}%`)
-      if (category) q = q.ilike('category', `%${category}%`)
-      return q.limit(25)
+        .or(storeFilter)
+      if (cityFilter) q = q.ilike('city', `%${cityFilter}%`)
+      if (category)   q = q.ilike('category', `%${category}%`)
+      return q.limit(20)
     })(),
 
     // Annuaire business
@@ -286,9 +363,9 @@ async function hybridSearchText(
       let q = supabase
         .from('business_directory_tunisia')
         .select('*')
-        .or(buildOrFilter(['title', 'description', 'categoryName']))
-      if (cityFilter.length > 2) q = q.ilike('city', `%${cityFilter}%`)
-      return q.limit(25)
+        .or(bizFilter)
+      if (cityFilter) q = q.ilike('city', `%${cityFilter}%`)
+      return q.limit(20)
     })(),
 
     // Annuaire services
@@ -297,73 +374,81 @@ async function hybridSearchText(
         .from('service_directory')
         .select('*')
         .eq('status', 'ACTIVE')
-        .or(buildOrFilter(['name', 'description', 'category']))
-      if (cityFilter.length > 2) q = q.ilike('city', `%${cityFilter}%`)
-      return q.limit(25)
+        .or(svcFilter)
+      if (cityFilter) q = q.ilike('city', `%${cityFilter}%`)
+      return q.limit(20)
     })(),
 
-    // Reels (Nouveau!)
+    // Reels
     (async () => {
       let q = supabase
         .from('reels')
         .select('*, stores!inner(*), reel_stats(*)')
         .eq('status', 'active')
-        .or(buildOrFilter(['title', 'subtitle', 'category']))
-      if (cityFilter.length > 2) q = q.ilike('stores.city', `%${cityFilter}%`)
-      return q.limit(25)
+        .or(reelFilter)
+      if (cityFilter) q = q.ilike('stores.city', `%${cityFilter}%`)
+      return q.limit(20)
     })(),
   ])
 
+  // ── Normalize into unified shape ──────────────────────────────────────────
+
   const results: any[] = []
 
-  const addRes = (res: any, type: string, mapFn: (i: any) => any) => {
+  const push = (res: { data: any[] | null; error: any }, type: string, mapFn: (i: any) => any) => {
     if (res.data) {
-      res.data.forEach((i: any) => results.push({ ...mapFn(i), result_type: type }))
+      for (const i of res.data) {
+        results.push({ ...mapFn(i), result_type: type })
+      }
     }
   }
 
-  addRes(itemsRes, 'ITEM', i => ({
+  push(itemsRes, 'ITEM', i => ({
     ...i,
-    image_url: i.main_image,
+    image_url:     i.main_image,
     location_city: i.stores?.city,
-    category: i.item_type,
-    metadata: { price: i.price, store_name: i.stores?.name },
+    category:      i.item_type,
+    metadata:      { price: i.price, store_name: i.stores?.name },
   }))
-  addRes(storesRes, 'STORE', i => ({
+
+  push(storesRes, 'STORE', i => ({
     ...i,
-    image_url: i.logo_url,
+    image_url:     i.logo_url,
     location_city: i.city,
-    metadata: { rating: i.rating_average },
+    metadata:      { rating: i.rating_average },
   }))
-  addRes(businessRes, 'BUSINESS_DIR', i => ({
+
+  push(businessRes, 'BUSINESS_DIR', i => ({
     ...i,
-    id: i.id,
-    name: i.title,
-    image_url: i.photos?.[0],
+    id:            i.id,
+    name:          i.title,
+    image_url:     Array.isArray(i.photos) ? i.photos[0] : undefined,
     location_city: i.city,
-    metadata: { address: i.full_address },
+    metadata:      { address: i.full_address },
   }))
-  addRes(servicesRes, 'SERVICE_DIR', i => ({
+
+  push(servicesRes, 'SERVICE_DIR', i => ({
     ...i,
-    id: i.service_id,
+    id:       i.service_id,
     image_url: null,
     location_city: i.city,
     metadata: { address: i.address },
   }))
-  addRes(reelsRes, 'REEL', i => ({
+
+  push(reelsRes, 'REEL', i => ({
     ...i,
-    id: i.id,
-    name: i.title,
-    image_url: i.media_path, // media_path is the thumbnail/video URL
+    id:            i.id,
+    name:          i.title,
+    image_url:     i.media_path,
     location_city: i.stores?.city,
-    category: i.category,
-    metadata: { 
-      price: i.price, 
+    category:      i.category,
+    metadata:      {
+      price:      i.price,
       store_name: i.stores?.name,
       media_type: i.media_type,
-      cta_type: i.cta_type,
-      views: i.reel_stats?.[0]?.views_count || 0,
-      likes: i.reel_stats?.[0]?.likes_count || 0
+      cta_type:   i.cta_type,
+      views:      i.reel_stats?.[0]?.views_count ?? 0,
+      likes:      i.reel_stats?.[0]?.likes_count ?? 0,
     },
   }))
 
@@ -380,82 +465,139 @@ async function hybridSearchVector(
   const supabase = createClient()
   const { data, error } = await supabase.rpc('search_global_semantic' as any, {
     query_embedding: `[${embedding.join(',')}]`,
-    match_threshold: 0.15, // Seuil abaissé pour Darija (moins similaire au français)
-    match_count: 60,
+    match_threshold: 0.18,  // légèrement relevé — réduit le bruit
+    match_count: 50,
   })
+
   if (error) {
-    console.error('Vector Search Error:', error)
+    console.error('[Vector Search Error]', error.message)
     return []
   }
 
-  let filtered = data || []
+  const results: any[] = data ?? []
+
+  // Geo-filter: keep items within ~120 km bounding box when coords known
   if (targetLat && targetLng) {
-    const delta = 1.2
-    filtered = filtered.filter((item: any) => {
-      const lat = item.latitude || item.stores?.latitude || item.metadata?.latitude
-      const lon = item.longitude || item.stores?.longitude || item.metadata?.longitude
-      if (!lat || !lon) return true
-      return Math.abs(lat - targetLat) < delta && Math.abs(lon - targetLng) < delta
+    const delta = 1.1 // ~120 km
+    return results.filter((item: any) => {
+      const lat = Number(item.latitude ?? item.stores?.latitude ?? item.metadata?.latitude ?? 0)
+      const lon = Number(item.longitude ?? item.stores?.longitude ?? item.metadata?.longitude ?? 0)
+      if (!lat || !lon) return true // keep if no coords
+      return Math.abs(lat - targetLat) <= delta && Math.abs(lon - targetLng) <= delta
     })
   }
-  return filtered
+
+  return results
+}
+
+// ─── Reels liés aux items matchés ─────────────────────────────────────────────
+
+async function fetchLinkedReels(vectorResults: any[]): Promise<any[]> {
+  const itemIds = [
+    ...new Set(
+      vectorResults.filter(r => r.result_type === 'ITEM').map(r => r.id).filter(Boolean),
+    ),
+  ].slice(0, 8)
+
+  if (itemIds.length === 0) return []
+
+  const supabase = createClient()
+  const { data: reels } = await supabase
+    .from('reels')
+    .select('*, stores(*), reel_stats(*)')
+    .in('item_id', itemIds)
+    .limit(8)
+
+  if (!reels) return []
+
+  return reels.map((reel: any) => ({
+    ...reel,
+    result_type:   'REEL',
+    name:          reel.title,
+    image_url:     reel.media_path,
+    location_city: reel.stores?.city,
+    metadata:      {
+      store_name:     reel.stores?.name,
+      linked_to_item: true,
+      views:          reel.reel_stats?.[0]?.views_count ?? 0,
+      likes:          reel.reel_stats?.[0]?.likes_count ?? 0,
+    },
+  }))
 }
 
 // ─── Fusion Reciprocal Rank (RRF) ─────────────────────────────────────────────
 
+/**
+ * Fusionne les listes vectorielle + texte via RRF.
+ * La clé de déduplication est: `result_type:id` pour éviter les doublons cross-table.
+ */
 function reciprocalRankFusion(
   vectorResults: any[],
   textResults: any[],
+  linkedReels: any[],
   k = 60,
 ): any[] {
   const scores = new Map<string, { score: number; item: any }>()
-  const add = (list: any[], weight: number) =>
+
+  const add = (list: any[], weight: number) => {
     list.forEach((item, r) => {
-      const id = String(item.id ?? `${item.result_type}_${r}`)
-      const s = weight / (k + r + 1)
-      const e = scores.get(id)
-      if (e) e.score += s
-      else scores.set(id, { score: s, item })
+      // Stable dedup key: prefers id+type, falls back to hash of name
+      const id  = item.id != null ? String(item.id) : (item.name ?? '').slice(0, 20)
+      const key = `${item.result_type ?? 'UNK'}::${id}`
+      const s   = weight / (k + r + 1)
+      const existing = scores.get(key)
+      if (existing) {
+        existing.score += s
+      } else {
+        scores.set(key, { score: s, item })
+      }
     })
+  }
 
-  // Vector results = plus de poids (comprend le Darija via embeddings multilingues)
-  add(vectorResults, 1.4)
-  // Text results = poids modéré
-  add(textResults, 1.0)
+  // Weights: vector (semantic) gets most weight, linked reels are boosted
+  add(vectorResults, 1.5)
+  add(textResults,   1.0)
+  add(linkedReels,   1.3)  // linked reels are highly relevant
 
-  return [...scores.values()].sort((a, b) => b.score - a.score).map(x => x.item)
+  return [...scores.values()]
+    .sort((a, b) => b.score - a.score)
+    .map(x => x.item)
 }
 
-// ─── Reranking LLM ────────────────────────────────────────────────────────────
+// ─── Reranking LLM léger ──────────────────────────────────────────────────────
 
 async function rerankWithLLM(
   query: string,
   results: any[],
   intent: string,
-  topN = 20,
+  topN = 15,
 ): Promise<any[]> {
-  if (results.length < 3) return results
+  if (results.length < 4) return results
 
   const toRerank = results.slice(0, topN)
-  const systemPrompt = `Tu es un expert en marketplace tunisienne. Trie ces résultats par pertinence pour la requête "${query}" (intention: ${intent}).
-
-CRITÈRES:
-1. Correspondance directe avec la requête (priorité maximale)
-2. Boutiques natives Ro2ya (STORE/ITEM) avant les annuaires
-3. Écarte les résultats hors-sujet
-4. Réponds UNIQUEMENT avec les indices séparés par virgules (ex: 0,3,1,5)`
-
   const list = toRerank
-    .map((it, i) => `${i}: ${it.name || it.title} (${it.result_type}) - ${(it.description || '').slice(0, 80)}`)
+    .map(
+      (it, i) =>
+        `${i}:${it.name ?? it.title ?? '?'}(${it.result_type}) — ${(it.description ?? '').slice(0, 60)}`,
+    )
     .join('\n')
 
+  const systemPrompt = `Expert marketplace tunisienne. Trie ces résultats pour "${query}" (intent:${intent}).
+Priorités: 1)Correspondance exacte 2)STORE/ITEM/REEL natifs avant annuaires 3)Rejette hors-sujet.
+Réponds UNIQUEMENT avec les indices en ordre décroissant de pertinence, séparés par virgule. Ex: 2,0,5,1`
+
   try {
-    const { text } = await openRouterChat(systemPrompt, list, 150)
-    const order = text.split(',').map(x => parseInt(x.trim())).filter(x => !isNaN(x) && x < topN)
+    const { text } = await openRouterChat(systemPrompt, list, 120)
+    const order = text
+      .split(',')
+      .map(x => parseInt(x.trim(), 10))
+      .filter(x => !isNaN(x) && x >= 0 && x < topN)
+
     if (order.length < 2) return results
-    const reranked = order.map(i => toRerank[i]).filter(Boolean)
-    const seen = new Set(order)
-    const remaining = toRerank.filter((_, i) => !seen.has(i))
+
+    const reranked  = order.map(i => toRerank[i]).filter(Boolean)
+    const seenIdx   = new Set(order)
+    const remaining = toRerank.filter((_, i) => !seenIdx.has(i))
     return [...reranked, ...remaining, ...results.slice(topN)]
   } catch {
     return results
@@ -465,31 +607,74 @@ CRITÈRES:
 // ─── Géocodage ────────────────────────────────────────────────────────────────
 
 async function geocodeLocation(location?: string): Promise<{ lat?: number; lng?: number }> {
-  if (!location || location.length < 3) return {}
-  const loc = location.toLowerCase()
-  if (loc.includes('pres') || loc.includes('près') || loc.includes('moi') || loc.includes('7awli')) return {}
+  const city = extractCity(location)
+  if (!city || city.length < 3) return {}
 
   try {
-    const url = `https://api.geoapify.com/v1/geocode/search?text=${encodeURIComponent(location)}&filter=rect:7.522,30.230,11.598,37.340&limit=1&apiKey=${process.env.GEOAPIFY_API_KEY || ''}`
-    const res = await fetch(url).then(r => r.json())
-    if (res?.features?.[0]) {
-      return { lat: res.features[0].properties.lat, lng: res.features[0].properties.lon }
+    const url =
+      `https://api.geoapify.com/v1/geocode/search` +
+      `?text=${encodeURIComponent(city)}` +
+      `&filter=rect:7.522,30.230,11.598,37.340` +  // Tunisia bounding box
+      `&limit=1` +
+      `&apiKey=${process.env.GEOAPIFY_API_KEY ?? ''}`
+
+    const res  = await fetch(url)
+    const data = await res.json()
+    if (data?.features?.[0]) {
+      return {
+        lat: data.features[0].properties.lat,
+        lng: data.features[0].properties.lon,
+      }
     }
-  } catch { /* ignoré */ }
+  } catch { /* silently fail — geo is optional */ }
   return {}
 }
 
 // ─── Distance Haversine ───────────────────────────────────────────────────────
 
-function getDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
-  if (!lat1 || !lon1 || !lat2 || !lon2) return 9999
-  const R = 6371
-  const dLat = (lat2 - lat1) * Math.PI / 180
-  const dLon = (lon2 - lon1) * Math.PI / 180
+function haversineKm(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const R    = 6371
+  const dLat = (lat2 - lat1) * (Math.PI / 180)
+  const dLon = (lon2 - lon1) * (Math.PI / 180)
   const a =
     Math.sin(dLat / 2) ** 2 +
-    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon / 2) ** 2
+    Math.cos(lat1 * (Math.PI / 180)) *
+    Math.cos(lat2 * (Math.PI / 180)) *
+    Math.sin(dLon / 2) ** 2
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+}
+
+// ─── Tri final ────────────────────────────────────────────────────────────────
+
+const NATIVE_TYPES = new Set(['STORE', 'ITEM', 'REEL'])
+
+function finalSort(items: any[], isSuggestion: boolean): any[] {
+  return items.sort((a, b) => {
+    // 1. Mode suggestion: diversité par type
+    if (isSuggestion) {
+      const TYPE_ORDER: Record<string, number> = {
+        STORE: 1, REEL: 2, ITEM: 3, SERVICE_DIR: 4, BUSINESS_DIR: 5,
+      }
+      const diff = (TYPE_ORDER[a.result_type] ?? 6) - (TYPE_ORDER[b.result_type] ?? 6)
+      if (diff !== 0) return diff
+    } else {
+      // 2. Mode normal: natifs en premier
+      const aN = NATIVE_TYPES.has(a.result_type)
+      const bN = NATIVE_TYPES.has(b.result_type)
+      if (aN !== bN) return aN ? -1 : 1
+    }
+
+    // 3. Tri par distance si disponible (différence > 5 km)
+    if (a.distance != null && b.distance != null) {
+      const diff = a.distance - b.distance
+      if (Math.abs(diff) > 5) return diff
+    }
+
+    // 4. Rating comme tiebreaker
+    const aRating = Number(a.rating_average ?? a.metadata?.rating ?? a.totalScore ?? 0)
+    const bRating = Number(b.rating_average ?? b.metadata?.rating ?? b.totalScore ?? 0)
+    return bRating - aRating
+  })
 }
 
 // ─── Fonction principale ──────────────────────────────────────────────────────
@@ -500,152 +685,131 @@ export async function doGlobalSemanticSearch(
   category?: string,
   userLat?: number,
   userLng?: number,
-  isSuggestion: boolean = false
+  isSuggestion: boolean = false,
 ) {
-  const cacheKey = `${query}_${location}_${category}_${userLat}_${userLng}_${isSuggestion}`
-  const cached = queryCache.get(cacheKey)
-  if (cached && Date.now() - cached.ts < CACHE_TTL_MS) return cached.data
+  const cleanQuery = query?.trim()
+  if (!cleanQuery || cleanQuery.length < 2) return []
 
-  const supabase = createClient()
+  const cacheKey = `${cleanQuery}|${location ?? ''}|${category ?? ''}|${userLat ?? ''}|${userLng ?? ''}|${isSuggestion}`
+  const cached = cacheGet(cacheKey)
+  if (cached) return cached
 
-  console.log(`🔍 [Ro2ya Search${isSuggestion ? ' - Suggest' : ''}] "${query}"`)
   const t0 = Date.now()
+  console.log(`🔍 [Search${isSuggestion ? '/suggest' : ''}] "${cleanQuery}"`)
 
-  // 1. Détection script + extraction Darija
-  const script = detectQueryScript(query)
-  const darijaWords = extractDarijaWords(query)
-  const hint = darijaWords.map(w => `${w.original}→${w.french}`).join(', ')
+  // ── Step 1: Script detection + local Darija expansion (sync, free) ──────────
 
-  // 2. Expansion Darija locale (rapide, zéro API)
-  const darijaExpansion = expandDarijaQuery(query)
+  const script         = detectQueryScript(cleanQuery)
+  const darijaWords    = extractDarijaWords(cleanQuery)
+  const hint           = darijaWords.map(w => `${w.original}→${w.french}`).join(', ')
+  const darijaExp      = expandDarijaQuery(cleanQuery)
 
-  // 3. Fast path: si la requête est déjà bien traduite par le dictionnaire
-  const allWordsTranslated = query.split(/\s+/).every(
-    w => DARIJA_TUNISIAN_DICTIONARY[w.toLowerCase()] || w.length < 3,
+  // Shortcut: every word already covered by dictionary → skip LLM
+  const fullyTranslated = cleanQuery.split(/\s+/).every(
+    w => DARIJA_TUNISIAN_DICTIONARY[w.toLowerCase()] || w.length <= 2,
   )
 
-  // 4. Parallélisation: LLM + géocodage + embeddings + text search en même temps
-  const [llmAnalysis, geo, embedding, textResults] = await Promise.all([
-    // LLM: seulement si on n'est pas en mode suggestion rapide OU si le dico est incomplet
-    (allWordsTranslated || (isSuggestion && query.length < 5))
-      ? Promise.resolve({
-          normalized: darijaExpansion.translated,
-          expanded: darijaExpansion.expanded,
-          intent: 'other',
-          category: darijaExpansion.detectedCategories[0] || '',
-        })
-      : analyzeQueryWithLLM(query, hint, script),
-
-    // Géocodage de la localisation textuelle
-    geocodeLocation(location),
-
-    // Embedding (seulement si pas en mode suggestion ultra-rapide ou si query longue)
-    (isSuggestion && query.length < 4) 
-      ? Promise.resolve([]) 
-      : generateQueryEmbedding(darijaExpansion.expanded).catch(() =>
-          generateQueryEmbedding(darijaExpansion.translated)
-        ),
-
-    // Recherche textuelle parallèle (TOUJOURS RAPIDE)
-    hybridSearchText(
-      query,
-      darijaExpansion.translated,
-      location,
-      category,
-      userLat,
-      userLng,
-    ),
-  ])
-
-  const targetLat = userLat || geo.lat
-  const targetLng = userLng || geo.lng
-
-  // 5. Recherche vectorielle (uniquement si on a un embedding)
-  const vectorResults = embedding && embedding.length > 0
-    ? await hybridSearchVector(embedding, targetLat, targetLng)
-    : []
-
-  // 5b. Enrichissement des Reels via les résultats vectoriels
-  // Si on a trouvé des produits sémantiquement, on cherche les reels associés
-  if (vectorResults.length > 0) {
-    const itemIds = vectorResults
-      .filter(r => r.result_type === 'ITEM')
-      .map(r => r.id)
-      .filter(Boolean);
-    
-    if (itemIds.length > 0) {
-      const { data: relatedReels } = await supabase
-        .from('reels')
-        .select('*, stores(*), reel_stats(*)')
-        .in('item_id', itemIds.slice(0, 10))
-        .limit(10);
-      
-      if (relatedReels && relatedReels.length > 0) {
-        relatedReels.forEach((reel: any) => {
-          // On les ajoute comme résultats vectoriels avec un score élevé car liés à un item matché
-          vectorResults.push({
-            ...reel,
-            result_type: 'REEL',
-            name: reel.title,
-            image_url: reel.media_path,
-            location_city: reel.stores?.city,
-            metadata: { 
-              store_name: reel.stores?.name, 
-              linked_to_item: true,
-              views: reel.reel_stats?.[0]?.views_count || 0,
-              likes: reel.reel_stats?.[0]?.likes_count || 0
-            }
-          });
-        });
-      }
-    }
+  const llmFallback: LLMAnalysis = {
+    normalized: darijaExp.translated,
+    expanded:   darijaExp.expanded,
+    intent:     'other',
+    category:   darijaExp.detectedCategories[0] ?? '',
   }
 
-  // 6. Fusion RRF
-  const fused = reciprocalRankFusion(vectorResults, textResults)
+  // ── Step 2: Parallélisation maximale ────────────────────────────────────────
+  //   LLM + Geocoding + Embedding + Text search — all at once
 
-  // 7. Calcul des distances
+  // Ultra-fast path for suggestion mode with very short queries
+  const skipLLM    = fullyTranslated || (isSuggestion && cleanQuery.length < 5)
+  const skipEmbed  = isSuggestion && cleanQuery.length < 4
+
+  const [llmAnalysis, geo, embedding, textResults] = await Promise.all([
+    skipLLM
+      ? Promise.resolve(llmFallback)
+      : withTimeout(
+          analyzeQueryWithLLM(cleanQuery, hint, script),
+          LLM_TIMEOUT_MS,
+          llmFallback,
+        ),
+
+    withTimeout(geocodeLocation(location), GEOCODE_TIMEOUT_MS, {}),
+
+    skipEmbed
+      ? Promise.resolve([] as number[])
+      : withTimeout(
+          generateQueryEmbedding(darijaExp.expanded).catch(() =>
+            generateQueryEmbedding(darijaExp.translated),
+          ),
+          EMBED_TIMEOUT_MS,
+          [] as number[],
+        ),
+
+    // Text search always runs — it's the fastest path
+    hybridSearchText(cleanQuery, darijaExp.translated, location, category),
+  ])
+
+  const targetLat = userLat ?? (geo as any).lat
+  const targetLng = userLng ?? (geo as any).lng
+
+  // ── Step 3: Vector search + linked reels (parallel) ─────────────────────────
+
+  const hasEmbedding = Array.isArray(embedding) && embedding.length > 0
+
+  const [vectorResults, linkedReels] = await Promise.all([
+    hasEmbedding
+      ? withTimeout(
+          hybridSearchVector(embedding as number[], targetLat, targetLng),
+          3000,
+          [] as any[],
+        )
+      : Promise.resolve([] as any[]),
+    Promise.resolve([] as any[]), // populated after vector results below
+  ])
+
+  // Fetch linked reels only after we have vector results (dependent step)
+  const reelsFromItems = await withTimeout(
+    fetchLinkedReels(vectorResults),
+    1500,
+    [] as any[],
+  )
+
+  // ── Step 4: RRF Fusion ───────────────────────────────────────────────────────
+
+  const fused = reciprocalRankFusion(vectorResults, textResults, reelsFromItems)
+
+  // ── Step 5: Distance annotation ─────────────────────────────────────────────
+
   if (targetLat && targetLng) {
     for (const item of fused) {
-      const lat = Number(item.latitude || item.stores?.latitude || item.metadata?.latitude || 0)
-      const lon = Number(item.longitude || item.stores?.longitude || item.metadata?.longitude || 0)
+      const lat = Number(item.latitude ?? item.stores?.latitude ?? item.metadata?.latitude ?? 0)
+      const lon = Number(item.longitude ?? item.stores?.longitude ?? item.metadata?.longitude ?? 0)
       if (lat && lon) {
-        item.distance = getDistance(targetLat, targetLng, lat, lon)
+        item.distance  = haversineKm(targetLat, targetLng, lat, lon)
         item.is_nearby = item.distance < 15
       }
     }
   }
 
-  // 8. Reranking LLM (DÉSACTIVÉ en mode suggestion pour la vitesse)
-  const reranked = (fused.length > 3 && !isSuggestion)
-    ? await rerankWithLLM(query, fused, llmAnalysis.intent)
+  // ── Step 6: LLM Reranking (skip in suggestion mode) ─────────────────────────
+
+  const reranked = (!isSuggestion && fused.length > 4)
+    ? await withTimeout(
+        rerankWithLLM(cleanQuery, fused, llmAnalysis.intent),
+        RERANK_TIMEOUT_MS,
+        fused,
+      )
     : fused
 
-  // 9. Tri final
-  reranked.sort((a, b) => {
-    // En mode suggestion, on veut de la diversité
-    if (isSuggestion) {
-        const typeOrder = { 'STORE': 1, 'REEL': 2, 'ITEM': 3, 'SERVICE_DIR': 4, 'BUSINESS_DIR': 5 }
-        const aOrder = (typeOrder as any)[a.result_type] || 6
-        const bOrder = (typeOrder as any)[b.result_type] || 6
-        if (aOrder !== bOrder) return aOrder - bOrder
-    } else {
-        const aIsNative = a.result_type === 'STORE' || a.result_type === 'ITEM' || a.result_type === 'REEL'
-        const bIsNative = b.result_type === 'STORE' || b.result_type === 'ITEM' || b.result_type === 'REEL'
-        if (aIsNative !== bIsNative) return aIsNative ? -1 : 1
-    }
-    
-    if (a.distance !== undefined && b.distance !== undefined) {
-      if (Math.abs(a.distance - b.distance) > 5) return a.distance - b.distance
-    }
-    return 0
-  })
+  // ── Step 7: Final sort ───────────────────────────────────────────────────────
 
-  console.log(`✅ [${Date.now() - t0}ms] ${reranked.length} résultats pour "${query}"`)
+  const output = finalSort(reranked, isSuggestion)
 
-  const plainResults = JSON.parse(JSON.stringify(reranked))
-  queryCache.set(cacheKey, { ts: Date.now(), data: plainResults })
-  return plainResults
+  console.log(`✅ [${Date.now() - t0}ms] ${output.length} results — "${cleanQuery}"`)
+
+  // Serialize (removes non-plain objects from server actions)
+  const plain = JSON.parse(JSON.stringify(output))
+  cacheSet(cacheKey, plain)
+  return plain
 }
 
 // ─── searchStores ──────────────────────────────────────────────────────────────
@@ -655,74 +819,96 @@ export async function searchStores(
   locationStr = '',
   category = '',
 ): Promise<Business[]> {
-  const supabase = createClient()
-  const city = extractCity(locationStr)
+  const supabase   = createClient()
+  const city       = extractCity(locationStr)
   if (queryStr) logUserSearch(queryStr)
 
-  // Traduire le Darija avant la recherche texte
   const translated = translateDarijaForSearch(queryStr)
-  const keywords = [...new Set([
-    ...translated.toLowerCase().split(/\s+/).filter((w: string) => w.length > 2),
-    ...queryStr.toLowerCase().split(/\s+/).filter((w: string) => DARIJA_TUNISIAN_DICTIONARY[w] && w.length > 1),
-  ])]
+  const keywords = [
+    ...new Set([
+      ...translated.toLowerCase().split(/\s+/).filter((w: string) => w.length > 2),
+      ...queryStr.toLowerCase().split(/\s+/).filter(
+        (w: string) => DARIJA_TUNISIAN_DICTIONARY[w] && w.length > 1,
+      ),
+    ]),
+  ].slice(0, 6)
 
-  const buildOr = (fields: string[], kws: string[]) =>
-    kws.flatMap(kw => fields.map(f => `${f}.ilike.%${kw}%`)).join(',')
+  const buildOr = (fields: string[]) => buildOrFilter(fields, keywords)
 
-  let storesQuery = supabase
-    .from('stores')
-    .select('id, name, slug, city, phone, address, category, latitude, longitude, rating_average, total_reviews, logo_url, description')
-    .in('status', ['APPROVED', 'PUBLISHED'])
-    .is('service_id', null)
+  const storesPromise = (() => {
+    let q = supabase
+      .from('stores')
+      .select('id, name, slug, city, phone, address, category, latitude, longitude, rating_average, total_reviews, logo_url, description')
+      .in('status', ['APPROVED', 'PUBLISHED'])
+      .is('service_id', null)
+    if (keywords.length > 0) q = q.or(buildOr(['name', 'description', 'address']))
+    if (city)     q = q.ilike('city', `%${city}%`)
+    if (category) q = q.ilike('category', `%${category}%`)
+    return q.limit(50)
+  })()
 
-  if (keywords.length > 0) storesQuery = storesQuery.or(buildOr(['name', 'description', 'address'], keywords))
-  if (city) storesQuery = storesQuery.ilike('city', `%${city}%`)
-  if (category) storesQuery = storesQuery.ilike('category', `%${category}%`)
+  const dirPromise = (() => {
+    let q = supabase
+      .from('business_directory_tunisia' as any)
+      .select('id, title, city, phone, full_address, vitrine_category, categoryName, latitude, longitude, totalScore, reviewsCount, photos')
+    if (keywords.length > 0) q = q.or(buildOr(['title', 'categoryName', 'vitrine_category', 'full_address']))
+    if (city)     q = q.ilike('city', `%${city}%`)
+    if (category) q = q.or(`categoryName.ilike.%${category}%,vitrine_category.ilike.%${category}%`)
+    return q.limit(50)
+  })()
 
-  let dirQuery = supabase
-    .from('business_directory_tunisia' as any)
-    .select('id, title, city, phone, full_address, vitrine_category, categoryName, latitude, longitude, totalScore, reviewsCount, photos')
+  const [storesRes, dirRes] = await Promise.all([storesPromise, dirPromise])
 
-  if (keywords.length > 0) dirQuery = dirQuery.or(buildOr(['title', 'categoryName', 'vitrine_category', 'full_address'], keywords))
-  if (city) dirQuery = dirQuery.ilike('city', `%${city}%`)
-  if (category) dirQuery = dirQuery.or(`categoryName.ilike.%${category}%,vitrine_category.ilike.%${category}%`)
-
-  const [storesRes, dirRes] = await Promise.all([storesQuery.limit(50), dirQuery.limit(50)])
+  const FALLBACK_IMG =
+    'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=400&h=300&fit=crop'
 
   const results: (Business & { isNative?: boolean })[] = []
-  const FALLBACK_IMG = 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=400&h=300&fit=crop'
 
-  storesRes.data?.forEach((item: any) => results.push({
-    isNative: true,
-    id: item.slug || String(item.id),
-    name: item.name || '',
-    image: item.logo_url || FALLBACK_IMG,
-    rating: Number(item.rating_average) || 0,
-    reviewCount: item.total_reviews || 0,
-    category: item.category || 'Other',
-    priceRange: '$$',
-    isOpen: true,
-    description: item.description || item.address || '',
-    location: { address: item.address || '', lat: Number(item.latitude) || 36.8065, lng: Number(item.longitude) || 10.1815 },
-  }))
+  storesRes.data?.forEach((item: any) =>
+    results.push({
+      isNative:    true,
+      id:          item.slug ?? String(item.id),
+      name:        item.name ?? '',
+      image:       item.logo_url ?? FALLBACK_IMG,
+      rating:      Number(item.rating_average) || 0,
+      reviewCount: item.total_reviews ?? 0,
+      category:    item.category ?? 'Other',
+      priceRange:  '$$',
+      isOpen:      true,
+      description: item.description ?? item.address ?? '',
+      location:    {
+        address: item.address ?? '',
+        lat:     Number(item.latitude) || 36.8065,
+        lng:     Number(item.longitude) || 10.1815,
+      },
+    }),
+  )
 
-  dirRes.data?.forEach((item: any) => results.push({
-    isNative: false,
-    id: String(item.id),
-    name: item.title || '',
-    image: item.photos?.[0] || FALLBACK_IMG,
-    rating: Number(item.totalScore) || 0,
-    reviewCount: item.reviewsCount || 0,
-    category: item.vitrine_category || item.categoryName || 'Other',
-    priceRange: '$$',
-    isOpen: true,
-    description: item.full_address || '',
-    location: { address: item.full_address || '', lat: Number(item.latitude) || 36.8065, lng: Number(item.longitude) || 10.1815 },
-  }))
+  dirRes.data?.forEach((item: any) =>
+    results.push({
+      isNative:    false,
+      id:          String(item.id),
+      name:        item.title ?? '',
+      image:       Array.isArray(item.photos) ? item.photos[0] : FALLBACK_IMG,
+      rating:      Number(item.totalScore) || 0,
+      reviewCount: item.reviewsCount ?? 0,
+      category:    item.vitrine_category ?? item.categoryName ?? 'Other',
+      priceRange:  '$$',
+      isOpen:      true,
+      description: item.full_address ?? '',
+      location:    {
+        address: item.full_address ?? '',
+        lat:     Number(item.latitude) || 36.8065,
+        lng:     Number(item.longitude) || 10.1815,
+      },
+    }),
+  )
 
-  return JSON.parse(JSON.stringify(results
-    .sort((a, b) => (a.isNative === b.isNative ? b.rating - a.rating : a.isNative ? -1 : 1))
-    .slice(0, 100)))
+  results.sort((a, b) =>
+    a.isNative === b.isNative ? b.rating - a.rating : a.isNative ? -1 : 1,
+  )
+
+  return JSON.parse(JSON.stringify(results.slice(0, 100)))
 }
 
 // ─── searchItems ───────────────────────────────────────────────────────────────
@@ -732,7 +918,12 @@ export async function searchItems(query?: string, category?: string) {
   if (query) logUserSearch(query)
 
   const translated = query ? translateDarijaForSearch(query) : ''
-  const keywords = translated.toLowerCase().split(/\s+/).filter((w: string) => w.length > 1)
+  const keywords   = translated
+    .toLowerCase()
+    .split(/\s+/)
+    .filter((w: string) => w.length > 1)
+    .slice(0, 6)
+
   const isTypeFilter = category === 'PRODUCT' || category === 'SERVICE'
 
   let req = supabase
@@ -743,15 +934,22 @@ export async function searchItems(query?: string, category?: string) {
 
   if (category) {
     if (isTypeFilter) req = req.eq('item_type', category)
-    else req = req.ilike('stores.category', `%${category}%`)
+    else              req = req.ilike('stores.category', `%${category}%`)
   }
 
   if (keywords.length > 0) {
-    req = req.or(keywords.flatMap(kw => [`name.ilike.%${kw}%`, `description.ilike.%${kw}%`]).join(','))
+    req = req.or(
+      keywords.flatMap(kw => [`name.ilike.%${kw}%`, `description.ilike.%${kw}%`]).join(','),
+    )
   }
 
-  const { data, error } = await req.order('created_at', { ascending: false }).limit(100)
-  return JSON.parse(JSON.stringify({ data: (data as any[]) || [], error: error?.message || null }))
+  const { data, error } = await req
+    .order('created_at', { ascending: false })
+    .limit(100)
+
+  return JSON.parse(
+    JSON.stringify({ data: (data as any[]) ?? [], error: error?.message ?? null }),
+  )
 }
 
 // ─── searchServicesDirectory ───────────────────────────────────────────────────
@@ -762,49 +960,67 @@ export async function searchServicesDirectory(
   category?: string,
 ) {
   const supabase = createClient()
-  const city = extractCity(location)
+  const city     = extractCity(location)
+
   const translated = query ? translateDarijaForSearch(query) : ''
-  const keywords = translated.toLowerCase().split(/\s+/).filter((w: string) => w.length > 2)
+  const keywords   = translated
+    .toLowerCase()
+    .split(/\s+/)
+    .filter((w: string) => w.length > 2)
+    .slice(0, 6)
 
-  const buildOr = (fields: string[]) =>
-    keywords.flatMap(kw => fields.map(f => `${f}.ilike.%${kw}%`)).join(',')
+  const buildOr = (fields: string[]) => buildOrFilter(fields, keywords)
 
-  let sdReq = supabase
-    .from('service_directory')
-    .select('*, stores (id, name, rating_average, total_reviews, logo_url)')
-    .eq('status', 'ACTIVE')
+  const sdPromise = (() => {
+    let q = supabase
+      .from('service_directory')
+      .select('*, stores (id, name, rating_average, total_reviews, logo_url)')
+      .eq('status', 'ACTIVE')
+    if (keywords.length > 0) q = q.or(buildOr(['name', 'description', 'category']))
+    if (city)     q = q.ilike('city', `%${city}%`)
+    if (category) q = q.ilike('category', `%${category}%`)
+    return q.limit(50)
+  })()
 
-  if (keywords.length > 0) sdReq = sdReq.or(buildOr(['name', 'description', 'category']))
-  if (city) sdReq = sdReq.ilike('city', `%${city}%`)
-  if (category) sdReq = sdReq.ilike('category', `%${category}%`)
+  const storesPromise = (() => {
+    let q = supabase
+      .from('stores')
+      .select('*')
+      .in('status', ['APPROVED', 'PUBLISHED'])
+      .is('id_business', null)
+    if (keywords.length > 0) q = q.or(buildOr(['name', 'description', 'address']))
+    if (city)     q = q.ilike('city', `%${city}%`)
+    if (category) q = q.ilike('category', `%${category}%`)
+    return q.limit(50)
+  })()
 
-  let storesReq = supabase.from('stores').select('*').in('status', ['APPROVED', 'PUBLISHED']).is('id_business', null)
-  if (keywords.length > 0) storesReq = storesReq.or(buildOr(['name', 'description', 'address']))
-  if (city) storesReq = storesReq.ilike('city', `%${city}%`)
-  if (category) storesReq = storesReq.ilike('category', `%${category}%`)
+  const [sdRes, storesRes] = await Promise.all([sdPromise, storesPromise])
 
-  const [sdRes, storesRes] = await Promise.all([sdReq.limit(50), storesReq.limit(50)])
-  const mappedData: any[] = []
   const FALLBACK = 'https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=800'
+  const mappedData: any[] = []
 
-  sdRes.data?.forEach((item: any) => mappedData.push({
-    ...item,
-    isNative: false,
-    id: item.slug || String(item.service_id),
-    item_type: 'SERVICE',
-    price: item.price || 0,
-    main_image: item.stores?.logo_url || FALLBACK,
-  }))
+  sdRes.data?.forEach((item: any) =>
+    mappedData.push({
+      ...item,
+      isNative:  false,
+      id:        item.slug ?? String(item.service_id),
+      item_type: 'SERVICE',
+      price:     item.price ?? 0,
+      main_image: item.stores?.logo_url ?? FALLBACK,
+    }),
+  )
 
-  storesRes.data?.forEach((item: any) => mappedData.push({
-    ...item,
-    isNative: true,
-    id: item.slug || String(item.id),
-    item_type: 'SERVICE',
-    price: item.price || 0,
-    main_image: item.logo_url || FALLBACK,
-    stores: { name: item.name },
-  }))
+  storesRes.data?.forEach((item: any) =>
+    mappedData.push({
+      ...item,
+      isNative:  true,
+      id:        item.slug ?? String(item.id),
+      item_type: 'SERVICE',
+      price:     item.price ?? 0,
+      main_image: item.logo_url ?? FALLBACK,
+      stores:    { name: item.name },
+    }),
+  )
 
   return JSON.parse(JSON.stringify({ data: mappedData, error: null }))
 }

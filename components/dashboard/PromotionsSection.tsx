@@ -110,9 +110,17 @@ export default function PromotionsSection({ storeId, items, initialPromotions, o
 
   const activePromos = promotions.filter(p => {
     const now = new Date();
+    // Start date is today or in the past, and end date is today or in the future
     return p.active && new Date(p.valid_from) <= now && new Date(p.valid_until) >= now;
   });
-  const inactivePromos = promotions.filter(p => !p.active);
+
+  const upcomingPromos = promotions.filter(p => {
+    const now = new Date();
+    // Start date is in the future
+    return p.active && new Date(p.valid_from) > now;
+  });
+
+  const inactivePromos = promotions.filter(p => !p.active || new Date(p.valid_until) < new Date());
 
   const isExpired = (date: string) => new Date(date) < new Date();
   const daysUntil = (date: string) =>
@@ -400,7 +408,13 @@ export default function PromotionsSection({ storeId, items, initialPromotions, o
               value="active" 
               className="px-8 py-3 rounded-xl data-[state=active]:bg-red-600 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:shadow-red-600/20 transition-all font-bold text-slate-400"
             >
-              🔥 Offres Actives ({activePromos.length})
+              🔥 Actives ({activePromos.length})
+            </TabsTrigger>
+            <TabsTrigger 
+              value="upcoming" 
+              className="px-8 py-3 rounded-xl data-[state=active]:bg-indigo-600 data-[state=active]:text-white transition-all font-bold text-slate-400"
+            >
+              📅 À venir ({upcomingPromos.length})
             </TabsTrigger>
             <TabsTrigger 
               value="inactive" 
@@ -411,8 +425,8 @@ export default function PromotionsSection({ storeId, items, initialPromotions, o
           </TabsList>
         </div>
 
-        {(['active', 'inactive'] as const).map(tab => {
-          const list = tab === 'active' ? activePromos : inactivePromos;
+        {(['active', 'upcoming', 'inactive'] as const).map(tab => {
+          const list = tab === 'active' ? activePromos : tab === 'upcoming' ? upcomingPromos : inactivePromos;
           return (
             <TabsContent key={tab} value={tab} className="mt-0 outline-none">
               {list.length === 0 ? (
@@ -424,18 +438,22 @@ export default function PromotionsSection({ storeId, items, initialPromotions, o
                       <Tag className="w-10 h-10 text-red-500 relative z-10" />
                     </div>
                     <div className="space-y-2">
-                      <h3 className="text-2xl font-black text-white">Prêt à booster vos ventes ?</h3>
+                      <h3 className="text-2xl font-black text-white">
+                        {tab === 'upcoming' ? 'Aucune offre à venir' : 'Prêt à booster vos ventes ?'}
+                      </h3>
                       <p className="text-slate-400 max-w-sm mx-auto">
-                        Créez votre première offre spéciale et attirez de nouveaux clients dès aujourd'hui.
+                        {tab === 'upcoming' ? 'Planifiez vos futures campagnes marketing ici.' : 'Créez votre première offre spéciale et attirez de nouveaux clients dès aujourd\'hui.'}
                       </p>
                     </div>
-                    <Button 
-                      onClick={openCreate} 
-                      className="bg-red-600 hover:bg-red-700 text-white font-black px-8 py-6 rounded-2xl shadow-xl shadow-red-600/20 group"
-                    >
-                      <Plus className="w-6 h-6 mr-2 transition-transform group-hover:rotate-90" />
-                      Lancer une campagne
-                    </Button>
+                    {tab !== 'upcoming' && (
+                      <Button 
+                        onClick={openCreate} 
+                        className="bg-red-600 hover:bg-red-700 text-white font-black px-8 py-6 rounded-2xl shadow-xl shadow-red-600/20 group"
+                      >
+                        <Plus className="w-6 h-6 mr-2 transition-transform group-hover:rotate-90" />
+                        Lancer une campagne
+                      </Button>
+                    )}
                   </div>
                 </div>
               ) : (

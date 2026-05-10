@@ -96,18 +96,22 @@ export async function GET(
     };
 
     // 3. Analyze
-    const apiKey = process.env.OPENROUTER_API_KEY;
+    const apiKey = process.env.GROQ_API_KEY;
+    console.log(`[Intelligence] API Key exists: ${!!apiKey}`);
+    
     if (!apiKey) {
-      return NextResponse.json({ error: "Clé API manquante dans l'environnement Vercel" }, { status: 500 });
+      return NextResponse.json({ error: "Clé GROQ_API_KEY manquante dans votre fichier .env.local" }, { status: 500 });
     }
 
     try {
+      console.log(`[Intelligence] Starting batch analysis for ${allData.length} items...`);
       const result = await analyzeBatch(batchReq, apiKey);
+      console.log(`[Intelligence] Analysis complete. Results count: ${result.results?.length}`);
       return NextResponse.json(result);
     } catch (err: any) {
-      console.error("[Intelligence] Analysis Error:", err);
+      console.error("[Intelligence] CRITICAL Analysis Error:", err);
       return NextResponse.json({ 
-        error: "L'IA n'a pas pu répondre", 
+        error: "L'IA Groq a retourné une erreur", 
         details: err.message,
         code: err.statusCode || 500
       }, { status: 200 }); // Return 200 so the UI can show the message instead of just crashing

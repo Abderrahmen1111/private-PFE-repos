@@ -16,11 +16,13 @@ export async function POST(req: NextRequest) {
     if (prompt.length > 1000) {
       return NextResponse.json({ error: 'Prompt trop long (max 1000 caractères).' }, { status: 400 })
     }
-    console.log('[AI Darija] Processing prompt:', prompt.slice(0, 100))
     // 1. Parse le prompt Darija → données structurées via Gemini + dictionnaire
+    console.log('[AI Darija] 🟢 Étape 1: Analyse du prompt via Gemini...')
     const parsed = await parseDarijaPrompt(prompt)
+    console.log('[AI Darija] 🟢 Résultat Gemini:', JSON.stringify(parsed, null, 2))
 
     if (parsed.intent === 'unknown') {
+      console.log('[AI Darija] ⚠️ Intention inconnue')
       return NextResponse.json({
         intent: 'unknown',
         message: "Je n'ai pas pu comprendre votre demande. Essayez de décrire un produit ou une promotion.",
@@ -31,12 +33,17 @@ export async function POST(req: NextRequest) {
     // 2. Générer l'image si demandé
     let image_url: string | null = null
     if (generateImage && parsed.image_prompt) {
-      console.log('[AI Darija] Generating image for prompt:', parsed.image_prompt.slice(0, 80))
+      console.log('[AI Darija] 🟢 Étape 2: Génération de l\'image pour:', parsed.image_prompt.slice(0, 80))
       const slug = parsed.intent === 'create_product'
         ? (parsed as any).name?.toLowerCase().replace(/\s+/g, '-') ?? 'product'
         : 'promo'
-      image_url = await generateAndUploadImage(parsed.image_prompt, slug)
-      console.log('[AI Darija] Image URL:', image_url ?? 'null (generation failed)')
+      
+      try {
+        image_url = await generateAndUploadImage(parsed.image_prompt, slug)
+        console.log('[AI Darija] 🟢 Image URL:', image_url ?? '❌ ÉCHEC (retourné null)')
+      } catch (imgErr) {
+        console.error('[AI Darija] ❌ Erreur critique lors de la génération d\'image:', imgErr)
+      }
     }
 
     // 3. Réponse finale

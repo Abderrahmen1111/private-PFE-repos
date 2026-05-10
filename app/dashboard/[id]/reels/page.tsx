@@ -5,12 +5,13 @@ import { useParams, useRouter } from 'next/navigation';
 import { 
   getBusinessReels, 
   deleteReel,
-  uploadAndPublishReel
+  publishReel
 } from '@/lib/actions/reels';
+import { useUpload } from '@/lib/context/UploadContext';
 import { 
   getDashboardStories, 
   deleteStory, 
-  uploadAndPublishStory 
+  publishStory 
 } from '@/lib/actions/stories';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -132,37 +133,42 @@ export default function MediaManagementPage() {
     if (recordingTimerRef.current) clearInterval(recordingTimerRef.current);
   };
 
+  const { startUpload } = useUpload();
+
   const handlePublish = async () => {
     if (!selectedFile) return toast.error('Sélectionnez un média');
-    setIsUploading(true);
-    try {
-      const formData = new FormData();
-      formData.append('file', selectedFile);
-      formData.append('storeId', storeId.toString());
-      formData.append('title', title);
-      formData.append('price', price || '0');
-      formData.append('category', category);
-      formData.append('filter', selectedFilter);
+    
+    const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
+    if (!cloudName) return toast.error('Cloudinary non configuré');
 
-      if (activeTab === 'reels') {
-        const result = await uploadAndPublishReel(formData);
-        if (!result.success) throw new Error(result.error);
-      } else {
-        formData.append('caption', title);
-        const result = await uploadAndPublishStory(formData);
-        if (!result.success) throw new Error(result.error);
+    setIsDialogOpen(false); // Close dialog immediately
+    
+    startUpload(selectedFile, {
+      preset: 'ro2ya_reels',
+      cloudName,
+      onSuccess: async (result) => {
+        if (activeTab === 'reels') {
+          await publishReel({
+            storeId,
+            mediaPath: result.secure_url,
+            mediaType: selectedFile.type.startsWith('video/') ? 'video' : 'image',
+            title,
+            price: Number(price) || 0,
+            category,
+            metadata: { filter: selectedFilter }
+          });
+        } else {
+          await publishStory({
+            storeId,
+            mediaUrl: result.secure_url,
+            mediaType: selectedFile.type.startsWith('video/') ? 'video' : 'image',
+            caption: title
+          });
+        }
+        fetchData();
+        resetForm();
       }
-      
-      toast.success('Publié avec succès !');
-      setIsDialogOpen(false);
-      fetchData();
-      resetForm();
-    } catch (error: any) {
-      console.error(error);
-      toast.error(error.message || 'Erreur lors de la publication');
-    } finally {
-      setIsUploading(false);
-    }
+    });
   };
 
   const handleDelete = async (reelId: number) => {

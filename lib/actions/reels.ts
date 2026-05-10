@@ -102,7 +102,7 @@ export async function getBusinessReels(storeId: number) {
 }
 
 // Track a user interaction with a reel
-export async function trackReelInteraction(reelId: number, type: 'like' | 'save' | 'completion' | 'view') {
+export async function trackReelInteraction(reelId: number, type: 'like' | 'save' | 'completion' | 'view' | 'share') {
     const supabase = createClient()
     const { data: { user }, error: authError } = await supabase.auth.getUser()
     if (authError || !user) return { success: false, error: 'Non authentifié.' }
@@ -139,11 +139,13 @@ export async function trackReelInteraction(reelId: number, type: 'like' | 'save'
 
     // --- MISE À JOUR RÉELLE DES COMPTEURS ---
     if (type === 'view') {
-        await (supabase as any).rpc('increment_reel_view', { x: 1, reel_id_input: reelId });
+        await (supabase as any).rpc('increment_reel_view', { reel_id_input: reelId, x: 1 });
     } else if (type === 'like') {
-        await (supabase as any).rpc('increment_reel_like', { x: 1, reel_id_input: reelId });
+        await (supabase as any).rpc('increment_reel_like', { reel_id_input: reelId, x: 1 });
     } else if (type === 'save') {
-        await (supabase as any).rpc('increment_reel_save', { x: 1, reel_id_input: reelId });
+        await (supabase as any).rpc('increment_reel_save', { reel_id_input: reelId, x: 1 });
+    } else if (type === 'share') {
+        await (supabase as any).rpc('increment_reel_click', { reel_id_input: reelId, x: 1 });
     }
 
     return { success: true, action: 'added' };
