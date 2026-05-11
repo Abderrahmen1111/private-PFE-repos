@@ -10,7 +10,8 @@ import {
   Circle, 
   CheckCircle2, 
   Calendar,
-  MoreHorizontal
+  MoreHorizontal,
+  Sparkles
 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { fr } from 'date-fns/locale';
@@ -23,6 +24,7 @@ import {
   DropdownMenuLabel,
 } from "@/components/ui/dropdown-menu";
 import Link from 'next/link';
+import { cn } from '@/lib/utils';
 
 export function NotificationDropdown() {
   const { notifications, unreadCount, markAsRead, markAllAsRead, loading } = useNotifications();
@@ -32,6 +34,7 @@ export function NotificationDropdown() {
       case 'MESSAGE': return <MessageSquare className="w-4 h-4 text-blue-500" />;
       case 'ORDER': return <ShoppingBag className="w-4 h-4 text-green-500" />;
       case 'BOOKING': return <Calendar className="w-4 h-4 text-purple-500" />;
+      case 'AI_RECOMMENDATION': return <Sparkles className="w-4 h-4 text-amber-400" />;
       default: return <Bell className="w-4 h-4 text-stone-400" />;
     }
   };
@@ -55,7 +58,7 @@ export function NotificationDropdown() {
         sideOffset={12}
       >
         <div className="flex items-center justify-between px-4 py-3">
-          <DropdownMenuLabel className="p-0 text-base font-black text-white uppercase tracking-widest">
+          <DropdownMenuLabel className="p-0 text-base font-black text-white uppercase tracking-widest text-transparent bg-clip-text bg-gradient-to-r from-white to-white/40">
             Notifications
           </DropdownMenuLabel>
           {unreadCount > 0 && (
@@ -97,18 +100,34 @@ export function NotificationDropdown() {
               href={notif.link || '#'}
               onClick={() => !notif.is_read && markAsRead(notif.id)}
             >
-              <DropdownMenuItem className="flex flex-col items-start gap-1 p-4 rounded-2xl border border-transparent hover:border-white/5 focus:bg-white/5 transition-all cursor-pointer group">
+              <DropdownMenuItem 
+                className={cn(
+                  "flex flex-col items-start gap-1 p-4 rounded-2xl border transition-all cursor-pointer group mb-1 mx-1",
+                  notif.type === 'AI_RECOMMENDATION' 
+                    ? "bg-amber-500/5 border-amber-500/10 hover:bg-amber-500/10 hover:border-amber-500/20" 
+                    : "border-transparent hover:border-white/5 focus:bg-white/5"
+                )}
+              >
                 <div className="flex items-center justify-between w-full gap-3">
                   <div className="flex items-center gap-2.5">
-                    <div className="w-8 h-8 rounded-xl bg-white/5 flex items-center justify-center group-hover:bg-white/10 transition-colors">
+                    <div className={cn(
+                      "w-8 h-8 rounded-xl flex items-center justify-center transition-colors",
+                      notif.type === 'AI_RECOMMENDATION' ? "bg-amber-500/20" : "bg-white/5 group-hover:bg-white/10"
+                    )}>
                       {getIcon(notif.type)}
                     </div>
-                    <span className="text-[13px] font-black text-white group-hover:text-red-400 transition-colors">
+                    <span className={cn(
+                      "text-[13px] font-black transition-colors",
+                      notif.type === 'AI_RECOMMENDATION' ? "text-amber-200 group-hover:text-amber-100" : "text-white group-hover:text-red-400"
+                    )}>
                       {notif.title}
                     </span>
                   </div>
                   {!notif.is_read && (
-                    <Circle className="w-2 h-2 fill-red-500 text-red-500" />
+                    <Circle className={cn(
+                      "w-2 h-2 fill-current",
+                      notif.type === 'AI_RECOMMENDATION' ? "text-amber-500" : "text-red-500"
+                    )} />
                   )}
                 </div>
                 

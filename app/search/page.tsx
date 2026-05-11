@@ -123,8 +123,8 @@ function SearchPageContent() {
                 latitude: item.latitude || item.metadata?.latitude,
                 longitude: item.longitude || item.metadata?.longitude,
                 location: {
-                  lat: Number(item.latitude || item.metadata?.latitude || 36.8065),
-                  lng: Number(item.longitude || item.metadata?.longitude || 10.1815),
+                  lat: item.latitude || item.metadata?.latitude ? Number(item.latitude || item.metadata?.latitude) : undefined,
+                  lng: item.longitude || item.metadata?.longitude ? Number(item.longitude || item.metadata?.longitude) : undefined,
                 },
                 is_nearby: item.is_nearby
               } as any);
@@ -139,8 +139,8 @@ function SearchPageContent() {
                   name: item.metadata?.address || item.location_city || item.city 
                 },
                 location: {
-                  lat: Number(item.latitude || item.metadata?.latitude || 36.8065),
-                  lng: Number(item.longitude || item.metadata?.longitude || 10.1815),
+                  lat: item.latitude || item.metadata?.latitude ? Number(item.latitude || item.metadata?.latitude) : undefined,
+                  lng: item.longitude || item.metadata?.longitude ? Number(item.longitude || item.metadata?.longitude) : undefined,
                 },
                 is_nearby: item.is_nearby
               } as any);

@@ -94,18 +94,18 @@ export default function ResultsMap({
             el.className = 'user-marker';
             el.style.width = '20px';
             el.style.height = '20px';
-            el.style.backgroundColor = '#ff0000';
+            el.style.backgroundColor = '#3b82f6';
             el.style.border = '3px solid white';
             el.style.borderRadius = '50%';
-            el.style.boxShadow = '0 0 15px rgba(255, 0, 0, 0.6)';
+            el.style.boxShadow = '0 0 15px rgba(59, 130, 246, 0.6)';
             
             // Add pulse animation
             const style = document.createElement('style');
             style.innerHTML = `
               @keyframes user-pulse {
-                0% { box-shadow: 0 0 0 0 rgba(255, 0, 0, 0.4); }
-                70% { box-shadow: 0 0 0 15px rgba(255, 0, 0, 0); }
-                100% { box-shadow: 0 0 0 0 rgba(255, 0, 0, 0); }
+                0% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.4); }
+                70% { box-shadow: 0 0 0 15px rgba(59, 130, 246, 0); }
+                100% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0); }
               }
               .user-marker {
                 animation: user-pulse 2s infinite;
@@ -151,26 +151,40 @@ export default function ResultsMap({
     if (businesses.length === 0) return;
 
     const bounds = new mapboxgl.LngLatBounds();
+    const usedCoords = new Set<string>();
 
     businesses.forEach((business) => {
-      const { lat, lng } = business.location;
+      let lat = business.location?.lat;
+      let lng = business.location?.lng;
       
-      if (!lat || !lng) return;
+      // Fallback to Tunis with Jitter if no coordinates (to avoid the "single point" issue)
+      if (!lat || !lng) {
+        lat = 36.8065 + (Math.random() - 0.5) * 0.05;
+        lng = 10.1815 + (Math.random() - 0.5) * 0.05;
+      } else {
+        // Micro-jitter for exact coordinate overlaps
+        const coordKey = `${lat.toFixed(4)},${lng.toFixed(4)}`;
+        if (usedCoords.has(coordKey)) {
+          lat += (Math.random() - 0.5) * 0.0006;
+          lng += (Math.random() - 0.5) * 0.0006;
+        }
+        usedCoords.add(coordKey);
+      }
 
       // Create custom marker element
       const el = document.createElement('div');
       el.className = 'custom-marker';
       el.style.cursor = 'pointer';
-      el.style.transition = 'all 0.2s';
       el.style.display = 'flex';
       el.style.flexDirection = 'column';
       el.style.alignItems = 'center';
+      el.style.zIndex = '1';
 
       el.innerHTML = `
-        <div class="marker-label" style="background: white; padding: 4px 8px; border-radius: 6px; font-size: 12px; font-weight: 700; color: #1f2937; box-shadow: 0 2px 5px rgba(0,0,0,0.2); white-space: nowrap; margin-bottom: 4px; transition: all 0.2s;">
+        <div class="marker-label" style="background: white; padding: 4px 8px; border-radius: 6px; font-size: 10px; font-weight: 700; color: #1f2937; box-shadow: 0 2px 5px rgba(0,0,0,0.2); white-space: nowrap; margin-bottom: 4px; transition: all 0.2s; max-width: 120px; overflow: hidden; text-overflow: ellipsis;">
           ${business.name}
         </div>
-        <div class="marker-dot" style="width: 24px; height: 24px; background-color: #ef4444; border: 3px solid white; border-radius: 50%; box-shadow: 0 2px 8px rgba(0,0,0,0.3); transition: all 0.2s;"></div>
+        <div class="marker-dot" style="width: 20px; height: 20px; background-color: #ef4444; border: 2px solid white; border-radius: 50%; box-shadow: 0 2px 8px rgba(0,0,0,0.3); transition: all 0.2s;"></div>
       `;
 
       const marker = new mapboxgl.Marker(el)
@@ -180,9 +194,9 @@ export default function ResultsMap({
             .setHTML(`
               <div style="min-width: 150px; padding: 5px;">
                 <h3 style="font-weight: 600; margin-bottom: 4px; color: #1f2937;">${business.name}</h3>
-                <p style="font-size: 12px; color: #6b7280; margin-bottom: 2px;">${business.category}</p>
+                <p style="font-size: 12px; color: #6b7280; margin-bottom: 2px;">${business.category || 'Commerce'}</p>
                 <div style="display: flex; align-items: center; gap: 4px;">
-                  <span style="font-size: 12px; font-weight: 600; color: #f59e0b;">${business.rating}</span>
+                  <span style="font-size: 12px; font-weight: 600; color: #f59e0b;">${business.rating || business.rating_average || 0}</span>
                   <span style="font-size: 12px; color: #9ca3af;">⭐</span>
                 </div>
               </div>
@@ -199,7 +213,7 @@ export default function ResultsMap({
     });
 
     if (businesses.length > 0) {
-      map.fitBounds(bounds, { padding: 50, maxZoom: 14 });
+      map.fitBounds(bounds, { padding: 70, maxZoom: 15 });
     }
   }, [businesses, mapLoaded]);
 

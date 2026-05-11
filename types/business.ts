@@ -7,7 +7,9 @@ export interface Business {
     name: string;
     image?: string;
     rating: number;
+    rating_average?: number;
     reviewCount: number;
+    total_reviews?: number;
     category: string;
     priceRange?: string;
     isOpen?: boolean;

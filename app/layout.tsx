@@ -23,6 +23,8 @@ const ChatHeads = dynamic(() => import('@/components/messaging/ChatHeads').then(
   ssr: false,
 });
 
+import { AINotificationTrigger } from '@/components/notifications/AINotificationTrigger';
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -32,6 +34,7 @@ export default function RootLayout({
     <html lang="en">
       <body className="antialiased">
         <SessionProvider>
+          <AINotificationTrigger />
           {children}
           <GlobalActionDrawer />
           <ChatHeads />

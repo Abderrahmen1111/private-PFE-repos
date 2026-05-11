@@ -4,7 +4,7 @@ import { createClient } from '@/lib/supabase/server';
 import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 import { revalidatePath } from 'next/cache';
 
-export type NotificationType = 'ORDER' | 'MESSAGE' | 'SYSTEM' | 'BOOKING' | 'SUPPORT';
+export type NotificationType = 'ORDER' | 'MESSAGE' | 'SYSTEM' | 'BOOKING' | 'SUPPORT' | 'AI_RECOMMENDATION';
 
 export interface Notification {
   id: string;

@@ -56,6 +56,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
+import AIAdvisorSection from '@/components/dashboard/AIAdvisorSection';
 
 export default function IntelligencePage() {
   const params = useParams();
@@ -247,10 +248,11 @@ export default function IntelligencePage() {
       </div>
 
       <Tabs defaultValue="analyses" className="w-full" onValueChange={setActiveTab}>
-        <TabsList className="bg-white/5 border border-white/10 p-1 rounded-2xl mb-8 inline-flex w-full max-w-xl">
+        <TabsList className="bg-white/5 border border-white/10 p-1 rounded-2xl mb-8 inline-flex w-full max-w-2xl">
           <TabsTrigger value="analyses" className="flex-1 rounded-xl font-bold py-3">Analyses IA</TabsTrigger>
           <TabsTrigger value="reviews" className="flex-1 rounded-xl font-bold py-3">Avis Clients ({reviews.length})</TabsTrigger>
           <TabsTrigger value="comments" className="flex-1 rounded-xl font-bold py-3">Comments Reels ({reelComments.length})</TabsTrigger>
+          <TabsTrigger value="advisor" className="flex-1 rounded-xl font-bold py-3">Conseiller IA</TabsTrigger>
         </TabsList>
 
         {/* --- TABS CONTENT: ANALYSES IA --- */}
@@ -705,6 +707,17 @@ export default function IntelligencePage() {
               )}
             </div>
           )}
+        </TabsContent>
+
+        {/* --- TABS CONTENT: CONSEILLER IA --- */}
+        <TabsContent value="advisor" className="space-y-8 focus:outline-none">
+          <AIAdvisorSection 
+            storeId={storeId}
+            onApplyPromotion={(recommendation) => {
+              toast.success(`Recommandation "${recommendation.title}" sélectionnée - Créer une promotion`);
+              // In future, this could redirect to promotions tab or open a dialog
+            }}
+          />
         </TabsContent>
       </Tabs>
     </div>
