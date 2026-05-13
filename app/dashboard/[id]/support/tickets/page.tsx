@@ -1,8 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter, useParams } from 'next/navigation';
-import { Search, Plus, MessageSquare, Phone, User, Clock, CheckCircle } from 'lucide-react';
+import { useParams } from 'next/navigation';
+import { Search, Plus, Phone, User, MoreVertical, Trash2, Edit } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
@@ -18,13 +18,19 @@ import {
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { createSupportTicket } from '@/lib/actions/support';
+import {
+  createSupportTicket,
+  deleteTicket,
+  updateTicket,
+  getStoreTickets,
+  getTicketMessages,
+  SupportTicket,
+} from '@/lib/actions/support';
 import { toast } from 'sonner';
-
-import { getStoreTickets, SupportTicket } from '@/lib/actions/support';
 import { Loader2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
+import SupportMessagesSection from '@/components/dashboard/SupportMessagesSection';
 
 const priorityColors: Record<string, string> = {
   low: 'bg-primary/10 text-primary border-primary/20',
@@ -49,10 +55,7 @@ const statusLabels: Record<string, string> = {
   closed: 'Fermé',
 };
 
-import SupportMessagesSection from '@/components/dashboard/SupportMessagesSection';
-
 export default function TicketsPage() {
-  const router = useRouter();
   const params = useParams();
   const storeId = Number(params.id);
 
@@ -65,6 +68,17 @@ export default function TicketsPage() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   const [newTicket, setNewTicket] = useState({ subject: '', description: '', priority: 'medium' as any });
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [editingTicketId, setEditingTicketId] = useState<string | null>(null);
+  const [isUpdating, setIsUpdating] = useState(false);
+  const [editTicketData, setEditTicketData] = useState({
+    subject: '',
+    priority: 'medium' as SupportTicket['priority'],
+  });
+  const [editingDescriptionPreview, setEditingDescriptionPreview] = useState('');
+  const [isLoadingEditDescription, setIsLoadingEditDescription] = useState(false);
 
   useEffect(() => {
     async function loadTickets() {
@@ -97,6 +111,89 @@ export default function TicketsPage() {
       toast.error("Erreur lors de la création du ticket.");
     }
     setIsCreating(false);
+  };
+
+  const handleDeleteTicket = async (ticketId: string) => {
+    if (!confirm('Êtes-vous sûr de vouloir supprimer ce ticket ?')) return;
+    try {
+      const result = await deleteTicket(ticketId);
+      if (result.success) {
+        setTickets(prev => prev.filter(t => t.id !== ticketId));
+        toast.success('Ticket supprimé avec succès.');
+      } else {
+        toast.error(result.error || 'Erreur lors de la suppression du ticket.');
+      }
+    } catch (error) {
+      toast.error('Erreur lors de la suppression du ticket.');
+    } finally {
+      setOpenMenuId(null);
+    }
+  };
+
+  const handleModifyTicket = async (ticketId: string) => {
+    const ticket = tickets.find(t => t.id === ticketId);
+    if (!ticket) return;
+    setOpenMenuId(null);
+    setEditingTicketId(ticketId);
+    setEditTicketData({
+      subject: ticket.subject,
+      priority: ticket.priority,
+    });
+    setEditingDescriptionPreview('');
+    setIsLoadingEditDescription(true);
+    setIsEditDialogOpen(true);
+
+    const fromRow = ticket.description?.trim();
+    let preview = fromRow || '';
+    if (!preview) {
+      try {
+        const msgs = await getTicketMessages(ticketId);
+        const first = msgs[0] as { content?: string } | undefined;
+        preview = first?.content?.trim() || '';
+      } catch {
+        preview = '';
+      }
+    }
+    setEditingDescriptionPreview(
+      preview || 'Aucune description associée à ce ticket.'
+    );
+    setIsLoadingEditDescription(false);
+  };
+
+  const handleUpdateTicket = async () => {
+    if (!editingTicketId || !editTicketData.subject.trim()) {
+      toast.error('Veuillez renseigner le sujet.');
+      return;
+    }
+    const ticketBeingEdited = tickets.find(t => t.id === editingTicketId);
+    if (!ticketBeingEdited) {
+      toast.error('Ticket introuvable.');
+      return;
+    }
+    setIsUpdating(true);
+    try {
+      const result = await updateTicket(editingTicketId, {
+        subject: editTicketData.subject.trim(),
+        priority: editTicketData.priority,
+        status: ticketBeingEdited.status,
+      });
+      if (result.success && result.data) {
+        setTickets(prev =>
+          prev.map(t => (t.id === editingTicketId ? (result.data as SupportTicket) : t))
+        );
+        toast.success('Ticket mis à jour avec succès.');
+        setIsEditDialogOpen(false);
+        setEditingTicketId(null);
+        setEditTicketData({ subject: '', priority: 'medium' });
+        setEditingDescriptionPreview('');
+      } else {
+        toast.error(result.error || 'Erreur lors de la mise à jour du ticket.');
+      }
+    } catch {
+      toast.error('Erreur lors de la mise à jour du ticket.');
+    } finally {
+      setIsUpdating(false);
+    }
   };
 
   const filteredTickets = tickets.filter(ticket => {
@@ -188,6 +285,85 @@ export default function TicketsPage() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+
+        <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+          <DialogContent className="sm:max-w-[425px]">
+            <DialogHeader>
+              <DialogTitle>Modifier le ticket</DialogTitle>
+              <DialogDescription>
+                Mettez à jour le sujet, la priorité ou le statut. Les échanges du fil de discussion restent dans le chat associé.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <div className="grid gap-2">
+                <Label htmlFor="edit-subject">Sujet</Label>
+                <Input
+                  id="edit-subject"
+                  value={editTicketData.subject}
+                  onChange={e =>
+                    setEditTicketData(prev => ({ ...prev, subject: e.target.value }))
+                  }
+                  placeholder="Sujet du ticket"
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="edit-priority">Priorité</Label>
+                <select
+                  id="edit-priority"
+                  value={editTicketData.priority}
+                  onChange={e =>
+                    setEditTicketData(prev => ({
+                      ...prev,
+                      priority: e.target.value as SupportTicket['priority'],
+                    }))
+                  }
+                  className="w-full p-2 rounded-md border border-input bg-background"
+                >
+                  <option value="low">Basse</option>
+                  <option value="medium">Moyenne</option>
+                  <option value="high">Haute</option>
+                  <option value="critical">Critique</option>
+                </select>
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="edit-status">Statut</Label>
+                <select
+                  id="edit-status"
+                  value={editTicketData.status}
+                  onChange={e =>
+                    setEditTicketData(prev => ({
+                      ...prev,
+                      status: e.target.value as SupportTicket['status'],
+                    }))
+                  }
+                  className="w-full p-2 rounded-md border border-input bg-background"
+                >
+                  <option value="open">Ouvert</option>
+                  <option value="in_progress">En cours</option>
+                  <option value="waiting_customer">En attente client</option>
+                  <option value="resolved">Résolu</option>
+                  <option value="closed">Fermé</option>
+                </select>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setIsEditDialogOpen(false);
+                  setEditingTicketId(null);
+                }}
+              >
+                Annuler
+              </Button>
+              <Button type="button" onClick={handleUpdateTicket} disabled={isUpdating}>
+                {isUpdating ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+                Enregistrer
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
 
       {/* KPIs */}
@@ -275,11 +451,7 @@ export default function TicketsPage() {
                   </td>
                 </tr>
               ) : filteredTickets.map((ticket) => (
-                <tr
-                  key={ticket.id}
-                  className="hover:bg-primary/[0.02] transition-colors cursor-pointer group"
-                  onClick={() => router.push(`/dashboard/${storeId}/support/chat?ticket=${ticket.id}`)}
-                >
+                <tr key={ticket.id} className="transition-colors">
                   <td className="px-6 py-4 font-mono text-[10px] font-bold text-primary">#{ticket.id.slice(0, 8)}</td>
                   <td className="px-6 py-4">
                     <div className="flex flex-col gap-0.5">
@@ -296,7 +468,7 @@ export default function TicketsPage() {
                     </div>
                   </td>
                   <td className="px-6 py-4">
-                    <p className="font-semibold text-sm group-hover:text-primary transition-colors">{ticket.subject}</p>
+                    <p className="font-semibold text-sm">{ticket.subject}</p>
                     <p className="text-[10px] text-muted-foreground uppercase mt-0.5 tracking-tighter">Support Canal: Chat</p>
                   </td>
                   <td className="px-6 py-4">
@@ -313,8 +485,40 @@ export default function TicketsPage() {
                     {format(new Date(ticket.created_at), 'dd MMM yyyy', { locale: fr })}
                   </td>
                   <td className="px-6 py-4 text-right">
-                    <div className="bg-primary/10 p-2 rounded-full inline-flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-white transition-all">
-                      <MessageSquare className="w-4 h-4" />
+                    <div className="relative inline-block">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setOpenMenuId(openMenuId === ticket.id ? null : ticket.id);
+                        }}
+                        className="p-2 rounded-full hover:bg-primary/20 text-muted-foreground hover:text-primary transition-all"
+                      >
+                        <MoreVertical className="w-4 h-4" />
+                      </button>
+                      {openMenuId === ticket.id && (
+                        <div className="absolute right-0 mt-1 w-48 bg-card border border-border rounded-lg shadow-lg z-50 overflow-hidden">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleModifyTicket(ticket.id);
+                            }}
+                            className="w-full px-4 py-2.5 flex items-center gap-2 text-sm text-foreground hover:bg-primary/10 transition-colors text-left"
+                          >
+                            <Edit className="w-4 h-4" />
+                            Modifier le ticket
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeleteTicket(ticket.id);
+                            }}
+                            className="w-full px-4 py-2.5 flex items-center gap-2 text-sm text-red-500 hover:bg-red-500/10 transition-colors text-left border-t border-border"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                            Supprimer le ticket
+                          </button>
+                        </div>
+                      )}
                     </div>
                   </td>
                 </tr>

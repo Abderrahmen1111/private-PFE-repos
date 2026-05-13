@@ -12,6 +12,13 @@ import {
 import { LogOut, User, Settings, Bell, CreditCard, ShoppingCart, Plus } from "lucide-react";
 import { getAvatarUrl } from "@/lib/utils/avatar";
 
+function initialsFromDisplayName(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return '??';
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+}
+
 interface UserDropdownProps {
 
   user: {
@@ -23,22 +30,35 @@ interface UserDropdownProps {
     role?: string;
     ownedStores?: Array<{ id: string; name: string; status: string; logo?: string }>;
   };
+  /** When set (dashboard), the small header avatar shows this business; the menu panel still shows `user`. */
+  businessTrigger?: { name: string; logoUrl?: string | null } | null;
   onAction?: (action: string) => void;
   onSwitchStore?: (storeId: string) => void;
 }
 
 
-export const UserDropdown = ({ user, onAction = () => {}, onSwitchStore }: UserDropdownProps) => {
+export const UserDropdown = ({
+  user,
+  businessTrigger,
+  onAction = () => {},
+  onSwitchStore,
+}: UserDropdownProps) => {
 
   const isClient = user.role?.toLowerCase() === 'client';
+  const triggerName = businessTrigger?.name ?? user.name;
+  const triggerImg = businessTrigger ? businessTrigger.logoUrl : user.avatar;
+  const triggerSrc = getAvatarUrl(triggerImg, triggerName);
+  const triggerInitials = businessTrigger
+    ? initialsFromDisplayName(businessTrigger.name)
+    : user.initials;
 
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Avatar className="cursor-pointer size-9 border border-white/20 hover:border-black/40 transition">
-          <AvatarImage src={getAvatarUrl(user.avatar, user.name)} alt={user.name} />
+          <AvatarImage src={triggerSrc} alt={triggerName} />
           <AvatarFallback className="bg-black/50 text-white text-sm font-semibold">
-            {user.initials}
+            {triggerInitials}
           </AvatarFallback>
         </Avatar>
       </DropdownMenuTrigger>

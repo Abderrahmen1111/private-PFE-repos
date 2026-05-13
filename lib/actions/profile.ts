@@ -28,40 +28,49 @@ export async function getOwnerProfileData(businessId?: number | string) {
         console.error("Error fetching user data:", userError)
     }
 
-    // 3. Fetch primary Store owned by this user
-    let storeRes;
+    // 3. Fetch all stores owned by this user (same matching as client profile)
+    const email = user.email;
+    const ownerStoresFilter = email
+        ? `owner_id.eq.${user.id},email.eq.${email}`
+        : `owner_id.eq.${user.id}`;
 
-    if (businessId) {
-        // Try getting by id_business first (the foreign key)
-        storeRes = await supabase
-            .from('stores' as any)
-            .select('*')
-            .eq('id_business', businessId)
-            .single();
+    const { data: ownedStoresRaw, error: storesListError } = await (supabase
+        .from('stores' as any)
+        .select('*')
+        .or(ownerStoresFilter)
+        .order('created_at', { ascending: true }) as any);
 
-        // Fallback to primary key id if id_business not found
-        if (storeRes.error || !storeRes.data) {
-            storeRes = await supabase
-                .from('stores' as any)
-                .select('*')
-                .eq('id', businessId)
-                .single();
-        }
-    } else {
-        storeRes = await supabase
-            .from('stores' as any)
-            .select('*')
-            .eq('owner_id', user.id)
-            .order('created_at', { ascending: true })
-            .limit(1)
-            .single();
+    if (storesListError) {
+        console.error('Error fetching owner stores list:', storesListError);
     }
 
-    const storeError = storeRes.error;
-    const storeData = storeRes.data as any;
+    const allStores: any[] = Array.isArray(ownedStoresRaw) ? ownedStoresRaw : [];
 
-    if (storeError && storeError.code !== 'PGRST116') { // PGRST116 is "no rows returned"
-        console.error("Error fetching store data:", storeError)
+    const storesPayload = allStores.map((s: any) => ({
+        id: s.id,
+        id_business: s.id_business ?? null,
+        name: s.name,
+        logo_url: s.logo_url ?? null,
+        status: s.status ?? null,
+        category: s.category ?? null,
+    }));
+
+    const parseBusinessId = (raw: number | string | undefined) => {
+        if (raw === undefined || raw === null || raw === '') return null;
+        if (typeof raw === 'number' && !Number.isNaN(raw)) return raw;
+        const s = String(raw).trim();
+        if (!s) return null;
+        return /^\d+$/.test(s) ? Number(s) : null;
+    };
+
+    const bid = parseBusinessId(businessId as any);
+    let storeData: any = null;
+    if (bid !== null && allStores.length > 0) {
+        storeData =
+            allStores.find((s: any) => s.id === bid || s.id_business === bid) || null;
+    }
+    if (!storeData && allStores.length > 0) {
+        storeData = allStores[0];
     }
 
     // 4. Fetch metrics (derived or direct from store)
@@ -191,6 +200,7 @@ export async function getOwnerProfileData(businessId?: number | string) {
                 loginAlertsEnabled: userData?.login_alerts_enabled !== false, // Default true
             },
             store: storeData,
+            stores: storesPayload,
             metrics: {
                 reviewsCount,
                 avgRating,
@@ -218,6 +228,7 @@ export async function getOwnerProfileData(businessId?: number | string) {
             loginAlertsEnabled: userData?.login_alerts_enabled !== false,
         },
         store: storeData,
+        stores: storesPayload,
         metrics: {
             reviewsCount: 0,
             avgRating: 0,
@@ -252,6 +263,8 @@ export async function getUserProfileData() {
 
     if (userError) {
         console.error("Error fetching user data:", userError)
+    } else {
+        console.log('[profile] Fetched user profile:', userData);
     }
 
     // 3. Fetch Statistics

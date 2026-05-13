@@ -259,6 +259,134 @@ export async function deleteStore(id: number) {
         return { error: err.message || 'Une erreur est survenue lors de la suppression.' }
     }
 }
+
+/**
+ * Transfers store ownership to another Ro2ya user identified by their account email.
+ * Current user must own the store. Updates `stores.owner_id` (and store `email` when set).
+ */
+export async function transferStoreOwnership(
+    storeId: number,
+    newOwnerEmailRaw: string
+): Promise<{ success: boolean; error?: string }> {
+    const supabase = createClient()
+    const adminSupabase: any = createAdminClient()
+
+    const newOwnerEmail = newOwnerEmailRaw.trim().toLowerCase()
+    if (!newOwnerEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(newOwnerEmail)) {
+        return { success: false, error: 'Adresse e-mail invalide.' }
+    }
+
+    try {
+        const {
+            data: { user: currentUser },
+        } = await supabase.auth.getUser()
+        if (!currentUser) {
+            return { success: false, error: 'Non authentifié.' }
+        }
+
+        const { data: store, error: storeError } = await supabase
+            .from('stores')
+            .select('id, owner_id, email')
+            .eq('id', storeId)
+            .single()
+
+        if (storeError || !store) {
+            return { success: false, error: 'Boutique introuvable.' }
+        }
+
+        const storeRow = store as { id: number; owner_id: string; email: string | null }
+        if (storeRow.owner_id !== currentUser.id) {
+            return { success: false, error: 'Non autorisé.' }
+        }
+
+        const { data: currentRow } = await supabase
+            .from('users')
+            .select('email')
+            .eq('id', currentUser.id)
+            .maybeSingle()
+
+        const currentEmail = ((currentRow as { email?: string | null } | null)?.email || currentUser.email || '')
+            .trim()
+            .toLowerCase()
+        if (currentEmail && currentEmail === newOwnerEmail) {
+            return { success: false, error: 'Vous ne pouvez pas transférer la boutique à votre propre adresse.' }
+        }
+
+        const { data: newOwnerRows, error: userLookupError } = await adminSupabase
+            .from('users')
+            .select('id, email, role')
+            .ilike('email', newOwnerEmail)
+
+        if (userLookupError) {
+            return { success: false, error: userLookupError.message }
+        }
+
+        const list = (newOwnerRows || []) as { id: string; email: string | null; role: string }[]
+        const newOwner =
+            list.find((u) => (u.email || '').trim().toLowerCase() === newOwnerEmail) || list[0]
+
+        if (!newOwner) {
+            return {
+                success: false,
+                error: 'Aucun compte Ro2ya trouvé avec cet e-mail. Le nouveau propriétaire doit déjà posséder un compte.',
+            }
+        }
+
+        if (newOwner.id === currentUser.id) {
+            return { success: false, error: 'Destinataire invalide.' }
+        }
+
+        const { error: updateStoreError } = await adminSupabase
+            .from('stores')
+            .update({
+                owner_id: newOwner.id,
+                email: newOwner.email ?? newOwnerEmail,
+                updated_at: new Date().toISOString(),
+            } as any)
+            .eq('id', storeId)
+
+        if (updateStoreError) {
+            console.error('transferStoreOwnership update store:', updateStoreError)
+            return { success: false, error: updateStoreError.message }
+        }
+
+        const roleUpper = (newOwner.role || 'CLIENT').toString().toUpperCase()
+        if (roleUpper === 'CLIENT') {
+            const { error: roleUpError } = await adminSupabase
+                .from('users')
+                .update({ role: 'PRO' as any })
+                .eq('id', newOwner.id)
+            if (roleUpError) {
+                console.error('transferStoreOwnership role upgrade:', roleUpError)
+            }
+        }
+
+        const { count: oldOwnerRemaining, error: countError } = await adminSupabase
+            .from('stores')
+            .select('*', { count: 'exact', head: true })
+            .eq('owner_id', currentUser.id)
+
+        if (!countError && (oldOwnerRemaining === 0 || oldOwnerRemaining === null)) {
+            const { error: roleDownError } = await adminSupabase
+                .from('users')
+                .update({ role: 'CLIENT' as any })
+                .eq('id', currentUser.id)
+            if (roleDownError) {
+                console.error('transferStoreOwnership role downgrade:', roleDownError)
+            }
+        }
+
+        revalidatePath('/')
+        revalidatePath('/dashboard')
+        revalidatePath('/profile')
+
+        return { success: true }
+    } catch (err: any) {
+        console.error('transferStoreOwnership:', err)
+        return { success: false, error: err.message || 'Une erreur est survenue lors du transfert.' }
+    }
+}
+
 export async function updateStoreStatus(storeId: number, status: 'APPROVED' | 'REJECTED' | 'PUBLISHED' | 'SUSPENDED') {
     const supabase = createClient()
     const adminSupabase = createAdminClient()

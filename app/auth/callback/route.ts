@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { ensureUserExists } from '@/lib/actions/users'
 import { NextResponse, type NextRequest } from 'next/server'
 
 /**
@@ -44,6 +45,14 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(
       new URL('/login?error=invalid_link', origin)
     )
+  }
+
+  // ── Ensure user exists in public.users table (safety net for trigger failures) ──
+  const fullName = data.user.user_metadata?.full_name || data.user.email?.split('@')[0] || 'User'
+  const ensureResult = await ensureUserExists(data.user.id, data.user.email || '', fullName)
+  if (ensureResult.error) {
+    console.error('[auth/callback] Failed to ensure user exists:', ensureResult.error)
+    // Continue anyway, as this might be a transient issue
   }
 
   // ── Fetch role from DB — never trust user_metadata ─────────────────────────

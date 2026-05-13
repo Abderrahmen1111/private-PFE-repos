@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import '@/app/globals.css';
-import { TrendingUp, Eye, Phone, MapPin, ShoppingCart, DollarSign, CreditCard } from 'lucide-react';
+import { TrendingUp, Eye, Phone, MapPin, ShoppingCart, DollarSign, CreditCard, ShieldAlert, Clock } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
@@ -23,6 +23,8 @@ import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import AccountSection from '@/components/dashboard/AccountSection';
+import { isStoreDashboardLocked } from '@/lib/dashboard/store-access';
+import { cn } from '@/lib/utils';
 
 interface StatCardProps {
   label: string;
@@ -97,6 +99,51 @@ export default function DashboardPage() {
 
   if (isLoading) return <div className="p-8 text-white font-bold animate-pulse text-center">Chargement des statistiques...</div>;
   if (!data) return null;
+
+  if (isStoreDashboardLocked(data.status)) {
+    const isPending = (data.status || '').toUpperCase() === 'PENDING';
+    return (
+      <div className="space-y-6 p-4 md:p-8 flex-1 min-h-[60vh] flex flex-col justify-center" style={{ background: 'linear-gradient(135deg, #0f1729 0%, #1a1f3a 100%)' }}>
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          className={cn(
+            'max-w-2xl mx-auto rounded-2xl border p-6 md:p-8 shadow-xl backdrop-blur-sm',
+            isPending
+              ? 'bg-amber-500/10 border-amber-500/25 text-amber-100'
+              : 'bg-rose-500/10 border-rose-500/25 text-rose-100'
+          )}
+        >
+          <div className="flex items-start gap-4">
+            <div className={cn('p-3 rounded-xl shrink-0', isPending ? 'bg-amber-500/20 text-amber-400' : 'bg-rose-500/20 text-rose-400')}>
+              {isPending ? <Clock className="w-8 h-8" /> : <ShieldAlert className="w-8 h-8" />}
+            </div>
+            <div>
+              <h1 className="text-2xl font-black tracking-tight text-white mb-2">
+                {isPending ? 'Validation en cours' : 'Établissement non approuvé'}
+              </h1>
+              <p className="text-sm leading-relaxed text-white/80 mb-4">
+                {isPending ? (
+                  <>
+                    Votre boutique est en attente de validation (RNE / conformité). Le tableau de bord complet et toutes les sections
+                    (produits, commandes, messages, etc.) restent désactivés jusqu&apos;à l&apos;approbation de votre dossier.
+                  </>
+                ) : (
+                  <>
+                    Votre demande n&apos;a pas été approuvée. Les outils du tableau de bord ne sont pas accessibles pour cette boutique.
+                    Pour toute question, contactez le support Ro2ya depuis la page d&apos;accueil ou votre espace compte.
+                  </>
+                )}
+              </p>
+              <p className="text-xs text-white/50">
+                Vous pouvez toujours revenir au marché ou changer d&apos;établissement depuis le menu en haut si vous en gérez plusieurs.
+              </p>
+            </div>
+          </div>
+        </motion.div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 p-4 md:p-8 flex-1" style={{ background: 'linear-gradient(135deg, #0f1729 0%, #1a1f3a 100%)' }}>

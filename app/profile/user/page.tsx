@@ -34,20 +34,57 @@ function SettingsTab({ user, onUpdate, router }: { user: any, onUpdate: () => vo
     bio: user?.profile?.bio || ''
   });
 
+  // Update form when user data changes (after save or fetch)
+  useEffect(() => {
+    setForm({
+      name: user?.profile?.full_name || '',
+      email: user?.email || '',
+      city: user?.profile?.city || '',
+      phone: user?.profile?.phone || '',
+      bio: user?.profile?.bio || ''
+    });
+  }, [user?.profile?.full_name, user?.email, user?.profile?.city, user?.profile?.phone, user?.profile?.bio]);
+
   const handleSave = async () => {
     setLoading(true);
     try {
-      const { error } = await updateProfile(user.id, {
+      if (!form.name?.trim()) {
+        toast.error('Le nom complet est requis');
+        setLoading(false);
+        return;
+      }
+
+      console.log('[SettingsTab] Saving profile with:', {
+        name: form.name,
+        city: form.city,
+        phone: form.phone,
+        bio: form.bio,
+        userId: user.id
+      });
+
+      const { data, error } = await updateProfile(user.id, {
         full_name: form.name,
         city: form.city,
         phone: form.phone,
         bio: form.bio
       });
-      if (error) throw error;
+      
+      if (error) {
+        console.error('[SettingsTab] Update error:', error);
+        throw new Error(error.message || 'Database error');
+      }
+      
+      if (!data) {
+        console.error('[SettingsTab] No data returned from update');
+        throw new Error('Update returned no data - please try again');
+      }
+
+      console.log('[SettingsTab] Profile updated successfully:', data);
       toast.success('Profil mis à jour avec succès');
       onUpdate();
     } catch (err: any) {
-      toast.error(err.message || 'Erreur lors de la mise à jour');
+      console.error('[SettingsTab] Save error:', err);
+      toast.error(err.message || 'Erreur lors de la mise à jour du profil');
     } finally {
       setLoading(false);
     }
@@ -163,10 +200,14 @@ function SettingsTab({ user, onUpdate, router }: { user: any, onUpdate: () => vo
 }
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
+const VALID_TABS: TabId[] = ['reservations', 'orders', 'reviews', 'saved', 'activity', 'settings'];
+
 function ProfileContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const initialTab = (searchParams.get('tab') as TabId) || 'reservations';
+  const tabFromUrl = searchParams.get('tab');
+  const initialTab: TabId =
+    tabFromUrl && VALID_TABS.includes(tabFromUrl as TabId) ? (tabFromUrl as TabId) : 'reservations';
   const [activeTab, setActiveTab] = useState<TabId>(initialTab);
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -187,6 +228,22 @@ function ProfileContent() {
   useEffect(() => {
     fetchData();
   }, []);
+
+  useEffect(() => {
+    const t = searchParams.get('tab');
+    if (t && VALID_TABS.includes(t as TabId)) {
+      setActiveTab(t as TabId);
+    }
+  }, [searchParams]);
+
+  const handleTabChange = (tab: TabId) => {
+    setActiveTab(tab);
+    if (tab === 'reservations') {
+      router.replace('/profile/user', { scroll: false });
+    } else {
+      router.replace(`/profile/user?tab=${tab}`, { scroll: false });
+    }
+  };
 
   if (loading) {
     return (
@@ -218,11 +275,12 @@ function ProfileContent() {
   };
 
   const handleAvatarUpdate = async (file: File) => {
-    if (!user?.id) return;
     setIsUpdatingAvatar(true);
     try {
-      const { error } = await updateAvatar(user.id, file);
-      if (error) throw new Error(typeof error === 'string' ? error : (error as any).message);
+      const formData = new FormData();
+      formData.append('file', file);
+      const { error } = await updateAvatar(formData);
+      if (error) throw new Error((error as any).message || String(error));
       toast.success('Photo de profil mise à jour');
       fetchData(); // Refresh to show new avatar
     } catch (err: any) {
@@ -269,7 +327,10 @@ function ProfileContent() {
           avatarUrl={user.profile?.avatar_url}
           phone={user.profile?.phone}
           bio={user.profile?.bio}
-          onEditProfile={() => setActiveTab('settings')}
+          onEditProfile={() => {
+            setActiveTab('settings');
+            router.replace('/profile/user?tab=settings', { scroll: false });
+          }}
           userUrl={typeof window !== 'undefined' ? `${window.location.origin}/profile/user` : ''}
           onAvatarUpdate={handleAvatarUpdate}
           isUpdatingAvatar={isUpdatingAvatar}
@@ -287,7 +348,8 @@ function ProfileContent() {
         {/* Tabs */}
         <ProfileTabs
           activeTab={activeTab}
-          onTabChange={setActiveTab}
+          onTabChange={handleTabChange}
+          excludeTabs={['settings']}
           counts={{ 
             reviews: reviews.length, 
             saved: stats.savedCount, 

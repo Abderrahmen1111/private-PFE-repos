@@ -21,10 +21,14 @@ import { getUserStores } from '@/lib/actions/stores';
 import { searchDashboard } from '@/lib/actions/overviews';
 import { UploadProvider } from '@/lib/context/UploadContext';
 import UploadProgressManager from '@/components/dashboard/UploadProgressManager';
+import { getAvatarUrl } from '@/lib/utils/avatar';
+import { isStoreDashboardLocked } from '@/lib/dashboard/store-access';
 
 type Business = {
   id: number;
   name: string;
+  logo_url?: string | null;
+  status?: string | null;
 };
 
 export default function DashboardLayout({
@@ -39,7 +43,13 @@ export default function DashboardLayout({
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const router = useRouter();
 
-  const [user, setUser] = useState<{ id: string; name: string; username: string; initials: string } | null>(null);
+  const [user, setUser] = useState<{
+    id: string;
+    name: string;
+    username: string;
+    initials: string;
+    avatar?: string;
+  } | null>(null);
   const [businesses, setBusinesses] = useState<Business[]>([]);
   const [currentBusiness, setCurrentBusiness] = useState<Business | null>(null);
   const [stats, setStats] = useState({ reviews: 0, leads: 0 });
@@ -58,6 +68,12 @@ export default function DashboardLayout({
   // Search Effect
   useEffect(() => {
     const handler = setTimeout(async () => {
+      const locked = currentBusiness && isStoreDashboardLocked(currentBusiness.status);
+      if (locked) {
+        setDashboardResults({ items: [], bookings: [], orders: [], reviews: [] });
+        setIsSearching(false);
+        return;
+      }
       const storeId = currentBusiness?.id || Number(id);
       if (dashboardSearchQuery.trim().length > 1 && !isNaN(storeId)) {
         setIsSearching(true);
@@ -96,7 +112,7 @@ export default function DashboardLayout({
     }, 300);
 
     return () => clearTimeout(handler);
-  }, [dashboardSearchQuery, id, currentBusiness?.id]);
+  }, [dashboardSearchQuery, id, currentBusiness?.id, currentBusiness?.status]);
 
   // Initialize lastSeenCounts from localStorage on mount
   useEffect(() => {
@@ -123,14 +139,20 @@ export default function DashboardLayout({
             id: authUser.id,
             name: profile.full_name || 'Commerçant',
             username: profile.email || '',
-            initials: (profile.full_name || 'C').split(' ').map((n: string) => n[0]).join('').toUpperCase()
+            initials: (profile.full_name || 'C').split(' ').map((n: string) => n[0]).join('').toUpperCase(),
+            avatar: (profile as { avatar_url?: string | null }).avatar_url || undefined,
           });
         }
 
         // 2. Fetch Stores
         const { data: stores } = await getUserStores(authUser.id);
         if (stores) {
-          const bizList = stores.map((s: any) => ({ id: s.id, name: s.name }));
+          const bizList = stores.map((s: any) => ({
+            id: s.id,
+            name: s.name,
+            logo_url: s.logo_url ?? null,
+            status: s.status ?? null,
+          }));
           setBusinesses(bizList);
 
           const active = bizList.find(b => b.id === Number(id));
@@ -139,15 +161,7 @@ export default function DashboardLayout({
       }
     }
 
-    async function fetchStats() {
-      if (id) {
-        const res = await getSidebarStats(Number(id));
-        setStats(res);
-      }
-    }
-
     initLayout();
-    fetchStats();
 
     // Add auth listener to react to logout instantly
     const supabase = createClient();
@@ -161,6 +175,36 @@ export default function DashboardLayout({
     return () => subscription.unsubscribe();
   }, [id]);
 
+  useEffect(() => {
+    const active = businesses.find(b => b.id === Number(id));
+    setCurrentBusiness(active ?? null);
+  }, [id, businesses]);
+
+  useEffect(() => {
+    const store = businesses.find(b => b.id === Number(id));
+    const locked = store ? isStoreDashboardLocked(store.status) : false;
+    if (!id || locked) {
+      if (locked) setStats({ reviews: 0, leads: 0 });
+      return;
+    }
+    let cancelled = false;
+    getSidebarStats(Number(id)).then((res) => {
+      if (!cancelled) setStats(res);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [id, businesses]);
+
+  useEffect(() => {
+    if (!currentBusiness || currentBusiness.id !== Number(id)) return;
+    if (!isStoreDashboardLocked(currentBusiness.status)) return;
+    const base = `/dashboard/${id}`;
+    if (pathname !== base) {
+      router.replace(base);
+    }
+  }, [currentBusiness, id, pathname, router]);
+
   interface NavItem {
     href: string;
     label: string;
@@ -169,7 +213,6 @@ export default function DashboardLayout({
   }
 
   const navItems: NavItem[] = [
-    { href: '/', label: 'Back to Marketplace', icon: <Home className="w-5 h-5" /> },
     { href: `/dashboard/${id}`, label: 'Overview', icon: <LayoutDashboard className="w-5 h-5" /> },
     { href: `/dashboard/${id}/profile`, label: 'Business Profile', icon: <Briefcase className="w-5 h-5" /> },
     { href: `/dashboard/${id}/products`, label: 'Products & Promo', icon: <Package className="w-5 h-5" /> },
@@ -203,6 +246,9 @@ export default function DashboardLayout({
     return pathname.startsWith(href);
   };
 
+  const overviewPath = `/dashboard/${id}`;
+  const dashboardLocked = currentBusiness ? isStoreDashboardLocked(currentBusiness.status) : false;
+
   return (
     <UploadProvider>
       <div className="flex h-screen bg-[#050811] text-white overflow-hidden">
@@ -216,7 +262,13 @@ export default function DashboardLayout({
           )}
         >
           <div className="flex items-center justify-center p-6 border-b border-white/10">
-            {currentBusiness ? (
+            {currentBusiness?.logo_url ? (
+              <img
+                src={getAvatarUrl(currentBusiness.logo_url, currentBusiness.name)}
+                alt={currentBusiness.name}
+                className="w-12 h-12 rounded-2xl object-cover shadow-lg shadow-blue-500/20 ring-1 ring-white/20"
+              />
+            ) : currentBusiness ? (
               <div className="w-12 h-12 bg-gradient-to-br from-cyan-500 via-blue-600 to-purple-600 rounded-2xl flex items-center justify-center text-white font-black text-xl shadow-lg shadow-blue-500/20 ring-1 ring-white/20">
                 {currentBusiness.name.substring(0, 2).toUpperCase()}
               </div>
@@ -228,23 +280,27 @@ export default function DashboardLayout({
           </div>
 
           <nav className={cn('flex-1 overflow-y-auto px-4 py-8 space-y-6 flex flex-col', sidebarOpen ? 'items-start' : 'items-center')}>
-            {navItems.map((item) => (
-              <Link key={item.href} href={item.href}>
+            {navItems.map((item) => {
+              const navLocked = dashboardLocked && item.href !== overviewPath;
+              const button = (
                 <motion.button
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  title={item.label}
+                  type="button"
+                  disabled={navLocked}
+                  whileHover={navLocked ? undefined : { scale: 1.05 }}
+                  whileTap={navLocked ? undefined : { scale: 0.95 }}
+                  title={navLocked ? `${item.label} — disponible après validation` : item.label}
                   className={cn(
                     'relative flex items-center transition-all duration-300 group',
                     sidebarOpen ? 'justify-start w-full px-4 py-2' : 'justify-center w-14 h-14',
                     isActive(item.href)
                       ? 'bg-primary text-primary-foreground'
-                      : 'text-white/40 hover:text-white hover:bg-white/5'
+                      : 'text-white/40 hover:text-white hover:bg-white/5',
+                    navLocked && 'opacity-35 cursor-not-allowed hover:!text-white/40 hover:!bg-transparent'
                   )}
                 >
                   {item.icon}
                   {sidebarOpen && <span className="ml-3 text-sm font-medium truncate">{item.label}</span>}
-                  {Boolean(item.badge && item.badge > 0) && !isActive(item.href) && (
+                  {Boolean(item.badge && item.badge > 0) && !isActive(item.href) && !navLocked && (
                     <span className="absolute -top-1 -right-1 bg-gradient-to-r from-rose-500 to-pink-600 text-white rounded-full w-6 h-6 flex items-center justify-center text-[10px] font-black shadow-lg">
                       {item.badge}
                     </span>
@@ -255,30 +311,34 @@ export default function DashboardLayout({
                     </div>
                   )}
                 </motion.button>
-              </Link>
-            ))}
+              );
+              return navLocked ? (
+                <div key={item.href} className="w-full flex justify-center">
+                  {button}
+                </div>
+              ) : (
+                <Link key={item.href} href={item.href} className={sidebarOpen ? 'w-full' : ''}>
+                  {button}
+                </Link>
+              );
+            })}
           </nav>
 
-          <div className={cn('p-4 border-t', sidebarOpen ? 'border-border' : 'border-border')}>
-            <motion.button
-              whileHover={{ scale: 1.1, rotate: -10 }}
-              onClick={async () => {
-                const supabase = createClient();
-                await supabase.auth.signOut();
-                await fetch('/api/auth/logout', { method: 'POST' });
-                router.push('/');
-                router.refresh();
-              }}
-              title="Logout"
-              className={cn(
-                'flex items-center justify-center rounded-2xl transition-all',
-                sidebarOpen ? 'w-full py-2 justify-start px-4' : 'w-14 h-14'
-              )}
-            >
-              <LogOut className="w-6 h-6" />
-              {sidebarOpen && <span className="ml-3">Logout</span>}
-            </motion.button>
-          </div>
+<div className={cn('p-4 border-t', sidebarOpen ? 'border-border' : 'border-border')}>
+  <Link href="/">
+    <motion.button
+      whileHover={{ scale: 1.1, rotate: 0 }}
+      title="Back to Marketplace"
+      className={cn(
+        'flex items-center justify-center rounded-2xl transition-all',
+        sidebarOpen ? 'w-full py-2 justify-start px-4' : 'w-14 h-14'
+      )}
+    >
+      <Home className="w-6 h-6" />
+      {sidebarOpen && <span className="ml-3">back to marketplace</span>}
+    </motion.button>
+  </Link>
+</div>
         </motion.div>
 
         {/* Main Content */}
@@ -297,7 +357,9 @@ export default function DashboardLayout({
               <h1 className="text-lg font-semibold text-white truncate">
                 {(() => {
                   const parts = pathname.split('/').filter(Boolean);
-                  const last = parts[parts.length - 1] || 'Dashboard';
+                  const last = parts[parts.length - 1] || 'Overview';
+                  // If the last segment is the store id (numeric), we're on the Overview page
+                  if (last === id) return 'Overview';
                   return last.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
                 })()}
               </h1>
@@ -338,11 +400,13 @@ export default function DashboardLayout({
                   isSearching ? "text-primary scale-110 drop-shadow-[0_0_8px_rgba(var(--primary),0.5)]" : "text-white/40"
                 )} />
                 <Input
-                  placeholder="Rechercher réservations, avis, clients..."
+                  placeholder={dashboardLocked ? 'Recherche indisponible jusqu\'à validation' : 'Rechercher réservations, avis, clients...'}
                   className="pl-10 bg-white/5 border-white/10 focus:border-primary/40 focus:ring-1 focus:ring-primary/20 transition-all rounded-xl h-10"
                   value={dashboardSearchQuery}
+                  disabled={dashboardLocked}
                   onChange={(e) => setDashboardSearchQuery(e.target.value)}
                   onKeyDown={(e) => {
+                    if (dashboardLocked) return;
                     if (e.key === 'Enter' && dashboardSearchQuery.trim()) {
                       router.push(`/dashboard/${id}/search?q=${encodeURIComponent(dashboardSearchQuery)}`);
                       setDashboardSearchQuery('');
@@ -351,7 +415,7 @@ export default function DashboardLayout({
                 />
                 
                 {/* Dashboard Search Results Dropdown - FIXED to bypass clipping */}
-                {dashboardSearchQuery.trim().length > 1 && (
+                {dashboardSearchQuery.trim().length > 1 && !dashboardLocked && (
                   <div className="fixed top-[64px] left-1/2 -translate-x-1/2 w-full max-w-md bg-[#0c101b] border border-white/10 rounded-b-2xl shadow-2xl overflow-hidden z-[100] backdrop-blur-2xl animate-in fade-in slide-in-from-top-1 duration-200 pointer-events-auto">
                     <div className="max-h-[420px] overflow-y-auto p-3 space-y-1 custom-scrollbar">
                       {isSearching ? (
@@ -479,10 +543,26 @@ export default function DashboardLayout({
             </div>
 
             <div className="flex items-center space-x-4">
-              <Button asChild size="sm" variant="outline" className="bg-white/5 border-white/10 hover:bg-white/10">
-                <Link href={`/dashboard/${id}/support/tickets`}>Support</Link>
-              </Button>
+              {dashboardLocked ? (
+                <Button size="sm" variant="outline" disabled className="bg-white/5 border-white/10 opacity-50 cursor-not-allowed">
+                  Support
+                </Button>
+              ) : (
+                <Button asChild size="sm" variant="outline" className="bg-white/5 border-white/10 hover:bg-white/10">
+                  <Link href={`/dashboard/${id}/support/tickets`}>Support</Link>
+                </Button>
+              )}
 
+              {dashboardLocked ? (
+                <button
+                  type="button"
+                  disabled
+                  className="relative p-2 rounded-md text-white/25 cursor-not-allowed"
+                  aria-label="Notifications indisponibles"
+                >
+                  <Bell className="w-5 h-5" />
+                </button>
+              ) : (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <button className="relative p-2 rounded-md hover:bg-white/5 text-white/40 hover:text-white transition-all">
@@ -554,15 +634,39 @@ export default function DashboardLayout({
                   </div>
                 </DropdownMenuContent>
               </DropdownMenu>
+              )}
 
+              {dashboardLocked ? (
+                <Button variant="ghost" size="icon" disabled className="relative p-2 rounded-md text-white/25 cursor-not-allowed">
+                  <MessageCircle className="w-5 h-5" />
+                </Button>
+              ) : (
               <Button asChild variant="ghost" size="icon" className="relative p-2 rounded-md hover:bg-white/5 text-white/40 hover:text-white transition-all">
                 <Link href={`/dashboard/${id}/support/tickets`}>
                   <MessageCircle className="w-5 h-5" />
                 </Link>
               </Button>
+              )}
 
               <UserDropdown
-                user={user || { name: 'Commerçant', username: '', initials: 'C' }}
+                user={{
+                  ...(user || { name: 'Commerçant', username: '', initials: 'C' }),
+                  ownedStores:
+                    businesses.length > 1
+                      ? businesses.map(b => ({
+                          id: String(b.id),
+                          name: b.name,
+                          logo: b.logo_url || undefined,
+                          status: (b.status || 'APPROVED').toString().toUpperCase(),
+                        }))
+                      : undefined,
+                }}
+                businessTrigger={
+                  currentBusiness
+                    ? { name: currentBusiness.name, logoUrl: currentBusiness.logo_url }
+                    : null
+                }
+                onSwitchStore={(storeId) => router.push(`/dashboard/${storeId}`)}
                 onAction={(action) => {
                   if (action === 'logout') {
                     const supabase = createClient();
@@ -609,23 +713,42 @@ export default function DashboardLayout({
               className="fixed inset-y-0 left-0 z-40 w-64 bg-card border-r border-border p-4 md:hidden overflow-y-auto"
             >
               <nav className="flex flex-col space-y-4">
-                {navItems.map(item => (
-                  <Link key={item.href} href={item.href} className={cn(
-                    'flex items-center gap-2 p-2 rounded-md transition-colors',
-                    isActive(item.href)
-                      ? 'bg-primary text-primary-foreground'
-                      : 'text-white/80 hover:text-white hover:bg-white/5'
-                  )}>
-                    {item.icon}
-                    <span className="text-sm truncate">{item.label}</span>
-                  </Link>
-                ))}
+                {navItems.map((item) => {
+                  const navLocked = dashboardLocked && item.href !== overviewPath;
+                  const row = (
+                    <span
+                      className={cn(
+                        'flex items-center gap-2 p-2 rounded-md transition-colors',
+                        isActive(item.href)
+                          ? 'bg-primary text-primary-foreground'
+                          : 'text-white/80 hover:text-white hover:bg-white/5',
+                        navLocked && 'opacity-40 cursor-not-allowed pointer-events-none'
+                      )}
+                    >
+                      {item.icon}
+                      <span className="text-sm truncate">{item.label}</span>
+                    </span>
+                  );
+                  return navLocked ? (
+                    <div key={item.href}>{row}</div>
+                  ) : (
+                    <Link key={item.href} href={item.href} className={cn(
+                      'flex items-center gap-2 p-2 rounded-md transition-colors',
+                      isActive(item.href)
+                        ? 'bg-primary text-primary-foreground'
+                        : 'text-white/80 hover:text-white hover:bg-white/5'
+                    )}>
+                      {item.icon}
+                      <span className="text-sm truncate">{item.label}</span>
+                    </Link>
+                  );
+                })}
               </nav>
             </motion.div>
           </>
         )}
         <Toaster position="top-right" richColors />
-        <AIAgent storeId={id} />
+        {!dashboardLocked && <AIAgent storeId={id} />}
         <UploadProgressManager />
       </div>
     </UploadProvider>

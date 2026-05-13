@@ -189,23 +189,68 @@ function DiscoverCardComponent({ item, priority = false }: DiscoverCardProps) {
   }, [item.itemId, item.itemType, item.merchantId, item.id, router, trackClick])
 
   const handleShare = useCallback(async () => {
-    const shareData = {
-      title: item.product,
-      text: `Regardez ce reel sur Ro2ya : ${item.product}`,
-      url: `${window.location.origin}/reels/${item.id}`,
+    const title = (item.product?.trim() || 'Ro2ya').slice(0, 200)
+    const pathId = numericId != null ? String(numericId) : String(item.id)
+    const shareUrl = `${window.location.origin}/reels/${encodeURIComponent(pathId)}`
+
+    /** Native share sheet is often a blank white box in WebViews, in-app browsers, and iOS home-screen PWAs. */
+    const preferClipboard = () => {
+      if (typeof navigator === 'undefined') return true
+      const ua = navigator.userAgent || ''
+      if (/; wv\)/i.test(ua)) return true
+      if (/FBAN|FBAV|Instagram/i.test(ua)) return true
+      const nav = navigator as Navigator & { standalone?: boolean }
+      if (nav.standalone === true) return true
+      if (typeof window !== 'undefined' && window.matchMedia('(display-mode: standalone)').matches) return true
+      return false
+    }
+
+    const copyLink = async () => {
+      await navigator.clipboard.writeText(shareUrl)
+      toast.success('Lien copié dans le presse-papier !')
     }
 
     try {
-      if (navigator.share) {
-        await navigator.share(shareData)
+      if (preferClipboard() || !navigator.share) {
+        await copyLink()
         if (numericId) trackReelInteraction(numericId, 'share' as any)
-      } else {
-        await navigator.clipboard.writeText(shareData.url)
-        toast.success('Lien copié dans le presse-papier !')
-        if (numericId) trackReelInteraction(numericId, 'share' as any)
+        return
       }
+
+      const minimal: ShareData = { title, url: shareUrl }
+      const full: ShareData = {
+        title,
+        text: `Regardez ce reel sur Ro2ya : ${title}`,
+        url: shareUrl,
+      }
+
+      let payload: ShareData = minimal
+      if (typeof navigator.canShare === 'function') {
+        if (navigator.canShare(full)) payload = full
+        else if (navigator.canShare(minimal)) payload = minimal
+        else {
+          await copyLink()
+          if (numericId) trackReelInteraction(numericId, 'share' as any)
+          return
+        }
+      }
+
+      try {
+        await navigator.share(payload)
+      } catch (e: unknown) {
+        const name = e && typeof e === 'object' && 'name' in e ? (e as { name?: string }).name : ''
+        if (name === 'AbortError') return
+        await copyLink()
+      }
+      if (numericId) trackReelInteraction(numericId, 'share' as any)
     } catch (err) {
       console.error('Error sharing:', err)
+      try {
+        await copyLink()
+        if (numericId) trackReelInteraction(numericId, 'share' as any)
+      } catch {
+        toast.error('Impossible de copier le lien.')
+      }
     }
   }, [item.product, item.id, numericId])
 

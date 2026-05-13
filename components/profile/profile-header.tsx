@@ -40,6 +40,7 @@ export default function ProfileHeader({
     if (file && onAvatarUpdate) {
       onAvatarUpdate(file);
     }
+    e.target.value = '';
   };
 
   const shareLinks = [

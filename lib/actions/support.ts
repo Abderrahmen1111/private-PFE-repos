@@ -10,6 +10,7 @@ export type SupportTicket = {
   customer_name: string | null;
   customer_phone?: string | null;
   subject: string;
+  description?: string | null;
   status: 'open' | 'in_progress' | 'waiting_customer' | 'resolved' | 'closed';
   priority: 'low' | 'medium' | 'high' | 'critical';
   created_at: string;
@@ -49,6 +50,7 @@ export async function createSupportTicket(payload: {
     .insert({
       store_id: payload.storeId,
       subject: payload.subject,
+      description: payload.description,
       priority: payload.priority || 'medium',
       status: 'open',
       customer_name: 'Business Owner' // Default for owner-created tickets
@@ -64,6 +66,57 @@ export async function createSupportTicket(payload: {
   return { success: true, data: data as any };
 }
 
+export async function deleteTicket(
+  ticketId: string
+): Promise<{ success: boolean; error?: string }> {
+  const supabase = createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { success: false, error: 'Non authentifié' };
+
+  const { error } = await supabase.from('support_tickets').delete().eq('id', ticketId);
+
+  if (error) {
+    console.error('Error deleting ticket:', error);
+    return { success: false, error: error.message };
+  }
+
+  return { success: true };
+}
+
+export async function updateTicket(
+  ticketId: string,
+  payload: {
+    subject: string;
+    priority: SupportTicket['priority'];
+    status: SupportTicket['status'];
+  }
+): Promise<{ success: boolean; data?: SupportTicket; error?: string }> {
+  const supabase = createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { success: false, error: 'Non authentifié' };
+
+  const { data, error } = await supabase
+    .from('support_tickets')
+    .update({
+      subject: payload.subject,
+      priority: payload.priority,
+      status: payload.status,
+    } as any)
+    .eq('id', ticketId)
+    .select()
+    .single();
+
+  if (error) {
+    console.error('Error updating ticket:', error);
+    return { success: false, error: error.message };
+  }
+
+  return { success: true, data: data as SupportTicket };
+}
 
 export async function getTicketMessages(ticketId: string): Promise<any[]> {
   const supabase = createClient();

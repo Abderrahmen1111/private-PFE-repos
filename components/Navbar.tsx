@@ -165,8 +165,8 @@ function ImageSearchModal({ onClose, onSearch }: {
     }
     setError(null);
     setFileName(file.name);
-    // Pre-fill analysis result with a cleaned version of the filename
-    setAnalysisResult(file.name.replace(/\.[^.]+$/, '').replace(/[_-]/g, ' '));
+    // Clear analysis result — let user analyze with AI or type manually
+    setAnalysisResult('');
     const reader = new FileReader();
     reader.onload = (e) => setPreview(e.target?.result as string);
     reader.readAsDataURL(file);
@@ -936,17 +936,12 @@ export default function Navbar() {
       }`}
     >
       {/* Rejection Banner */}
-      {storeStatus === 'REJECTED' && (
-        <div className="bg-rose-600 text-white text-[10px] sm:text-xs py-2 px-4 flex items-center justify-center gap-2 font-black uppercase tracking-widest animate-in slide-in-from-top duration-500">
-          <AlertTriangle className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-          <span>Votre demande de boutique a été refusée par l'administrateur.</span>
-        </div>
-      )}
+     
 
       <div className={`mx-auto transition-all duration-500 ${
         isHome ? 'max-w-[1400px] mt-2 sm:mt-4 px-2 sm:px-6' : 'max-w-full mt-0 px-0'
       }`}>
-        <div className={`relative bg-black/80 backdrop-blur-2xl border border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.4)] ${
+        <div className={`relative z-[101] ${
           isHome ? 'rounded-2xl sm:rounded-3xl h-16 sm:h-20' : 'h-16 sm:h-20'
         } flex items-center px-4 sm:px-8 gap-4 sm:gap-8`}>
           

@@ -9,9 +9,11 @@ interface ProfileTabsProps {
   activeTab: TabId;
   onTabChange: (tab: TabId) => void;
   counts: { reviews: number; saved: number; activity: number; orders: number; reservations: number };
+  /** Tabs not shown in the bar (e.g. `settings` opened only via “Modifier le profil”). */
+  excludeTabs?: TabId[];
 }
 
-const tabs: { id: TabId; label: string; icon: any; count?: keyof ProfileTabsProps['counts'] }[] = [
+const allTabs: { id: TabId; label: string; icon: any; count?: keyof ProfileTabsProps['counts'] }[] = [
   { id: 'orders', label: 'Commandes', icon: ShoppingBag, count: 'orders' },
   { id: 'reservations', label: 'Réservations', icon: CalendarDays, count: 'reservations' },
   { id: 'reviews', label: 'Avis', icon: Star, count: 'reviews' },
@@ -20,7 +22,8 @@ const tabs: { id: TabId; label: string; icon: any; count?: keyof ProfileTabsProp
   { id: 'settings', label: 'Paramètres', icon: Settings },
 ];
 
-export default function ProfileTabs({ activeTab, onTabChange, counts }: ProfileTabsProps) {
+export default function ProfileTabs({ activeTab, onTabChange, counts, excludeTabs = [] }: ProfileTabsProps) {
+  const tabs = allTabs.filter((t) => !excludeTabs.includes(t.id));
   return (
     <div className="bg-white/50 backdrop-blur-xl rounded-2xl shadow-sm border border-gray-100 p-1.5 sticky top-4 z-30">
       <div className="flex overflow-x-auto scrollbar-hide relative gap-1">

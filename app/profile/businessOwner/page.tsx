@@ -20,10 +20,22 @@ import Link from 'next/link';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useRef } from 'react';
 import { getOwnerProfileData } from '@/lib/actions/profile';
+import { deleteStore, transferStoreOwnership } from '@/lib/actions/stores';
 import { sendPasswordResetEmail } from '@/lib/actions/auth';
 import { updateProfile, updateAvatar } from '@/lib/actions/users';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 // ─── Design tokens ────────────────────────────────────────────────────────────
 // Accent palette: orange-based warm startup feel
@@ -205,6 +217,9 @@ function BusinessOwnerContent() {
   const [editingHours, setEditingHours] = useState(false);
   const [loadingToggles, setLoadingToggles] = useState<Record<string, boolean>>({});
   const [isUpdatingAvatar, setIsUpdatingAvatar] = useState(false);
+  const [transferDialogOpen, setTransferDialogOpen] = useState(false);
+  const [transferOwnerEmail, setTransferOwnerEmail] = useState('');
+  const [isTransferring, setIsTransferring] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const searchParams = useSearchParams();
@@ -265,6 +280,8 @@ function BusinessOwnerContent() {
     finally { setIsChangingPassword(false); }
   };
 
+
+
   const handleTogglePreference = async (key: string, currentValue: boolean, setter: (v: boolean) => void) => {
     setLoadingToggles(prev => ({ ...prev, [key]: true }));
     try {
@@ -293,14 +310,16 @@ function BusinessOwnerContent() {
 
   const handleAvatarUpdate = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file || !user?.id) return;
-    
+    if (!file) return;
+
     setIsUpdatingAvatar(true);
     try {
-      const { error } = await updateAvatar(user.id, file);
-      if (error) throw new Error(typeof error === 'string' ? error : (error as any).message);
+      const formData = new FormData();
+      formData.append('file', file);
+      const { error } = await updateAvatar(formData);
+      if (error) throw new Error((error as any).message || String(error));
       toast.success('Photo de profil mise à jour');
-      
+
       // Refresh data
       const data = await getOwnerProfileData(businessIdParam || undefined);
       setInitialData(data);
@@ -308,10 +327,11 @@ function BusinessOwnerContent() {
       toast.error(err.message || "Erreur lors de la mise à jour de l'image");
     } finally {
       setIsUpdatingAvatar(false);
+      e.target.value = '';
     }
   };
 
-  const { user, store, metrics: rawMetrics, recentReviews } = initialData;
+  const { user, store, stores: storesList = [], metrics: rawMetrics, recentReviews } = initialData;
 
   const owner = {
     name:      user.profile?.full_name || user.email?.split('@')[0] || 'Business Owner',
@@ -326,6 +346,7 @@ function BusinessOwnerContent() {
 
   const business = store ? {
     id:           store.id_business || store.id,
+    dashboardId: store.id,
     internal_id:  store.id,
     name:         store.name,
     logo:         store.logo_url ?? store.name.substring(0, 2).toUpperCase(),
@@ -345,6 +366,56 @@ function BusinessOwnerContent() {
       lng: store.longitude ? `${store.longitude}° E` : 'N/A',
     },
   } : null;
+
+  const handleDeleteStore = async () => {
+    const storeId = store?.id;
+    if (!storeId) {
+      toast.error('Boutique introuvable.');
+      return;
+    }
+    try {
+      const { success, error } = await deleteStore(Number(storeId));
+      if (success) {
+        toast.success('Votre boutique a été supprimée. Redirection...');
+        setTimeout(() => router.push('/'), 2000);
+      } else {
+        toast.error('Erreur lors de la suppression de la boutique: ' + (error || 'Erreur inconnue'));
+      }
+    } catch {
+      toast.error('Une erreur inattendue est survenue.');
+    }
+  };
+
+  const handleTransferOwnership = async () => {
+    const storeId = store?.id;
+    if (!storeId) {
+      toast.error('Boutique introuvable.');
+      return;
+    }
+    const email = transferOwnerEmail.trim();
+    if (!email) {
+      toast.error('Indiquez l’e-mail du nouveau propriétaire.');
+      return;
+    }
+    setIsTransferring(true);
+    try {
+      const { success, error } = await transferStoreOwnership(Number(storeId), email);
+      if (success) {
+        toast.success('Boutique transférée. Le nouveau propriétaire a désormais accès au tableau de bord.');
+        setTransferDialogOpen(false);
+        setTransferOwnerEmail('');
+        const data = await getOwnerProfileData(businessIdParam || undefined);
+        setInitialData(data);
+        router.refresh();
+      } else {
+        toast.error(error || 'Le transfert a échoué.');
+      }
+    } catch {
+      toast.error('Une erreur inattendue est survenue.');
+    } finally {
+      setIsTransferring(false);
+    }
+  };
 
   const metrics = [
     { icon: Eye,          label: 'Total Visits',        value: (rawMetrics.uniqueSessionsCount || 0).toLocaleString(),   change: '+0%', trend: 'up'   as const, period: 'all time'   },
@@ -395,6 +466,9 @@ function BusinessOwnerContent() {
   // ═══════════════════════════════════════════════════════════════════════
   // RENDER
   // ═══════════════════════════════════════════════════════════════════════
+
+
+  
   return (
     <div className="space-y-5 max-w-6xl mx-auto bg-gray-50 p-6 min-h-screen">
 
@@ -485,7 +559,7 @@ function BusinessOwnerContent() {
                     <div className="w-12 h-12 rounded-2xl flex items-center justify-center mb-4 bg-orange-50">
                       <Key className="w-5 h-5 text-orange-500" />
                     </div>
-                    <DialogTitle className="text-lg font-black">Reset Password</DialogTitle>
+                    <DialogTitle className="text-lg text-red-500 ">Reset Password</DialogTitle>
                     <DialogDescription className="text-sm text-gray-500">
                       We'll send a reset link to <span className="font-semibold text-gray-900">{user.email}</span>.
                     </DialogDescription>
@@ -553,14 +627,44 @@ function BusinessOwnerContent() {
               <Link href={`/merchants/business/${business.id}`}><ExternalLink className="w-3.5 h-3.5" /> View Page</Link>
             </Button>
             <Button size="sm" variant="outline" className="flex-1 gap-1.5 text-xs rounded-xl text-white font-semibold border-gray-200 hover:border-orange-300" asChild>
-              <Link href={`/dashboard/${business.id}/profile`}><Edit2 className="w-3.5 h-3.5" /> Edit</Link>
+              <Link href={`/dashboard/${business.dashboardId}/profile`}><Edit2 className="w-3.5 h-3.5" /> Edit</Link>
             </Button>
             <Button size="sm" variant="outline" className="flex-1 gap-1.5 text-xs text-white rounded-xl font-semibold border-gray-200 hover:border-orange-300" asChild>
-              <Link href={`/dashboard/${business.id}/profile`}><ImageIcon className="w-3.5 h-3.5" /> Photos</Link>
+              <Link href={`/dashboard/${business.dashboardId}/profile`}><ImageIcon className="w-3.5 h-3.5" /> Photos</Link>
             </Button>
           </div>
         </div>
       </ProCard>
+
+      {storesList.length > 1 && (
+        <ProCard className="py-4">
+          <p className="text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-3">Mes établissements</p>
+          <div className="flex flex-wrap gap-2">
+            {storesList.map((s: { id: number; name: string; status?: string | null }) => {
+              const selected = store?.id === s.id;
+              return (
+                <button
+                  key={s.id}
+                  type="button"
+                  onClick={() => router.push(`/profile/businessOwner?id=${s.id}`)}
+                  className={cn(
+                    'px-4 py-2 rounded-xl text-xs font-bold border transition-all max-w-[220px] truncate',
+                    selected
+                      ? 'bg-orange-500 text-white border-orange-500 shadow-md'
+                      : 'bg-white text-gray-700 border-gray-200 hover:border-orange-300 hover:bg-orange-50/50'
+                  )}
+                  title={s.name}
+                >
+                  {s.name}
+                </button>
+              );
+            })}
+            <Button variant="outline" size="sm" className="rounded-xl text-xs font-bold border-dashed border-gray-300" asChild>
+              <Link href="/merchants/business/add">+ Ajouter</Link>
+            </Button>
+          </div>
+        </ProCard>
+      )}
 
       {/* ──────────────────────────────────────────────────────────────────
           TABS
@@ -969,14 +1073,112 @@ function BusinessOwnerContent() {
             <SectionHeading icon={Zap}>Danger Zone</SectionHeading>
             <div className="flex flex-col sm:flex-row gap-4">
               <div className="flex-1 p-4 rounded-xl border border-red-200 bg-red-50">
-                <p className="text-sm font-bold text-red-700">Transfer Ownership</p>
-                <p className="text-xs text-red-600 mt-1 mb-3">Transfer this business to another account</p>
-                <Button variant="outline" size="sm" className="text-red-600 border-red-200 hover:bg-red-100">Transfer</Button>
+                <p className="text-sm font-bold text-red-700">Transfert de propriété</p>
+                <p className="text-xs text-red-600 mt-1 mb-3">
+                  Indique l’e-mail du compte Ro2ya du nouveau propriétaire. Il doit déjà avoir un compte ; il recevra la boutique et tout le tableau de bord associé.
+                </p>
+                <Dialog
+                  open={transferDialogOpen}
+                  onOpenChange={(open) => {
+                    setTransferDialogOpen(open);
+                    if (!open) setTransferOwnerEmail('');
+                  }}
+                >
+                  <DialogTrigger asChild>
+                    <Button variant="outline" size="sm" className="text-red-600 border-red-200 hover:bg-red-100">
+                      Transférer
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="bg-white text-gray-900 border-gray-200 rounded-2xl sm:max-w-[420px]">
+                    <DialogHeader>
+                      <div className="w-12 h-12 rounded-2xl flex items-center justify-center mb-2 bg-red-50">
+                        <Mail className="w-5 h-5 text-red-600" />
+                      </div>
+                      <DialogTitle className="text-lg font-bold text-gray-900">Transférer la boutique</DialogTitle>
+                      <DialogDescription className="text-sm text-gray-600 text-left space-y-2">
+                        <span className="block">
+                          Saisis l’adresse e-mail du <strong className="text-gray-900">nouveau propriétaire</strong>. Ce
+                          doit être le même e-mail que celui de son compte Ro2ya. Après confirmation, tu n’auras plus
+                          accès à cette boutique (sauf si on te la retransfère).
+                        </span>
+                      </DialogDescription>
+                    </DialogHeader>
+                    <div className="grid gap-3 py-2">
+                      <div className="grid gap-1.5">
+                        <Label htmlFor="transfer-owner-email" className="text-xs font-semibold text-gray-700">
+                          E-mail du nouveau propriétaire
+                        </Label>
+                        <Input
+                          id="transfer-owner-email"
+                          type="email"
+                          autoComplete="email"
+                          placeholder="exemple@domaine.com"
+                          value={transferOwnerEmail}
+                          onChange={(e) => setTransferOwnerEmail(e.target.value)}
+                          className="rounded-xl border-gray-200"
+                        />
+                      </div>
+                    </div>
+                    <div className="flex justify-end text-white gap-2 pt-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="rounded-xl border-gray-200"
+                        onClick={() => setTransferDialogOpen(false)}
+                        disabled={isTransferring}
+                      >
+                        Annuler
+                      </Button>
+                      <Button
+                        type="button"
+                        className="rounded-xl font-bold bg-red-600 hover:bg-red-700 text-white inline-flex items-center gap-2"
+                        onClick={handleTransferOwnership}
+                        disabled={isTransferring}
+                      >
+                        {isTransferring ? (
+                          <>
+                            <Loader2 className="w-4 h-4 animate-spin shrink-0" />
+                            Transfert…
+                          </>
+                        ) : (
+                          'Confirmer le transfert'
+                        )}
+                      </Button>
+                    </div>
+                  </DialogContent>
+                </Dialog>
               </div>
               <div className="flex-1 p-4 rounded-xl border border-red-200 bg-red-50">
-                <p className="text-sm font-bold text-red-700">Delete Business</p>
-                <p className="text-xs text-red-600 mt-1 mb-3">Permanently remove this business and all data</p>
-                <Button variant="outline" size="sm" className="text-red-600 border-red-200 hover:bg-red-100">Delete</Button>
+                <p className="text-sm font-bold text-red-700">Supprimer la boutique</p>
+                <p className="text-xs text-red-600 mt-1 mb-3">
+                  Supprime définitivement cette boutique et ses données. Ton compte personnel est conservé.
+                </p>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="outline" size="sm" className="text-red-600 border-red-200 hover:bg-red-100">
+                      Supprimer
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent className="bg-white border border-gray-200 text-gray-900 rounded-2xl shadow-xl sm:max-w-md">
+                    <AlertDialogHeader>
+                      <AlertDialogTitle className="text-gray-900 font-bold">Confirmer la suppression</AlertDialogTitle>
+                      <AlertDialogDescription className="text-gray-600">
+                        Cette action supprimera définitivement votre boutique. Vos données personnelles de compte seront conservées.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter className="gap-2 sm:gap-0">
+                      <AlertDialogCancel className="border border-gray-200 bg-white text-gray-900 hover:bg-gray-50">
+                        Annuler
+                      </AlertDialogCancel>
+                      <AlertDialogAction
+                        onClick={handleDeleteStore}
+                        className="bg-red-600 text-white hover:bg-red-700 focus:ring-red-600"
+                      >
+                        Confirmer
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
               </div>
             </div>
           </ProCard>
