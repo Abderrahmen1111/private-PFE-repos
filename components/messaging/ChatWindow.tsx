@@ -1,19 +1,20 @@
 'use client';
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import dynamic from "next/dynamic";
 import { Theme } from "emoji-picker-react";
 const EmojiPicker = dynamic(() => import('emoji-picker-react'), { ssr: false, loading: () => <div className="p-4 flex justify-center"><span className="animate-spin h-6 w-6 border-b-2 border-primary rounded-full"></span></div> });
-import { Send, Phone, Video, Info, Paperclip, Smile, Mic, X, Image as ImageIcon, Trash2, UserPlus, UserCheck, Ban, ShieldAlert } from "lucide-react";
+import { Send, MoreVertical, User, Paperclip, Smile, Mic, X, Image as ImageIcon, Trash2, UserPlus, UserCheck, Ban } from "lucide-react";
 import { ChatMessage } from "./ChatMessage";
 import { Message, Conversation } from "@/types/messaging";
+import Link from "next/link";
 import { useMessaging } from "@/hooks/useMessaging";
-import { useWebRTCCall } from "@/hooks/useWebRTCCall";
+
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { trackEvent } from "@/lib/tracking/trackEvent";
@@ -36,7 +37,13 @@ export function ChatWindow({ partner, messages, currentUserId, onSendMessage, on
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
-  
+  const [chatMenuOpen, setChatMenuOpen] = useState(false);
+  const [chatMenuPos, setChatMenuPos] = useState({ top: 0, left: 0 });
+  const chatMenuTriggerRef = useRef<HTMLSpanElement>(null);
+  const chatMenuPanelRef = useRef<HTMLDivElement>(null);
+
+  const CHAT_MENU_WIDTH = 192;
+
   const scrollRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -44,7 +51,7 @@ export function ChatWindow({ partner, messages, currentUserId, onSendMessage, on
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   const { uploadFile, deleteMessage } = useMessaging();
-  const { startCall } = useWebRTCCall();
+
 
   const scrollToBottom = () => {
     if (scrollRef.current) {
@@ -66,6 +73,63 @@ export function ChatWindow({ partner, messages, currentUserId, onSendMessage, on
     const timer3 = setTimeout(scrollToBottom, 1000);
     return () => { clearTimeout(timer1); clearTimeout(timer2); clearTimeout(timer3); };
   }, [messages.length, partner?.user_id]);
+
+  useEffect(() => {
+    setChatMenuOpen(false);
+  }, [partner?.user_id]);
+
+  const updateChatMenuPosition = () => {
+    const el = chatMenuTriggerRef.current;
+    if (!el) return;
+    const r = el.getBoundingClientRect();
+    const gap = 8;
+    let left = r.right - CHAT_MENU_WIDTH;
+    left = Math.max(8, Math.min(left, window.innerWidth - CHAT_MENU_WIDTH - 8));
+    let top = r.bottom + gap;
+    const estHeight = 220;
+    if (top + estHeight > window.innerHeight - 8) {
+      top = Math.max(8, r.top - gap - estHeight);
+    }
+    setChatMenuPos({ top, left });
+  };
+
+  useLayoutEffect(() => {
+    if (!chatMenuOpen) return;
+    updateChatMenuPosition();
+  }, [chatMenuOpen]);
+
+  useEffect(() => {
+    if (!chatMenuOpen) return;
+    const onScroll = () => updateChatMenuPosition();
+    const onResize = () => updateChatMenuPosition();
+    window.addEventListener("scroll", onScroll, true);
+    window.addEventListener("resize", onResize);
+    return () => {
+      window.removeEventListener("scroll", onScroll, true);
+      window.removeEventListener("resize", onResize);
+    };
+  }, [chatMenuOpen]);
+
+  useEffect(() => {
+    if (!chatMenuOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setChatMenuOpen(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [chatMenuOpen]);
+
+  useEffect(() => {
+    if (!chatMenuOpen) return;
+    const onPointerDown = (e: PointerEvent) => {
+      const t = e.target as Node;
+      if (chatMenuTriggerRef.current?.contains(t)) return;
+      if (chatMenuPanelRef.current?.contains(t)) return;
+      setChatMenuOpen(false);
+    };
+    document.addEventListener("pointerdown", onPointerDown, true);
+    return () => document.removeEventListener("pointerdown", onPointerDown, true);
+  }, [chatMenuOpen]);
 
   // Handle Image Selection
   const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -184,7 +248,7 @@ export function ChatWindow({ partner, messages, currentUserId, onSendMessage, on
   return (
     <div className="flex-1 flex flex-col h-full min-h-0 overflow-hidden bg-background/30 backdrop-blur-xl">
       {/* Header */}
-      <div className="flex items-center justify-between p-4 border-b border-border/50 bg-background/50 backdrop-blur-md sticky top-0 z-10">
+      <div className="relative z-20 flex items-center justify-between p-4 border-b border-border/50 bg-background/50 backdrop-blur-md shrink-0">
         <div className="flex items-center gap-3">
           <Avatar className="h-10 w-10 ring-2 ring-primary/10">
             <AvatarImage src={partner.avatar_url} />
@@ -200,108 +264,20 @@ export function ChatWindow({ partner, messages, currentUserId, onSendMessage, on
         </div>
         
         <div className="flex items-center gap-1">
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            className="h-9 w-9 text-muted-foreground hover:text-primary"
-            onClick={() => {
-              if (partner?.user_id) {
-                startCall(partner.user_id, partner.full_name || 'Utilisateur', partner.avatar_url);
-              }
-            }}
-          >
-            <Phone className="h-4 w-4" />
-          </Button>
-          <Button variant="ghost" size="icon" className="h-9 w-9 text-muted-foreground hover:text-primary">
-            <Video className="h-4 w-4" />
-          </Button>
-          
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-9 w-9 text-muted-foreground hover:text-primary">
-                <Info className="h-4 w-4" />
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-60 p-4" align="end">
-              <div className="space-y-4">
-                <div className="flex flex-col items-center text-center space-y-2 pb-2 border-b border-border/50">
-                  <Avatar className="h-16 w-16 ring-2 ring-primary/10">
-                    <AvatarImage src={partner.avatar_url} />
-                    <AvatarFallback>{partner.full_name?.substring(0, 2).toUpperCase()}</AvatarFallback>
-                  </Avatar>
-                  <div>
-                    <h4 className="font-bold text-sm">{partner.full_name}</h4>
-                    <p className="text-[10px] text-muted-foreground">ID: {partner.user_id?.substring(0, 8)}...</p>
-                  </div>
-                </div>
-
-                <div className="space-y-1">
-                  {friendshipStatus?.status === 'BLOCKED' ? (
-                    friendshipStatus.direction === 'SENT' ? (
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        className="w-full justify-start text-xs text-emerald-500 hover:text-emerald-600 hover:bg-emerald-50"
-                        onClick={async () => {
-                          const { unblockUser } = await import("@/lib/actions/friendships");
-                          if (partner.user_id) {
-                            const { error } = await unblockUser(partner.user_id);
-                            if (!error) {
-                              toast.success("Utilisateur débloqué");
-                              trackEvent({
-                                surface: 'profile',
-                                event_type: 'USER_UNBLOCKED',
-                                target_user_id: partner.user_id
-                              });
-                              onFriendshipUpdate?.();
-                            }
-                          }
-                        }}
-                      >
-                        <UserCheck className="mr-2 h-4 w-4" />
-                        Débloquer
-                      </Button>
-                    ) : (
-                      <div className="p-2 bg-red-50 rounded-md">
-                        <p className="text-[10px] text-red-600 font-medium">Vous avez été bloqué par cet utilisateur.</p>
-                      </div>
-                    )
-                  ) : (
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
-                      className="w-full justify-start text-xs text-red-500 hover:text-red-600 hover:bg-red-50"
-                      onClick={async () => {
-                        if (confirm(`Êtes-vous sûr de vouloir bloquer ${partner.full_name} ?`)) {
-                          const { blockUser } = await import("@/lib/actions/friendships");
-                          if (partner.user_id) {
-                            const { error } = await blockUser(partner.user_id);
-                            if (!error) {
-                              toast.success("Utilisateur bloqué");
-                              trackEvent({
-                                surface: 'profile',
-                                event_type: 'USER_BLOCKED',
-                                target_user_id: partner.user_id
-                              });
-                              onFriendshipUpdate?.();
-                            }
-                          }
-                        }
-                      }}
-                    >
-                      <Ban className="mr-2 h-4 w-4" />
-                      Bloquer l'utilisateur
-                    </Button>
-                  )}
-                  
-                  <Button variant="ghost" size="sm" className="w-full justify-start text-xs text-red-500 hover:text-red-600 hover:bg-red-50">
-                    <ShieldAlert className="mr-2 h-4 w-4" />
-                    Signaler
-                  </Button>
-                </div>
-              </div>
-            </PopoverContent>
-          </Popover>
+          <span ref={chatMenuTriggerRef} className="inline-flex">
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="h-9 w-9 text-muted-foreground hover:text-primary"
+              aria-label="Options de conversation"
+              aria-expanded={chatMenuOpen}
+              aria-haspopup="true"
+              onClick={() => setChatMenuOpen((o) => !o)}
+            >
+              <MoreVertical className="h-4 w-4" />
+            </Button>
+          </span>
         </div>
       </div>
 
@@ -342,7 +318,10 @@ export function ChatWindow({ partner, messages, currentUserId, onSendMessage, on
       </div>
 
       <div className="p-4 bg-background/50 backdrop-blur-md border-t border-border/50">
-        {(friendshipStatus === undefined || friendshipStatus?.status === 'ACCEPTED' || messages.length > 0) ? (
+        {friendshipStatus?.status !== 'BLOCKED' &&
+        (friendshipStatus === undefined ||
+          friendshipStatus?.status === 'ACCEPTED' ||
+          messages.length > 0) ? (
           <>
             <input 
               type="file" 
@@ -529,6 +508,10 @@ export function ChatWindow({ partner, messages, currentUserId, onSendMessage, on
                         target_user_id: partner.user_id
                       });
                       onFriendshipUpdate?.();
+                    } else {
+                      toast.error("Impossible de débloquer", {
+                        description: (error as { message?: string }).message ?? "Erreur serveur ou droits insuffisants.",
+                      });
                     }
                   }
                 }}
@@ -592,6 +575,102 @@ export function ChatWindow({ partner, messages, currentUserId, onSendMessage, on
           </div>
         )}
       </div>
+
+      {typeof document !== "undefined" &&
+        chatMenuOpen &&
+        createPortal(
+          <>
+            <div
+              className="fixed inset-0 z-[7000] bg-black/20"
+              aria-hidden
+              onClick={() => setChatMenuOpen(false)}
+            />
+            <div
+              ref={chatMenuPanelRef}
+              role="menu"
+              className="fixed z-[7001] w-48 rounded-md border border-border bg-popover p-1 text-popover-foreground shadow-lg"
+              style={{ top: chatMenuPos.top, left: chatMenuPos.left }}
+            >
+              <Link
+                href={`/user/${partner.user_id}`}
+                role="menuitem"
+                className="flex w-full items-center gap-2 rounded-sm px-2 py-2 text-left text-xs outline-none hover:bg-accent hover:text-accent-foreground"
+                onClick={() => setChatMenuOpen(false)}
+              >
+                <User className="h-4 w-4 shrink-0" />
+                Visiter le profil
+              </Link>
+
+              {friendshipStatus?.status === "BLOCKED" ? (
+                friendshipStatus.direction === "SENT" ? (
+                  <button
+                    type="button"
+                    role="menuitem"
+                    className="flex w-full items-center gap-2 rounded-sm px-2 py-2 text-left text-xs text-emerald-600 outline-none hover:bg-emerald-50 hover:text-emerald-700"
+                    onClick={async () => {
+                      setChatMenuOpen(false);
+                      const { unblockUser } = await import("@/lib/actions/friendships");
+                      if (partner.user_id) {
+                        const { error } = await unblockUser(partner.user_id);
+                        if (!error) {
+                          toast.success("Utilisateur débloqué");
+                          trackEvent({
+                            surface: "profile",
+                            event_type: "USER_UNBLOCKED",
+                            target_user_id: partner.user_id,
+                          });
+                          onFriendshipUpdate?.();
+                        } else {
+                          toast.error("Impossible de débloquer", {
+                            description: (error as { message?: string }).message ?? "Erreur serveur ou droits insuffisants.",
+                          });
+                        }
+                      }
+                    }}
+                  >
+                    <UserCheck className="h-4 w-4 shrink-0" />
+                    Débloquer
+                  </button>
+                ) : (
+                  <p
+                    role="note"
+                    className="px-2 py-2 text-[10px] font-medium leading-snug text-red-600"
+                  >
+                    Vous avez été bloqué par cet utilisateur.
+                  </p>
+                )
+              ) : (
+                <button
+                  type="button"
+                  role="menuitem"
+                  className="flex w-full items-center gap-2 rounded-sm px-2 py-2 text-left text-xs text-red-600 outline-none hover:bg-red-50 hover:text-red-700"
+                  onClick={async () => {
+                    setChatMenuOpen(false);
+                    if (confirm(`Êtes-vous sûr de vouloir bloquer ${partner.full_name} ?`)) {
+                      const { blockUser } = await import("@/lib/actions/friendships");
+                      if (partner.user_id) {
+                        const { error } = await blockUser(partner.user_id);
+                        if (!error) {
+                          toast.success("Utilisateur bloqué");
+                          trackEvent({
+                            surface: "profile",
+                            event_type: "USER_BLOCKED",
+                            target_user_id: partner.user_id,
+                          });
+                          onFriendshipUpdate?.();
+                        }
+                      }
+                    }
+                  }}
+                >
+                  <Ban className="h-4 w-4 shrink-0" />
+                  Bloquer l&apos;utilisateur
+                </button>
+              )}
+            </div>
+          </>,
+          document.body
+        )}
     </div>
   );
 }

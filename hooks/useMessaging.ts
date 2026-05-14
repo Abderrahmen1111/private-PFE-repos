@@ -285,6 +285,23 @@ export function useMessaging() {
     };
 
     try {
+      const { data: blockRow } = await (supabase as any)
+        .from('friendships')
+        .select('id')
+        .eq('status', 'BLOCKED')
+        .or(
+          `and(user_id.eq.${currentUser.id},friend_id.eq.${receiverId}),and(user_id.eq.${receiverId},friend_id.eq.${currentUser.id})`
+        )
+        .maybeSingle();
+
+      if (blockRow) {
+        toast.error('Impossible d’envoyer le message', {
+          description:
+            'Un blocage est actif entre vous et cet utilisateur. Débloquez-le pour continuer la conversation.',
+        });
+        return;
+      }
+
       const { data, error } = await (supabase as any)
         .from('messages' as any)
         .insert([{
@@ -314,8 +331,20 @@ export function useMessaging() {
       });
 
       return data;
-    } catch (error) {
-      toast.error('Erreur lors de l\'envoi du message');
+    } catch (error: any) {
+      const msg = String(error?.message ?? error ?? '');
+      if (
+        error?.code === '42501' ||
+        msg.toLowerCase().includes('row-level security') ||
+        msg.toLowerCase().includes('violates row-level security')
+      ) {
+        toast.error('Impossible d\'envoyer le message', {
+          description:
+            'Un blocage est actif entre vous et cet utilisateur, ou vous n\'avez pas la permission d\'écrire ici.',
+        });
+      } else {
+        toast.error('Erreur lors de l\'envoi du message');
+      }
       console.error('Error sending message:', error);
     }
   };
