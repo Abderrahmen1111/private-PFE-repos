@@ -659,7 +659,7 @@ function BusinessOwnerContent() {
                 </button>
               );
             })}
-            <Button variant="outline" size="sm" className="rounded-xl text-xs font-bold border-dashed border-gray-300" asChild>
+            <Button variant="outline" size="sm" className="rounded-xl text-xs font-bold text-white border-dashed border-gray-300" asChild>
               <Link href="/merchants/business/add">+ Ajouter</Link>
             </Button>
           </div>

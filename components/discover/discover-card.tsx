@@ -255,11 +255,12 @@ function DiscoverCardComponent({ item, priority = false }: DiscoverCardProps) {
   }, [item.product, item.id, numericId])
 
   return (
-    <article
-      className="relative h-screen w-full snap-start snap-always overflow-hidden bg-black"
-      onDoubleClick={triggerLike}
-      onTouchEnd={onMediaTouchEnd}
-    >
+    <>
+      <article
+        className="relative h-screen w-full snap-start snap-always overflow-hidden bg-black"
+        onDoubleClick={triggerLike}
+        onTouchEnd={onMediaTouchEnd}
+      >
       <div 
         className={cn(
           "absolute inset-0 z-40 pointer-events-none transition-colors duration-200", 
@@ -472,15 +473,16 @@ function DiscoverCardComponent({ item, priority = false }: DiscoverCardProps) {
         onOpenComments={() => setCommentsOpen(true)}
         onShare={handleShare}
       />
-
-      {numericId && (
-        <CommentDrawer 
-          isOpen={commentsOpen} 
-          onClose={() => setCommentsOpen(false)} 
-          reelId={numericId} 
-        />
-      )}
     </article>
+
+    {numericId !== null && (
+      <CommentDrawer 
+        isOpen={commentsOpen} 
+        onClose={() => setCommentsOpen(false)} 
+        reelId={numericId} 
+      />
+    )}
+    </>
   )
 }
 
