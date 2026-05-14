@@ -1,31 +1,97 @@
-export const dynamic = 'force-dynamic'
 import { NextRequest } from 'next/server'
-
 import { getStoreContext } from '@/lib/actions/ai-agent'
 import { buildRouterPrompt, getAgentPrompt } from '@/lib/agents/prompts'
+import { lookupDarija, formatDarijaContext } from '@/lib/agents/darija-rag'
 
 export const runtime = 'edge'
 
-const VALID_INTENTS = [
-  'analytics',
-  'marketing',
-  'product',
-  'moderation',
-  'general',
-] as const
+type ChatTurn = {
+  role: 'user' | 'assistant' | 'system'
+  content: string
+}
 
-type ValidIntent = (typeof VALID_INTENTS)[number]
+type ValidIntent = 'order_tracking' | 'product_info' | 'general' | 'store_info' | 'promotions' | 'feedback' | 'hours' | 'location'
 
-function parseIntentFromGroq(content: string): ValidIntent {
-  const trimmed = content.trim().toLowerCase()
-  const firstWord = trimmed.split(/\s+/)[0]?.replace(/[^a-z]/g, '') ?? ''
-  if (VALID_INTENTS.includes(firstWord as ValidIntent)) {
-    return firstWord as ValidIntent
-  }
-  for (const intent of VALID_INTENTS) {
-    if (trimmed.includes(intent)) return intent
-  }
+function parseIntentFromGroq(raw: string): ValidIntent {
+  const normalized = raw.toLowerCase().trim()
+  if (normalized.includes('order_tracking')) return 'order_tracking'
+  if (normalized.includes('product_info')) return 'product_info'
+  if (normalized.includes('store_info')) return 'store_info'
+  if (normalized.includes('promotions')) return 'promotions'
+  if (normalized.includes('feedback')) return 'feedback'
+  if (normalized.includes('hours')) return 'hours'
+  if (normalized.includes('location')) return 'location'
   return 'general'
+}
+
+function buildGeminiContents(messages: ChatTurn[]) {
+  return messages.map((m) => ({
+    role: m.role === 'assistant' ? 'model' : 'user',
+    parts: [{ text: m.content }],
+  }))
+}
+
+function extractGeminiTextChunk(rec: any): string {
+  // If it's a non-streaming response
+  if (rec.candidates?.[0]?.content?.parts?.[0]?.text) {
+    return rec.candidates[0].content.parts[0].text
+  }
+  // If it's a streaming response
+  const parts = rec.candidates?.[0]?.content?.parts
+  if (!parts?.length) return ''
+  return parts.map((p: any) => p.text ?? '').join('')
+}
+
+async function callGroq(systemPrompt: string, messages: ChatTurn[]) {
+  const key = process.env.GROQ_API_KEY
+  if (!key) throw new Error('GROQ_API_KEY missing')
+
+  const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${key}`,
+    },
+    body: JSON.stringify({
+      model: 'llama-3.3-70b-versatile',
+      messages: [
+        { role: 'system', content: systemPrompt },
+        ...messages
+      ],
+      temperature: 0.7,
+      max_tokens: 1024,
+    }),
+  })
+
+  if (!res.ok) throw new Error(`Groq error: ${res.status}`)
+  const data = await res.json()
+  return data.choices?.[0]?.message?.content ?? ''
+}
+
+async function callOpenRouter(systemPrompt: string, messages: ChatTurn[]) {
+  const key = process.env.OPENROUTER_API_KEY
+  if (!key) throw new Error('OPENROUTER_API_KEY missing')
+
+  const res = await fetch('https://openrouter.ai/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${key}`,
+    },
+    body: JSON.stringify({
+      model: process.env.OPENROUTER_MODEL || 'meta-llama/llama-3.2-3b-instruct:free',
+      messages: [
+        { role: 'system', content: systemPrompt },
+        ...messages
+      ],
+      temperature: 0.7,
+      max_tokens: 1024,
+    }),
+  })
+
+  if (!res.ok) throw new Error(`OpenRouter error: ${res.status}`)
+  const data = await res.json()
+  return data.choices?.[0]?.message?.content ?? ''
 }
 
 async function classifyIntent(userMessage: string): Promise<ValidIntent> {
@@ -59,238 +125,88 @@ async function classifyIntent(userMessage: string): Promise<ValidIntent> {
   }
 }
 
-type ChatTurn = { role: string; content: string }
-
-function buildGeminiContents(history: ChatTurn[]) {
-  return history.map((m) => {
-    if (m.role === 'assistant') {
-      return { role: 'model', parts: [{ text: m.content }] }
-    }
-    return { role: 'user', parts: [{ text: m.content }] }
-  })
-}
-
-function extractGeminiTextChunk(parsed: unknown): string {
-  if (!parsed || typeof parsed !== 'object') return ''
-  const rec = parsed as {
-    candidates?: Array<{
-      content?: { parts?: Array<{ text?: string }> }
-    }>
-  }
-  const parts = rec.candidates?.[0]?.content?.parts
-  if (!parts?.length) return ''
-  return parts.map((p) => p.text ?? '').join('')
-}
-
 export async function POST(req: NextRequest) {
-  let body: { storeId?: unknown; messages?: unknown }
+  let body: { storeId?: unknown; messages?: unknown; stream?: boolean }
   try {
-    body = (await req.json()) as { storeId?: unknown; messages?: unknown }
+    body = (await req.json())
   } catch {
-    return new Response(JSON.stringify({ error: 'Invalid JSON body' }), {
-      status: 400,
-      headers: { 'Content-Type': 'application/json' },
-    })
+    return new Response(JSON.stringify({ error: 'Invalid JSON body' }), { status: 400 })
   }
 
   const storeIdRaw = body.storeId
   const messagesRaw = body.messages
 
-  console.log(
-    '[AI Agent] storeId:',
-    storeIdRaw,
-    'messages:',
-    Array.isArray(messagesRaw) ? messagesRaw.length : messagesRaw,
-  )
-
-  if (!storeIdRaw) {
-    return new Response(JSON.stringify({ error: 'Missing storeId' }), {
-      status: 400,
-      headers: { 'Content-Type': 'application/json' },
-    })
-  }
-
-  if (!messagesRaw || !Array.isArray(messagesRaw) || messagesRaw.length === 0) {
-    return new Response(JSON.stringify({ error: 'messages must not be empty' }), {
-      status: 400,
-      headers: { 'Content-Type': 'application/json' },
-    })
+  if (!storeIdRaw || !messagesRaw || !Array.isArray(messagesRaw)) {
+    return new Response(JSON.stringify({ error: 'Missing storeId or messages' }), { status: 400 })
   }
 
   const storeId = Number(storeIdRaw)
-  if (!Number.isFinite(storeId) || storeId <= 0) {
-    return new Response(JSON.stringify({ error: 'Invalid storeId' }), {
-      status: 400,
-      headers: { 'Content-Type': 'application/json' },
-    })
-  }
-
   const messages = messagesRaw as ChatTurn[]
+  const streamMode = body.stream !== false
 
   const lastUser = [...messages].reverse().find((m) => m.role === 'user')
   const lastUserMessage = lastUser?.content ?? ''
 
+  // ── Step 0: Darija RAG ────────────────────────────────────────────────────
+  const darijaResults = await lookupDarija(lastUserMessage)
+  const darijaContext = formatDarijaContext(darijaResults)
+
   const ctx = await getStoreContext(storeId)
-
   const intent = await classifyIntent(lastUserMessage)
-  const systemPrompt = getAgentPrompt(intent, ctx)
+  const systemPrompt = getAgentPrompt(intent, ctx) + darijaContext
 
-  const geminiKey = process.env.GEMINI_API_KEY
-  if (!geminiKey) {
-    return new Response(JSON.stringify({ error: 'GEMINI_API_KEY is not configured' }), {
-      status: 502,
-      headers: { 'Content-Type': 'application/json' },
-    })
+  // ── Step 1: Try Groq (Primary) ───────────────────────────────────────────
+  try {
+    console.log('[AI Agent] Provider: Groq')
+    const text = await callGroq(systemPrompt, messages)
+    return new Response(
+      streamMode ? `data: ${JSON.stringify({ text })}\n\ndata: [DONE]\n\n` : JSON.stringify({ text }),
+      { headers: { 'Content-Type': streamMode ? 'text/event-stream' : 'application/json' } }
+    )
+  } catch (e: any) {
+    console.error('[AI Agent] Groq failed:', e.message)
   }
 
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:streamGenerateContent?alt=sse&key=${process.env.GEMINI_API_KEY}`
-
-  const geminiBody = {
-    systemInstruction: { parts: [{ text: systemPrompt }] },
-    contents: buildGeminiContents(messages),
-    generationConfig: { maxOutputTokens: 1024, temperature: 0.7 },
-  }
-
-  let geminiRes: Response | undefined = undefined
-  let retryCount = 0
-
-  while (retryCount <= 2) {
-    try {
-      geminiRes = await fetch(url, {
+  // ── Step 2: Try Gemini (Secondary) ───────────────────────────────────────
+  try {
+    const geminiKey = process.env.GEMINI_API_KEY
+    if (geminiKey) {
+      console.log('[AI Agent] Provider: Gemini')
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiKey}`
+      const res = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(geminiBody),
+        body: JSON.stringify({
+          systemInstruction: { parts: [{ text: systemPrompt }] },
+          contents: buildGeminiContents(messages),
+          generationConfig: { maxOutputTokens: 1024, temperature: 0.7 },
+        }),
       })
 
-      if (geminiRes.status === 429) {
-        if (retryCount < 2) {
-          retryCount++
-          await new Promise((resolve) => setTimeout(resolve, 2000))
-          continue
-        }
+      if (res.ok) {
+        const data = await res.json()
+        const text = extractGeminiTextChunk(data)
         return new Response(
-          'The AI service is busy. Please wait a few seconds and try again.',
-          { status: 429 }
+          streamMode ? `data: ${JSON.stringify({ text })}\n\ndata: [DONE]\n\n` : JSON.stringify({ text }),
+          { headers: { 'Content-Type': streamMode ? 'text/event-stream' : 'application/json' } }
         )
       }
-
-      // Not a 429, or succeeded, so break out of the loop
-      break
-    } catch (e) {
-      if (retryCount < 2) {
-        retryCount++
-        await new Promise((resolve) => setTimeout(resolve, 2000))
-        continue
-      }
-      const msg = e instanceof Error ? e.message : 'Gemini request failed'
-      return new Response(JSON.stringify({ error: msg }), {
-        status: 502,
-        headers: { 'Content-Type': 'application/json' },
-      })
+      console.error('[AI Agent] Gemini failed status:', res.status)
     }
+  } catch (e: any) {
+    console.error('[AI Agent] Gemini failed error:', e.message)
   }
 
-  // Typescript safety since we broke out
-  if (!geminiRes) {
-    return new Response(JSON.stringify({ error: 'Failed to fetch Gemini' }), {
-      status: 502,
-      headers: { 'Content-Type': 'application/json' },
-    })
-  }
-
-  if (!geminiRes.ok) {
-    const errText = await geminiRes.text().catch(() => '')
-    console.error('[Gemini Error]', geminiRes.status, errText)
+  // ── Step 3: Try OpenRouter (Final Fallback) ──────────────────────────────
+  try {
+    console.log('[AI Agent] Provider: OpenRouter')
+    const text = await callOpenRouter(systemPrompt, messages)
     return new Response(
-      JSON.stringify({
-        error: `Gemini error (${geminiRes.status})`,
-        detail: errText.slice(0, 500),
-      }),
-      { status: 502, headers: { 'Content-Type': 'application/json' } },
+      streamMode ? `data: ${JSON.stringify({ text })}\n\ndata: [DONE]\n\n` : JSON.stringify({ text }),
+      { headers: { 'Content-Type': streamMode ? 'text/event-stream' : 'application/json' } }
     )
+  } catch (e: any) {
+    console.error('[AI Agent] OpenRouter failed:', e.message)
+    return new Response(JSON.stringify({ error: 'All AI providers failed' }), { status: 502 })
   }
-
-  const reader = geminiRes.body?.getReader()
-  if (!reader) {
-    return new Response(JSON.stringify({ error: 'Empty Gemini response body' }), {
-      status: 502,
-      headers: { 'Content-Type': 'application/json' },
-    })
-  }
-
-  const encoder = new TextEncoder()
-  const decoder = new TextDecoder()
-
-  const stream = new ReadableStream({
-    async start(controller) {
-      let buffer = ''
-      try {
-        while (true) {
-          const { done, value } = await reader.read()
-          if (done) break
-          buffer += decoder.decode(value, { stream: true })
-          const lines = buffer.split('\n')
-          buffer = lines.pop() ?? ''
-          for (const line of lines) {
-            const trimmed = line.trim()
-            if (!trimmed.startsWith('data:')) continue
-            const payload = trimmed.startsWith('data: ')
-              ? trimmed.slice(6).trim()
-              : trimmed.slice(5).trim()
-            if (payload === '[DONE]') {
-              controller.enqueue(encoder.encode('data: [DONE]\n\n'))
-              continue
-            }
-            try {
-              const parsed: unknown = JSON.parse(payload)
-              const text = extractGeminiTextChunk(parsed)
-              if (text) {
-                controller.enqueue(
-                  encoder.encode(`data: ${JSON.stringify({ text })}\n\n`),
-                )
-              }
-            } catch {
-              // skip malformed chunk
-            }
-          }
-        }
-        if (buffer.trim()) {
-          const trimmed = buffer.trim()
-          if (trimmed.startsWith('data:')) {
-            const payload = trimmed.startsWith('data: ')
-              ? trimmed.slice(6).trim()
-              : trimmed.slice(5).trim()
-            try {
-              const parsed: unknown = JSON.parse(payload)
-              const text = extractGeminiTextChunk(parsed)
-              if (text) {
-                controller.enqueue(
-                  encoder.encode(`data: ${JSON.stringify({ text })}\n\n`),
-                )
-              }
-            } catch {
-              // ignore trailing garbage
-            }
-          }
-        }
-        controller.enqueue(encoder.encode('data: [DONE]\n\n'))
-        controller.close()
-      } catch (e) {
-        const msg = e instanceof Error ? e.message : 'Stream error'
-        controller.enqueue(
-          encoder.encode(`data: ${JSON.stringify({ text: `\n\n[Erreur: ${msg}]` })}\n\n`),
-        )
-        controller.enqueue(encoder.encode('data: [DONE]\n\n'))
-        controller.close()
-      }
-    },
-  })
-
-  return new Response(stream, {
-    headers: {
-      'Content-Type': 'text/event-stream',
-      'Cache-Control': 'no-cache',
-      Connection: 'keep-alive',
-    },
-  })
 }

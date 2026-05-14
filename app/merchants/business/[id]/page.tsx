@@ -20,6 +20,7 @@ import { ShareBusinessButton } from '@/components/ShareBusinessButton';
 import { Item } from '@/lib/actions/items';
 import { BusinessReservationSidebar } from '@/components/BusinessReservationSidebar';
 import FavoriteButton from '@/components/FavoriteButton';
+import FollowButton from '@/components/FollowButton';
 import StoreAnalyticsTracker from '@/components/StoreAnalyticsTracker';
 import BusinessGallerySection from '@/components/BusinessGallerySection';
 
@@ -213,7 +214,10 @@ export default async function BusinessDetailPage({ params }: { params: { id: str
             />
 
             {business.store_id && (
-              <FavoriteButton storeId={business.store_id} />
+              <>
+                <FavoriteButton storeId={business.store_id} />
+                <FollowButton storeId={business.store_id} />
+              </>
             )}
           </div>
         </div>
