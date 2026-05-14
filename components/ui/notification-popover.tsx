@@ -141,9 +141,9 @@ export const NotificationPopover = ({
         size="icon"
         className={cn("relative", buttonClassName)}
       >
-        <Bell size={16} />
+        <Bell size={18} className="text-white/70 group-hover/notification:text-white transition-colors" />
         {unreadCount > 0 && (
-          <div className="absolute -top-1 -right-1 w-5 h-5 bg-black rounded-full flex items-center justify-center text-xs border border-gray-800 text-white">
+          <div className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-red-600 text-[10px] font-bold text-white ring-2 ring-black animate-in zoom-in duration-300">
             {unreadCount}
           </div>
         )}

@@ -50,10 +50,15 @@ export default function SupportMessagesSection({ storeId, initialTicketId }: Sup
 
   const supabase = createClient();
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [userRole, setUserRole] = useState<string | null>(null);
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
         setCurrentUserId(user?.id || null);
+        if (user) {
+          supabase.from('users').select('role').eq('id', user.id).single()
+            .then(({ data }) => setUserRole(data?.role));
+        }
     });
   }, [supabase]);
 
@@ -216,7 +221,8 @@ export default function SupportMessagesSection({ storeId, initialTicketId }: Sup
     
     try {
       if (activeTab === 'tickets') {
-        const result = await sendTicketMessage(selectedTicketId!, content, 'support');
+        const senderType = userRole === 'ADMIN' ? 'support' : 'customer';
+        const result = await sendTicketMessage(selectedTicketId!, content, senderType);
         if (!result.success) setMessageText(content);
       } else {
         const result = await sendStoreCustomerMessage(selectedPartnerId!, content, storeId);
@@ -380,9 +386,8 @@ export default function SupportMessagesSection({ storeId, initialTicketId }: Sup
                     <h3 className="text-xl font-black uppercase tracking-[0.3em]">Ouvrir une discussion</h3>
                 </div>
             ) : messages.map((msg) => {
-              const isOwner = msg.sender_id === currentUserId;
-              const isSupportMsg = activeTab === 'tickets' && msg.sender_type === 'support';
-              const isMe = isOwner || isSupportMsg;
+              const isMe = msg.sender_id === currentUserId;
+              const isSupportMsg = msg.sender_type === 'support';
               
               return (
                 <div key={msg.id} className={cn("flex w-full", isMe ? 'justify-end' : 'justify-start')}>
@@ -390,7 +395,9 @@ export default function SupportMessagesSection({ storeId, initialTicketId }: Sup
                     className={cn(
                         "max-w-[75%] rounded-[1.5rem] p-5 shadow-2xl border transition-transform hover:scale-[1.01]",
                         isMe
-                            ? (activeTab === 'tickets' ? 'bg-primary/20 text-blue-50 border-primary/30 rounded-tr-none' : 'bg-red-500/10 text-red-50 border-red-500/20 rounded-tr-none')
+                            ? (activeTab === 'tickets' 
+                                ? (userRole === 'ADMIN' ? 'bg-blue-500/20 text-blue-50 border-blue-500/30 rounded-tr-none' : 'bg-primary/20 text-blue-50 border-primary/30 rounded-tr-none')
+                                : 'bg-red-500/10 text-red-50 border-red-500/20 rounded-tr-none')
                             : 'bg-white/5 text-slate-200 border-white/5 rounded-tl-none'
                     )}
                   >

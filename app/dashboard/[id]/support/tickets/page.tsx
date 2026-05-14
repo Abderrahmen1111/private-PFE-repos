@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
-import { Search, Plus, Phone, User, MoreVertical, Trash2, Edit } from 'lucide-react';
+import { Search, Plus, Phone, User, MoreVertical, Trash2, Edit, MessageSquare } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
@@ -67,15 +68,30 @@ export default function TicketsPage() {
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
-  const [newTicket, setNewTicket] = useState({ subject: '', description: '', priority: 'medium' as any });
+  const [newTicket, setNewTicket] = useState<{
+    subject: string;
+    description: string;
+    priority: SupportTicket['priority'];
+    channel: SupportTicket['channel'];
+  }>({
+    subject: '',
+    description: '',
+    priority: 'medium',
+    channel: 'chat',
+  });
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [editingTicketId, setEditingTicketId] = useState<string | null>(null);
   const [isUpdating, setIsUpdating] = useState(false);
-  const [editTicketData, setEditTicketData] = useState({
+  const [editTicketData, setEditTicketData] = useState<{
+    subject: string;
+    priority: SupportTicket['priority'];
+    status: SupportTicket['status'];
+  }>({
     subject: '',
-    priority: 'medium' as SupportTicket['priority'],
+    priority: 'medium',
+    status: 'open',
   });
   const [editingDescriptionPreview, setEditingDescriptionPreview] = useState('');
   const [isLoadingEditDescription, setIsLoadingEditDescription] = useState(false);
@@ -106,7 +122,7 @@ export default function TicketsPage() {
       toast.success("Ticket créé avec succès ! Nous reviendrons vers vous rapidement.");
       setTickets(prev => [result.data as SupportTicket, ...prev]);
       setIsDialogOpen(false);
-      setNewTicket({ subject: '', description: '', priority: 'medium' });
+      setNewTicket({ subject: '', description: '', priority: 'medium', channel: 'chat' });
     } else {
       toast.error("Erreur lors de la création du ticket.");
     }
@@ -138,6 +154,7 @@ export default function TicketsPage() {
     setEditTicketData({
       subject: ticket.subject,
       priority: ticket.priority,
+      status: ticket.status,
     });
     setEditingDescriptionPreview('');
     setIsLoadingEditDescription(true);
@@ -175,7 +192,7 @@ export default function TicketsPage() {
       const result = await updateTicket(editingTicketId, {
         subject: editTicketData.subject.trim(),
         priority: editTicketData.priority,
-        status: ticketBeingEdited.status,
+        status: editTicketData.status,
       });
       if (result.success && result.data) {
         setTickets(prev =>
@@ -184,7 +201,7 @@ export default function TicketsPage() {
         toast.success('Ticket mis à jour avec succès.');
         setIsEditDialogOpen(false);
         setEditingTicketId(null);
-        setEditTicketData({ subject: '', priority: 'medium' });
+        setEditTicketData({ subject: '', priority: 'medium', status: 'open' });
         setEditingDescriptionPreview('');
       } else {
         toast.error(result.error || 'Erreur lors de la mise à jour du ticket.');
@@ -274,6 +291,39 @@ export default function TicketsPage() {
                   onChange={e => setNewTicket(prev => ({ ...prev, description: e.target.value }))}
                   placeholder="Expliquez-nous tout..." 
                 />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="channel">Canal de réponse préféré</Label>
+                <div className="flex gap-4 mt-1">
+                  <label className="flex items-center gap-2 cursor-pointer group">
+                    <input
+                      type="radio"
+                      name="channel"
+                      value="chat"
+                      checked={newTicket.channel === 'chat'}
+                      onChange={() => setNewTicket(prev => ({ ...prev, channel: 'chat' }))}
+                      className="w-4 h-4 text-primary border-white/20 bg-white/5 focus:ring-primary"
+                    />
+                    <div className="flex items-center gap-2">
+                      <MessageSquare className={cn("w-4 h-4", newTicket.channel === 'chat' ? "text-primary" : "text-muted-foreground")} />
+                      <span className={cn("text-xs font-bold", newTicket.channel === 'chat' ? "text-white" : "text-muted-foreground")}>Message (Chat)</span>
+                    </div>
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer group">
+                    <input
+                      type="radio"
+                      name="channel"
+                      value="phone"
+                      checked={newTicket.channel === 'phone'}
+                      onChange={() => setNewTicket(prev => ({ ...prev, channel: 'phone' }))}
+                      className="w-4 h-4 text-primary border-white/20 bg-white/5 focus:ring-primary"
+                    />
+                    <div className="flex items-center gap-2">
+                      <Phone className={cn("w-4 h-4", newTicket.channel === 'phone' ? "text-primary" : "text-muted-foreground")} />
+                      <span className={cn("text-xs font-bold", newTicket.channel === 'phone' ? "text-white" : "text-muted-foreground")}>Appel Téléphonique</span>
+                    </div>
+                  </label>
+                </div>
               </div>
             </div>
             <DialogFooter>

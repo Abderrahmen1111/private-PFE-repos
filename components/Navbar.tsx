@@ -19,6 +19,7 @@ import { useSmartSearch } from '@/hooks/useSmartSearch';
 import { useSavesStore } from '@/lib/store/use-saves-store';
 import { useMessaging } from '@/hooks/useMessaging';
 import { useCartStore } from '@/lib/store/use-cart-store';
+import { toast } from 'sonner';
 
 // ─── Category menu data ───────────────────────────────────────────────────────
 const categoryMenuItems = [
@@ -846,7 +847,7 @@ export default function Navbar() {
   // ─── Voice Search ───────────────────────────────────────────────────────────
   const handleVoiceSearch = () => {
     if (!isSupported) {
-      alert('Voice search is not supported in your browser.');
+      toast.error('Voice search is not supported in your browser.');
       return;
     }
     
@@ -862,7 +863,7 @@ export default function Navbar() {
   // ─── Near Me (Geolocation) ──────────────────────────────────────────────────
   const handleNearMe = () => {
     if (!navigator.geolocation) {
-      alert('Geolocation is not supported in your browser.');
+      toast.error('Geolocation is not supported in your browser.');
       return;
     }
     setIsLocating(true);
@@ -889,7 +890,7 @@ export default function Navbar() {
         }
       },
       () => {
-        alert('Could not get your location. Please allow location access.');
+        toast.error('Could not get your location. Please allow location access.');
         setIsLocating(false);
       }
     );

@@ -93,40 +93,26 @@ export function ServiceCard({ item, businessName, promotion, onBook, onViewDetai
     return (
         <div
             onClick={onViewDetails}
-            className="group relative bg-white rounded-3xl shadow-[0_4px_20px_rgba(0,0,0,0.03)] hover:shadow-[0_20px_40px_rgba(79,70,229,0.12)] transition-all duration-500 overflow-hidden border border-stone-200/60 hover:border-indigo-300 hover:-translate-y-1.5 cursor-pointer h-full flex flex-col"
+            className="group relative bg-[#1c1c1c] rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden border border-[#2a2a2a] hover:border-[#3a3a3a] hover:-translate-y-1 cursor-pointer h-full flex flex-col"
         >
             {/* Image/Visual Section */}
-            <div className="relative h-48 bg-gradient-to-br from-indigo-600 via-indigo-500 to-violet-600 flex items-center justify-center overflow-hidden">
+            <div className="relative h-[220px] bg-[#111] flex items-center justify-center overflow-hidden">
                 {item.main_image ? (
                     <img
                         src={item.main_image}
                         alt={item.name}
-                        className="w-full h-full object-cover transition-transform duration-[1.5s] group-hover:scale-110 opacity-90"
+                        className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
                     />
                 ) : (
-                    <div className="w-full h-full flex items-center justify-center">
-                        <span className="text-7xl select-none group-hover:scale-125 transition-transform duration-700 opacity-20 filter drop-shadow-lg">
+                    <div className="w-full h-full flex items-center justify-center bg-[#111]">
+                        <span className="text-7xl select-none opacity-20 filter drop-shadow-lg">
                             ✨
                         </span>
                     </div>
                 )}
 
                 {/* Gradient Overlay for better contrast */}
-                <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent opacity-60" />
-
-                {/* Floating Badges (Premium) */}
-                <div className="absolute top-4 left-4 flex flex-col gap-2">
-                    {hasDiscount && (
-                        <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-rose-500 backdrop-blur-md text-white shadow-lg animate-pulse">
-                            <Zap className="w-3 h-3 fill-white" />
-                            <span className="text-[10px] font-black tracking-widest uppercase">-{promotion.discount_percent}%</span>
-                        </div>
-                    )}
-                    <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/95 backdrop-blur-md shadow-sm text-indigo-700 border border-white/20">
-                        <Award className="w-3.5 h-3.5" />
-                        <span className="text-[10px] font-black tracking-widest uppercase">Expert</span>
-                    </div>
-                </div>
+                <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-black/60 to-transparent" />
 
                 {/* Wishlist Button */}
                 <button
@@ -134,124 +120,92 @@ export function ServiceCard({ item, businessName, promotion, onBook, onViewDetai
                         e.stopPropagation();
                         setIsWished(!isWished);
                     }}
-                    className={`absolute top-4 right-4 w-9 h-9 rounded-full flex items-center justify-center transition-all duration-300 transform ${
-                        isWished ? 'bg-rose-500 text-white shadow-md scale-110' : 'bg-white/90 text-stone-400 hover:text-rose-500 hover:scale-105'
-                    } shadow-sm backdrop-blur-md`}
+                    className={`absolute top-4 right-4 w-8 h-8 rounded-full flex items-center justify-center transition-all duration-300 transform ${
+                        isWished ? 'bg-black/50 text-rose-500 scale-110' : 'bg-black/40 text-white hover:text-rose-400'
+                    } backdrop-blur-md`}
                 >
                     <Heart className={`w-4 h-4 ${isWished ? 'fill-current' : ''}`} />
                 </button>
 
-                {/* Bottom Overlay Label (Overlapping Image & Content) */}
-                <div className="absolute -bottom-4 left-1/2 -translate-x-1/2 z-10">
-                     <span className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full bg-indigo-900 text-white text-[9px] font-black tracking-[0.15em] uppercase shadow-xl border border-indigo-500/30 whitespace-nowrap">
-                        Service Professionnel
-                    </span>
+                {/* Floating Badges (Discount Bottom Right like Image) */}
+                <div className="absolute bottom-3 right-3 flex items-center gap-2">
+                    {hasDiscount && (
+                        <div className="px-2.5 py-1 rounded-md bg-[#1ed760] text-black font-bold text-[11px] tracking-wide shadow-lg">
+                            {promotion.discount_percent}% OFF
+                        </div>
+                    )}
                 </div>
             </div>
 
             {/* Content Section */}
-            <div className="p-6 pt-8 flex flex-col flex-1 gap-4">
-                <div className="space-y-1 text-center mt-1">
-                    <h3 className="text-[17px] font-black text-stone-900 leading-tight line-clamp-2 tracking-tight group-hover:text-indigo-600 transition-colors">
+            <div className="p-4 flex flex-col flex-1 gap-3">
+                <div className="flex items-start justify-between gap-2">
+                    <h3 className="text-[17px] font-semibold text-white leading-snug line-clamp-2">
                         {item.name}
                     </h3>
-                </div>
-
-                <div className="flex items-center justify-center mt-1">
-                    <div className="flex flex-col items-center gap-1.5">
-                         <Stars n={item.rating_average || 0} />
-                         <span className="text-[10px] font-bold text-stone-400 tracking-wider">
-                            ({(item.total_reviews || 0).toLocaleString()} avis)
+                    <div className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-white/10 shrink-0">
+                        <Star className="w-3.5 h-3.5 text-orange-500 fill-orange-500" />
+                        <span className="text-xs font-semibold text-zinc-300">
+                            {item.rating_average ? item.rating_average.toFixed(1) : '4.7'}
                         </span>
                     </div>
                 </div>
 
-                {!hidePricing && (
-                    <div className="flex items-center justify-center mt-2 bg-stone-50 rounded-xl py-2 border border-stone-100">
-                        <div className="flex flex-col items-center">
-                            {hasDiscount && (
-                                <span className="text-[11px] font-bold text-rose-400 line-through tracking-wider">
-                                    {item.price.toLocaleString()} DT
-                                </span>
-                            )}
-                            <div className="flex items-baseline gap-1">
-                                <span className={`text-2xl font-black tracking-tighter ${hasDiscount ? 'text-rose-600' : 'text-stone-900'}`}>
-                                    {discountedPrice.toLocaleString()}
-                                </span>
-                                <span className="text-[10px] font-black text-stone-400 uppercase ml-0.5">
-                                    DT
-                                </span>
-                            </div>
-                        </div>
-                    </div>
-                )}
-
-                {businessName && (
-                    <div className="flex items-center justify-center gap-2 py-3 mt-auto border-t border-stone-100">
-                        <div className="w-8 h-8 rounded-full bg-stone-100 flex items-center justify-center text-sm border border-stone-200">
-                            🏪
-                        </div>
-                        <div className="flex flex-col">
-                            <span className="text-[10px] font-black text-stone-600 uppercase tracking-widest truncate max-w-[120px]">{businessName}</span>
-                            <span className="text-[9px] font-bold text-emerald-500 flex items-center gap-1">
-                                <ShieldCheck className="w-3 h-3" /> Vérifié
-                            </span>
-                        </div>
-                    </div>
-                )}
-
-                <div className="flex justify-center flex-wrap gap-2 pt-1">
-                    <div className="flex items-center gap-1 px-2.5 py-1 rounded-md bg-stone-100 text-stone-600">
-                        <Clock className="w-3 h-3" />
-                        <span className="text-[9px] font-bold uppercase tracking-wider">Flexibilité</span>
-                    </div>
-                    <div className="flex items-center gap-1 px-2.5 py-1 rounded-md bg-emerald-50 text-emerald-600">
-                        <ShieldCheck className="w-3 h-3" />
-                        <span className="text-[9px] font-bold uppercase tracking-wider">Garanti</span>
-                    </div>
+                <div className="text-[14px] text-zinc-400 line-clamp-1">
+                    {businessName ? `By ${businessName}` : 'Service Professionnel'}
                 </div>
 
+                {!hidePricing && (
+                    <div className="mt-2 flex items-baseline gap-2">
+                        <span className="text-[22px] font-bold text-white tracking-tight">
+                            {discountedPrice.toLocaleString()} DT
+                        </span>
+                        {hasDiscount && (
+                            <span className="text-sm font-medium text-zinc-500 line-through">
+                                {item.price.toLocaleString()} DT
+                            </span>
+                        )}
+                    </div>
+                )}
+
                 {/* Action Buttons */}
-                <div className="flex gap-2 pt-4 mt-auto">
+                <div className="flex gap-2.5 pt-3 mt-auto">
                     {!hideBooking && (
                         <button
                             onClick={(e) => {
                                 e.stopPropagation();
                                 handleOpenBooking();
                             }}
-                            className="flex-1 h-11 flex items-center justify-center gap-2 text-[11px] font-black tracking-[0.2em] uppercase bg-stone-900 text-white rounded-xl hover:bg-indigo-600 transition-colors active:scale-95 shadow-md"
+                            className="flex-1 h-10 flex items-center justify-center gap-2 text-xs font-bold tracking-wide uppercase bg-white text-black rounded-xl hover:bg-zinc-200 transition-colors active:scale-95"
                         >
                             <Calendar className="w-4 h-4" />
                             Réserver
                         </button>
                     )}
 
-                        {!hideBooking && (
-                            <button
-                                onClick={handleAddToCart}
-                                className="w-11 h-11 flex items-center justify-center rounded-xl bg-white border border-stone-200 text-stone-600 hover:border-emerald-500 hover:text-emerald-600 hover:bg-emerald-50 transition-all duration-300 active:scale-95 shadow-sm"
-                                title="Ajouter au panier"
-                            >
-                                <ShoppingBag className="w-4 h-4" />
-                            </button>
-                        )}
-
+                    {!hideBooking && (
                         <button
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                onViewDetails?.();
-                            }}
-                            className={`${hideBooking ? 'flex-1 h-11' : 'w-11 h-11'} flex items-center justify-center rounded-xl bg-white border border-stone-200 text-stone-600 hover:border-indigo-500 hover:text-indigo-600 hover:bg-indigo-50 transition-all duration-300 active:scale-95 shadow-sm`}
-                            title="Détails"
+                            onClick={handleAddToCart}
+                            className="w-10 h-10 flex items-center justify-center rounded-xl bg-[#2a2a2a] border border-[#3a3a3a] text-zinc-300 hover:text-white hover:bg-[#3a3a3a] transition-all active:scale-95"
+                            title="Ajouter au panier"
                         >
-                            {hideBooking && <span className="mr-2 text-[11px] font-black tracking-[0.2em] uppercase text-stone-600">Détails</span>}
-                            <ArrowRight className="w-4 h-4" />
+                            <ShoppingBag className="w-4 h-4" />
                         </button>
+                    )}
+
+                    <button
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            onViewDetails?.();
+                        }}
+                        className={`${hideBooking ? 'flex-1 h-10' : 'w-10 h-10'} flex items-center justify-center rounded-xl bg-[#2a2a2a] border border-[#3a3a3a] text-zinc-300 hover:text-white hover:bg-[#3a3a3a] transition-all active:scale-95`}
+                        title="Détails"
+                    >
+                        {hideBooking && <span className="mr-2 text-xs font-bold tracking-wide uppercase">Détails</span>}
+                        <ArrowRight className="w-4 h-4" />
+                    </button>
                 </div>
             </div>
-            
-            {/* Premium Shine Effect on hover */}
-            <div className="absolute -inset-full h-[500%] w-[500%] bg-gradient-to-r from-transparent via-white/10 to-transparent rotate-45 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-[2s] pointer-events-none" />
         </div>
     );
 }

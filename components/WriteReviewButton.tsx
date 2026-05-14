@@ -9,10 +9,11 @@ interface WriteReviewButtonProps {
     businessName: string
     storeId: number | undefined | null
     businessId?: string
+    itemId?: number
     isOwner?: boolean
 }
 
-export function WriteReviewButton({ businessName, storeId, businessId, isOwner = false }: WriteReviewButtonProps) {
+export function WriteReviewButton({ businessName, storeId, businessId, itemId, isOwner = false }: WriteReviewButtonProps) {
     const [isModalOpen, setIsModalOpen] = useState(false)
 
     // The button is always active to allow shadow store creation
@@ -34,6 +35,7 @@ export function WriteReviewButton({ businessName, storeId, businessId, isOwner =
                 businessName={businessName}
                 storeId={storeId}
                 businessId={businessId}
+                itemId={itemId}
             />
         </>
     )

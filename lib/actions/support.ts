@@ -13,6 +13,7 @@ export type SupportTicket = {
   description?: string | null;
   status: 'open' | 'in_progress' | 'waiting_customer' | 'resolved' | 'closed';
   priority: 'low' | 'medium' | 'high' | 'critical';
+  channel: 'chat' | 'phone';
   created_at: string;
   updated_at: string;
 };
@@ -42,6 +43,7 @@ export async function createSupportTicket(payload: {
   subject: string;
   description: string;
   priority?: 'low' | 'medium' | 'high' | 'critical';
+  channel?: 'chat' | 'phone';
 }): Promise<{ success: boolean; data?: SupportTicket; error?: string }> {
   const supabase = createClient();
 
@@ -52,6 +54,7 @@ export async function createSupportTicket(payload: {
       subject: payload.subject,
       description: payload.description,
       priority: payload.priority || 'medium',
+      channel: payload.channel || 'chat',
       status: 'open',
       customer_name: 'Business Owner' // Default for owner-created tickets
     } as any)

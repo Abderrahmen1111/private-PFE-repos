@@ -10,17 +10,20 @@ import { addBusiness, searchUnified } from '@/lib/actions/addbuss';
 import type { UnifiedSearchResult } from '@/lib/actions/addbuss';
 import type { PlaceResult } from '@/app/api/places/search/route';
 import { createClient } from '@/lib/supabase/client';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import MapPicker from '@/components/ui/MapPicker';
 
 export default function AddBusinessPage() {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const [isMapOpen, setIsMapOpen] = useState(false);
 
   // ─── Type toggle ────────────────────────────────────────────────
   const [businessType, setBusinessType] = useState<'BUSINESS' | 'SERVICE'>('BUSINESS');
 
   // ─── Mode création (business non trouvé) ────────────────────────
-  const [isCreateMode, setIsCreateMode] = useState(false);
+  const [isCreateMode, setIsCreateMode] = useState(true);
 
   // ─── Recherche multi-source ─────────────────────────────────────
   const [isSearching, setIsSearching] = useState(false);
@@ -34,7 +37,7 @@ export default function AddBusinessPage() {
     | { type: 'gm'; data: PlaceResult }
     | { type: 'new' }
     | null
-  >(null);
+  >({ type: 'new' });
 
   // ─── Form data ─────────────────────────────────────────────────
   const [formData, setFormData] = useState({
@@ -442,14 +445,16 @@ export default function AddBusinessPage() {
                           )}
 
                           {/* Bouton Créer */}
-                          <button
-                            type="button"
-                            onClick={handleCreateMode}
-                            className="w-full p-3.5 text-sm font-semibold hover:bg-amber-50 flex items-center justify-center gap-2 border-t border-gray-100 transition-colors text-amber-600"
-                          >
-                            <PlusCircle className="w-4 h-4" />
-                            Mon établissement n'est pas listé → Créer
-                          </button>
+                          {!isCreateMode && (
+                            <button
+                              type="button"
+                              onClick={handleCreateMode}
+                              className="w-full p-3.5 text-sm font-semibold hover:bg-amber-50 flex items-center justify-center gap-2 border-t border-gray-100 transition-colors text-amber-600"
+                            >
+                              <PlusCircle className="w-4 h-4" />
+                              Mon établissement n'est pas listé → Créer
+                            </button>
+                          )}
                         </>
                       )}
                     </div>
@@ -656,10 +661,18 @@ export default function AddBusinessPage() {
                   <MapPin className="w-4 h-4 text-emerald-500" />
                   <span className="text-sm font-medium text-gray-700">Coordonnées GPS</span>
                   {formData.lat !== 0 && (
-                    <span className="text-[10px] px-2 py-0.5 bg-emerald-100 text-emerald-600 rounded-full font-medium">
+                    <span className="text-[10px] px-2 py-0.5 bg-emerald-100 text-emerald-600 rounded-full font-medium ml-2">
                       Auto-rempli
                     </span>
                   )}
+                  <button
+                    type="button"
+                    onClick={() => setIsMapOpen(true)}
+                    className="ml-auto flex items-center gap-1.5 text-[11px] font-bold text-emerald-600 hover:text-emerald-700 uppercase tracking-wider"
+                  >
+                    <Search className="w-3.5 h-3.5" />
+                    Ouvrir la carte
+                  </button>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
@@ -734,6 +747,20 @@ export default function AddBusinessPage() {
           </form>
         </div>
       </div>
+
+      <Dialog open={isMapOpen} onOpenChange={setIsMapOpen}>
+        <DialogContent className="max-w-4xl p-0 overflow-hidden border-none bg-transparent">
+          <DialogHeader className="hidden">
+            <DialogTitle>Pointer l'emplacement</DialogTitle>
+          </DialogHeader>
+          <MapPicker
+            initialLat={formData.lat}
+            initialLng={formData.lng}
+            onSelect={(lat, lng) => setFormData({ ...formData, lat, lng })}
+            onClose={() => setIsMapOpen(false)}
+          />
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

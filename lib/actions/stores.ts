@@ -237,13 +237,23 @@ export async function deleteStore(id: number) {
             .eq('owner_id', user.id);
 
         if (!countError && (remainingStores === 0)) {
+            // 1. Update public.users table
             const { error: roleError } = await (adminSupabase as any)
                 .from('users')
                 .update({ role: 'CLIENT' })
                 .eq('id', user.id);
 
             if (roleError) {
-                console.error("CRITICAL: Error reverting role to CLIENT:", roleError);
+                console.error("CRITICAL: Error reverting role to CLIENT in public.users:", roleError);
+            }
+
+            // 2. Update Auth Metadata to prevent the trigger from reverting the role
+            const { error: authError } = await supabase.auth.updateUser({
+                data: { role: 'CLIENT' }
+            });
+
+            if (authError) {
+                console.error("CRITICAL: Error reverting role to CLIENT in Auth Metadata:", authError);
             } else {
                 console.log(`Successfully downgraded user ${user.id} to CLIENT (no stores remaining)`);
             }
@@ -411,15 +421,31 @@ export async function updateStoreStatus(storeId: number, status: 'APPROVED' | 'R
 
         if (updateError) throw updateError
 
-        // 3. If REJECTED, revert user role to CLIENT
+        // 3. If REJECTED, check if owner has any other stores before reverting role
         if (status === 'REJECTED') {
-            const { error: roleError } = await (adminSupabase as any)
-                .from('users')
-                .update({ role: 'CLIENT' })
-                .eq('id', store.owner_id)
+            const { count: remainingStores } = await (adminSupabase as any)
+                .from('stores')
+                .select('*', { count: 'exact', head: true })
+                .eq('owner_id', store.owner_id)
+                .neq('status', 'REJECTED'); // Only count stores that are NOT rejected
 
-            if (roleError) {
-                console.error("Error reverting role to CLIENT:", roleError)
+            if (remainingStores === 0) {
+                // Downgrade in public.users
+                await (adminSupabase as any)
+                    .from('users')
+                    .update({ role: 'CLIENT' })
+                    .eq('id', store.owner_id);
+
+                // Downgrade in Auth Metadata (Note: this might require the admin to use a specific admin API if updating another user's metadata)
+                // For now, if we are in an admin action, we might not be able to update another user's auth metadata easily without the Admin Auth API
+                const { error: authError } = await (adminSupabase as any).auth.admin.updateUserById(
+                    store.owner_id,
+                    { user_metadata: { role: 'CLIENT' } }
+                );
+
+                if (authError) {
+                    console.error("Error reverting role in Auth Metadata (Admin):", authError);
+                }
             }
         }
 
