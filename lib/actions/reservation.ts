@@ -193,7 +193,15 @@ export async function updateBookingStatus(
 
   const updateData: any = { status, updated_at: new Date().toISOString() };
   
-  if (status === 'CONFIRMED') updateData.confirmed_at = new Date().toISOString();
+  if (status === 'CONFIRMED') {
+    updateData.confirmed_at = new Date().toISOString();
+    // Generate a unique tracking code for QR scanning
+    const trackingCode = `QR-BOK-${Date.now().toString(36).toUpperCase()}-${Math.random()
+      .toString(36)
+      .substring(2, 10)
+      .toUpperCase()}`;
+    updateData.tracking_code = trackingCode;
+  }
   if (status === 'COMPLETED') updateData.completed_at = new Date().toISOString();
 
   // 3. Use admin client to bypass RLS
@@ -268,4 +276,38 @@ export async function getStoreBookingsByDate(storeId: number, date: string) {
   }
 
   return data || [];
+}
+
+/**
+ * Get booking by tracking code (QR token)
+ * Used to retrieve booking details when QR code is scanned
+ */
+export async function getBookingByTrackingCode(trackingCode: string) {
+  const supabase = createClient();
+
+  const { data, error } = await supabase
+    .from('bookings')
+    .select(`
+      *,
+      stores (
+        id,
+        name,
+        owner_id
+      ),
+      items (
+        id,
+        name,
+        main_image
+      )
+    `)
+    .eq('tracking_code', trackingCode)
+    .eq('status', 'CONFIRMED')
+    .single();
+
+  if (error) {
+    console.error('Error fetching booking by tracking code:', error);
+    throw new Error('Réservation non trouvée ou déjà complétée');
+  }
+
+  return data as any;
 }
