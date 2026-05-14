@@ -112,7 +112,7 @@ export function SuggestionCard({ user }: SuggestionCardProps) {
                 size="icon"
                 onClick={handleCancelRequest}
                 disabled={loading}
-                className="shrink-0 hover:bg-destructive/10 hover:text-destructive border-dashed"
+                className="shrink-0 hover:bg-destructive/10  hover:text-destructive border-dashed"
                 title="Annuler l'invitation"
               >
                 <X className="h-4 w-4" />

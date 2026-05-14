@@ -204,13 +204,18 @@ function AddStoryButton({ storeId, isOwner, onAdded }: { storeId: number; isOwne
       const formData = new FormData();
       formData.append('file', selectedFile);
 
-      const url = await uploadStoryMedia(formData);
-      if (!url) throw new Error("Erreur serveur lors de l'upload");
+      const uploadResult = await uploadStoryMedia(formData);
+      if (uploadResult.error) {
+        throw new Error(uploadResult.error);
+      }
+      if (!uploadResult.url) {
+        throw new Error("Erreur lors de l'upload du fichier");
+      }
 
       const isVideo = selectedFile.type.startsWith('video/');
       const result = await publishStory({
         storeId,
-        mediaUrl: url,
+        mediaUrl: uploadResult.url,
         mediaType: isVideo ? 'video' : 'image',
         caption: caption.trim() || undefined,
       });
@@ -219,7 +224,7 @@ function AddStoryButton({ storeId, isOwner, onAdded }: { storeId: number; isOwne
         toast.success('Story publiée avec succès !');
         onAdded({
           id: result.storyId!,
-          media_url: url,
+          media_url: uploadResult.url,
           media_type: isVideo ? 'video' : 'image',
           caption: caption.trim() || undefined,
           views_count: 0,
@@ -241,7 +246,8 @@ function AddStoryButton({ storeId, isOwner, onAdded }: { storeId: number; isOwne
         throw new Error(result.error || 'Erreur lors de la publication');
       }
     } catch (error: any) {
-      toast.error(error.message);
+      console.error('Story publish error:', error);
+      toast.error(error.message || 'Erreur lors de la publication de la story');
       setIsUploading(false);
     }
   };

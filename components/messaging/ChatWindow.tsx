@@ -14,6 +14,7 @@ import { ChatMessage } from "./ChatMessage";
 import { Message, Conversation } from "@/types/messaging";
 import Link from "next/link";
 import { useMessaging } from "@/hooks/useMessaging";
+import { StoriesDemo } from "@/components/story-demo";
 
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -236,7 +237,7 @@ export function ChatWindow({ partner, messages, currentUserId, onSendMessage, on
           <div className="h-20 w-20 bg-primary/10 rounded-full flex items-center justify-center mx-auto animate-pulse">
             <Send className="h-8 w-8 text-primary" />
           </div>
-          <h3 className="text-xl font-semibold">Vos Messages</h3>
+          <h3 className="text-xl text-white font-semibold">Vos Messages</h3>
           <p className="text-muted-foreground text-sm">
             Sélectionnez une conversation pour commencer à discuter ou démarrez-en une nouvelle avec vos amis.
           </p>
@@ -282,8 +283,12 @@ export function ChatWindow({ partner, messages, currentUserId, onSendMessage, on
       </div>
 
       {/* Messages area */}
-      <div className="flex-1 min-h-0 overflow-hidden">
-        <ScrollArea ref={scrollRef} className="h-full p-4">
+      <div className="flex-1 min-h-0 overflow-hidden flex flex-col">
+        {/* Stories Section */}
+        <StoriesDemo compact={true} />
+
+        {/* Chat Messages */}
+        <ScrollArea ref={scrollRef} className="flex-1 min-h-0 p-4">
           <div className="space-y-2">
           {messages.map((msg) => (
             <ChatMessage
@@ -592,7 +597,7 @@ export function ChatWindow({ partner, messages, currentUserId, onSendMessage, on
               style={{ top: chatMenuPos.top, left: chatMenuPos.left }}
             >
               <Link
-                href={`/user/${partner.user_id}`}
+                href={`/public/user/${partner.user_id}`}
                 role="menuitem"
                 className="flex w-full items-center gap-2 rounded-sm px-2 py-2 text-left text-xs outline-none hover:bg-accent hover:text-accent-foreground"
                 onClick={() => setChatMenuOpen(false)}

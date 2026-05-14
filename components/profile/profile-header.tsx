@@ -89,7 +89,7 @@ export default function ProfileHeader({
       </div>
 
       {/* Avatar + info */}
-      <div className="px-6 sm:px-10 pb-2">
+      <div className="px-6 sm:px-10 pb-2 relative z-10">
         <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between -mt-12 sm:-mt-16 gap-6">
           {/* Avatar Area */}
           <div className="relative group/avatar">

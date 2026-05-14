@@ -302,7 +302,7 @@ export function ChatHeads() {
                           ? 'La Boutique' 
                           : viewMode === 'discover' 
                             ? 'Découverte' 
-                            : activePartnerId ? activePartner?.full_name : 'Boîte de réception'}
+                            : activePartnerId ? <span className="text-white">{activePartner?.full_name}</span> : 'Boîte de réception'}
                       </span>
                       {viewMode === 'messages' && activePartnerId && activePartner?.online && (
                         <span className="flex items-center gap-1.5 text-[10px] text-green-500 font-medium mt-1">

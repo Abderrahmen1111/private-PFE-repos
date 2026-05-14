@@ -172,22 +172,42 @@ export async function uploadAndPublishStory(formData: FormData) {
     }
 }
 
-export async function uploadStoryMedia(formData: FormData): Promise<string | null> {
+export async function uploadStoryMedia(formData: FormData): Promise<{ url: string | null; error: string | null }> {
     const file = formData.get('file') as File | null;
-    if (!file) return null;
+    if (!file) return { url: null, error: 'Fichier manquant' };
+
+    // File size validation (50MB max for stories with video)
+    const maxSize = 50 * 1024 * 1024; // 50MB
+    if (file.size > maxSize) {
+        return { url: null, error: `Fichier trop volumineux (${(file.size / 1024 / 1024).toFixed(1)}MB). Maximum: 50MB` };
+    }
+
+    // File type validation
+    const allowedImageTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+    const allowedVideoTypes = ['video/mp4', 'video/quicktime', 'video/webm'];
+    const isAllowedType = [...allowedImageTypes, ...allowedVideoTypes].includes(file.type);
+    
+    if (!isAllowedType) {
+        return { url: null, error: `Type de fichier non supporté: ${file.type}. Utilisez JPG, PNG, GIF, WebP pour les images ou MP4 pour les vidéos.` };
+    }
 
     const ext = file.name.split('.').pop()
     const filename = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
 
-    const { uploadFile } = await import('@/lib/supabase/storage')
-    const { url, error } = await uploadFile('STORIES', filename, file)
+    try {
+        const { uploadFile } = await import('@/lib/supabase/storage')
+        const { url, error } = await uploadFile('STORIES', filename, file)
 
-    if (error) {
-        console.error('Upload error:', error)
-        return null
+        if (error) {
+            console.error('Upload error:', error)
+            return { url: null, error: error }
+        }
+
+        return { url: url || null, error: null }
+    } catch (err: any) {
+        console.error('Error uploading story media:', err)
+        return { url: null, error: err.message || 'Erreur lors de l\'upload du fichier' }
     }
-
-    return url
 }
 
 // Delete a story (only owner)
@@ -225,4 +245,61 @@ export async function getDashboardStories(storeId: number) {
     }
 
     return data || [];
+}
+
+// Fetch stories from all followed stores for the current user
+export async function getFollowedStoresStories(limit: number = 50) {
+    const supabase = createClient()
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    
+    if (authError || !user) return []
+
+    // First get the list of followed stores
+    const { data: followedData, error: followError } = await (supabase as any)
+        .from('store_follows')
+        .select('store_id')
+        .eq('user_id', user.id)
+
+    if (followError || !followedData || followedData.length === 0) {
+        return []
+    }
+
+    const storeIds = followedData.map((f: any) => f.store_id)
+
+    // Then fetch stories from those stores
+    const { data, error } = await (supabase as any)
+        .from('stories')
+        .select(`
+            id,
+            media_url,
+            media_type,
+            caption,
+            views_count,
+            created_at,
+            author_id,
+            store_id,
+            is_approved,
+            expires_at,
+            author:users (
+                full_name,
+                avatar_url
+            ),
+            stores:stores (
+                id,
+                name,
+                logo_url,
+                owner_id
+            )
+        `)
+        .in('store_id', storeIds)
+        .eq('is_approved', true)
+        .gt('expires_at', new Date().toISOString())
+        .order('created_at', { ascending: false })
+        .limit(limit)
+
+    if (error) {
+        console.error('Error fetching followed stores stories:', error)
+        return []
+    }
+    return data || []
 }
