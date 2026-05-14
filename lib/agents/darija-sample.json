@@ -1,0 +1,2002 @@
+{
+  "ahla": {
+    "french": "bonjour / bienvenue",
+    "category": "salutations"
+  },
+  "أهلا": {
+    "french": "bonjour / bienvenue",
+    "category": "salutations"
+  },
+  "ahlen": {
+    "french": "bonjour (réponse chaleureuse)",
+    "category": "salutations"
+  },
+  "أهلين": {
+    "french": "bonjour (réponse chaleureuse)",
+    "category": "salutations"
+  },
+  "marhba": {
+    "french": "bonjour / salut",
+    "category": "salutations"
+  },
+  "مرحبا": {
+    "french": "bonjour / salut",
+    "category": "salutations"
+  },
+  "salam": {
+    "french": "salut (informel)",
+    "category": "salutations"
+  },
+  "سلام": {
+    "french": "salut (informel)",
+    "category": "salutations"
+  },
+  "chnowa": {
+    "french": "comment ça va / quoi de neuf",
+    "category": "salutations"
+  },
+  "شنوة": {
+    "french": "comment ça va / quoi de neuf",
+    "category": "salutations"
+  },
+  "labès": {
+    "french": "ça va / pas de problème",
+    "category": "salutations"
+  },
+  "لاباس": {
+    "french": "ça va / pas de problème",
+    "category": "salutations"
+  },
+  "bekhir": {
+    "french": "en bonne santé / bien",
+    "category": "salutations"
+  },
+  "بخير": {
+    "french": "en bonne santé / bien",
+    "category": "salutations"
+  },
+  "wda3an": {
+    "french": "au revoir",
+    "category": "salutations"
+  },
+  "وداعا": {
+    "french": "au revoir",
+    "category": "salutations"
+  },
+  "bislama": {
+    "french": "au revoir (sain et sauf)",
+    "category": "salutations"
+  },
+  "بسلامة": {
+    "french": "au revoir (sain et sauf)",
+    "category": "salutations"
+  },
+  "sba7 el khir": {
+    "french": "bonjour (matin)",
+    "category": "salutations"
+  },
+  "صباح الخير": {
+    "french": "bonjour (matin)",
+    "category": "salutations"
+  },
+  "msa el khir": {
+    "french": "bonsoir",
+    "category": "salutations"
+  },
+  "مسا الخير": {
+    "french": "bonsoir",
+    "category": "salutations"
+  },
+  "tṣbe7 3la khir": {
+    "french": "bonne nuit",
+    "category": "salutations"
+  },
+  "تصبح على خير": {
+    "french": "bonne nuit",
+    "category": "salutations"
+  },
+  "yezzi": {
+    "french": "assez / ça suffit",
+    "category": "expressions"
+  },
+  "يزّي": {
+    "french": "assez / ça suffit",
+    "category": "expressions"
+  },
+  "barcha": {
+    "french": "beaucoup / très",
+    "category": "expressions"
+  },
+  "برشا": {
+    "french": "beaucoup / très",
+    "category": "expressions"
+  },
+  "chwaya": {
+    "french": "un peu / un moment",
+    "category": "expressions"
+  },
+  "شوية": {
+    "french": "un peu / un moment",
+    "category": "expressions"
+  },
+  "mazel": {
+    "french": "encore / toujours",
+    "category": "expressions"
+  },
+  "مازال": {
+    "french": "encore / toujours",
+    "category": "expressions"
+  },
+  "khalas": {
+    "french": "c'est fini / terminé",
+    "category": "expressions"
+  },
+  "خلاص": {
+    "french": "c'est fini / terminé",
+    "category": "expressions"
+  },
+  "bel tbi3i": {
+    "french": "bien sûr / évidemment",
+    "category": "expressions"
+  },
+  "بالطبيعي": {
+    "french": "bien sûr / évidemment",
+    "category": "expressions"
+  },
+  "ya3tik eṣṣ7a": {
+    "french": "merci / bravo",
+    "category": "expressions"
+  },
+  "يعطيك الصحة": {
+    "french": "merci / bravo",
+    "category": "expressions"
+  },
+  "mich ma3qoul": {
+    "french": "incroyable / impossible",
+    "category": "expressions"
+  },
+  "مش معقول": {
+    "french": "incroyable / impossible",
+    "category": "expressions"
+  },
+  "wella": {
+    "french": "je jure / vraiment",
+    "category": "expressions"
+  },
+  "والله": {
+    "french": "je jure / vraiment",
+    "category": "expressions"
+  },
+  "rabi ystur": {
+    "french": "que Dieu protège",
+    "category": "expressions"
+  },
+  "ربي يستر": {
+    "french": "que Dieu protège",
+    "category": "expressions"
+  },
+  "inchallah": {
+    "french": "si Dieu le veut / peut-être",
+    "category": "expressions"
+  },
+  "إن شاء الله": {
+    "french": "si Dieu le veut / peut-être",
+    "category": "expressions"
+  },
+  "el7amdullah": {
+    "french": "Dieu merci / grâce à Dieu",
+    "category": "expressions"
+  },
+  "الحمد لله": {
+    "french": "Dieu merci / grâce à Dieu",
+    "category": "expressions"
+  },
+  "yeslem": {
+    "french": "merci (informel)",
+    "category": "expressions"
+  },
+  "يسلّم": {
+    "french": "merci (informel)",
+    "category": "expressions"
+  },
+  "brabi": {
+    "french": "s'il te plaît / je t'en prie",
+    "category": "expressions"
+  },
+  "برابي": {
+    "french": "s'il te plaît / je t'en prie",
+    "category": "expressions"
+  },
+  "3afak": {
+    "french": "s'il te plaît (formel)",
+    "category": "expressions"
+  },
+  "عفاك": {
+    "french": "s'il te plaît (formel)",
+    "category": "expressions"
+  },
+  "ja": {
+    "french": "venir / arriver",
+    "category": "verbes"
+  },
+  "جا": {
+    "french": "venir / arriver",
+    "category": "verbes"
+  },
+  "mcha": {
+    "french": "partir / aller",
+    "category": "verbes"
+  },
+  "مشى": {
+    "french": "partir / aller",
+    "category": "verbes"
+  },
+  "qal": {
+    "french": "dire / dire que",
+    "category": "verbes"
+  },
+  "قال": {
+    "french": "dire / dire que",
+    "category": "verbes"
+  },
+  "3mel": {
+    "french": "faire / faire quelque chose",
+    "category": "verbes"
+  },
+  "عمل": {
+    "french": "faire / faire quelque chose",
+    "category": "verbes"
+  },
+  "7ab": {
+    "french": "aimer / vouloir",
+    "category": "verbes"
+  },
+  "حب": {
+    "french": "aimer / vouloir",
+    "category": "verbes"
+  },
+  "3raf": {
+    "french": "savoir / connaître",
+    "category": "verbes"
+  },
+  "عرف": {
+    "french": "savoir / connaître",
+    "category": "verbes"
+  },
+  "chaf": {
+    "french": "voir / regarder",
+    "category": "verbes"
+  },
+  "شاف": {
+    "french": "voir / regarder",
+    "category": "verbes"
+  },
+  "jab": {
+    "french": "apporter / amener",
+    "category": "verbes"
+  },
+  "جاب": {
+    "french": "apporter / amener",
+    "category": "verbes"
+  },
+  "kel": {
+    "french": "manger",
+    "category": "verbes"
+  },
+  "أكل": {
+    "french": "manger",
+    "category": "verbes"
+  },
+  "chreb": {
+    "french": "boire",
+    "category": "verbes"
+  },
+  "شرب": {
+    "french": "boire",
+    "category": "verbes"
+  },
+  "nam": {
+    "french": "dormir",
+    "category": "verbes"
+  },
+  "نام": {
+    "french": "dormir",
+    "category": "verbes"
+  },
+  "rje3": {
+    "french": "retourner / revenir",
+    "category": "verbes"
+  },
+  "رجع": {
+    "french": "retourner / revenir",
+    "category": "verbes"
+  },
+  "la9a": {
+    "french": "trouver / rencontrer",
+    "category": "verbes"
+  },
+  "لقى": {
+    "french": "trouver / rencontrer",
+    "category": "verbes"
+  },
+  "khdem": {
+    "french": "travailler",
+    "category": "verbes"
+  },
+  "خدم": {
+    "french": "travailler",
+    "category": "verbes"
+  },
+  "fhem": {
+    "french": "comprendre",
+    "category": "verbes"
+  },
+  "فهم": {
+    "french": "comprendre",
+    "category": "verbes"
+  },
+  "rad": {
+    "french": "répondre / rentrer",
+    "category": "verbes"
+  },
+  "رد": {
+    "french": "répondre / rentrer",
+    "category": "verbes"
+  },
+  "kallem": {
+    "french": "parler à / appeler",
+    "category": "verbes"
+  },
+  "كلّم": {
+    "french": "parler à / appeler",
+    "category": "verbes"
+  },
+  "d7ak": {
+    "french": "rire",
+    "category": "verbes"
+  },
+  "ضحك": {
+    "french": "rire",
+    "category": "verbes"
+  },
+  "bka": {
+    "french": "pleurer",
+    "category": "verbes"
+  },
+  "بكى": {
+    "french": "pleurer",
+    "category": "verbes"
+  },
+  "7ka": {
+    "french": "raconter / parler",
+    "category": "verbes"
+  },
+  "حكى": {
+    "french": "raconter / parler",
+    "category": "verbes"
+  },
+  "ommi": {
+    "french": "ma mère",
+    "category": "famille"
+  },
+  "أمّي": {
+    "french": "ma mère",
+    "category": "famille"
+  },
+  "bou": {
+    "french": "mon père",
+    "category": "famille"
+  },
+  "بوي": {
+    "french": "mon père",
+    "category": "famille"
+  },
+  "khouya": {
+    "french": "mon frère",
+    "category": "famille"
+  },
+  "خويا": {
+    "french": "mon frère",
+    "category": "famille"
+  },
+  "okhti": {
+    "french": "ma sœur",
+    "category": "famille"
+  },
+  "أختي": {
+    "french": "ma sœur",
+    "category": "famille"
+  },
+  "jeddi": {
+    "french": "mon grand-père",
+    "category": "famille"
+  },
+  "جدّتي": {
+    "french": "mon grand-père",
+    "category": "famille"
+  },
+  "weld": {
+    "french": "fils / garçon",
+    "category": "famille"
+  },
+  "ولد": {
+    "french": "fils / garçon",
+    "category": "famille"
+  },
+  "bent": {
+    "french": "fille",
+    "category": "famille"
+  },
+  "بنت": {
+    "french": "fille",
+    "category": "famille"
+  },
+  "3ayla": {
+    "french": "famille",
+    "category": "famille"
+  },
+  "عائلة": {
+    "french": "famille",
+    "category": "société"
+  },
+  "zouj": {
+    "french": "mari / époux",
+    "category": "famille"
+  },
+  "زوج": {
+    "french": "mari / époux",
+    "category": "famille"
+  },
+  "mra": {
+    "french": "femme / épouse",
+    "category": "famille"
+  },
+  "مرا": {
+    "french": "femme / épouse",
+    "category": "famille"
+  },
+  "kesra": {
+    "french": "pain (galette)",
+    "category": "nourriture"
+  },
+  "كسرة": {
+    "french": "pain (galette)",
+    "category": "nourriture"
+  },
+  "kosksi": {
+    "french": "couscous",
+    "category": "nourriture"
+  },
+  "كسكسي": {
+    "french": "couscous",
+    "category": "nourriture"
+  },
+  "lablabi": {
+    "french": "soupe de pois chiches",
+    "category": "nourriture"
+  },
+  "لبلابي": {
+    "french": "leblabi (plat typique)",
+    "category": "nourriture"
+  },
+  "barrak": {
+    "french": "brik (pâtisserie frite)",
+    "category": "nourriture"
+  },
+  "برّاك": {
+    "french": "brik (pâtisserie frite)",
+    "category": "nourriture"
+  },
+  "qahwa": {
+    "french": "café",
+    "category": "boissons"
+  },
+  "قهوة": {
+    "french": "café",
+    "category": "boissons"
+  },
+  "atay": {
+    "french": "thé à la menthe",
+    "category": "nourriture"
+  },
+  "أتاي": {
+    "french": "thé à la menthe",
+    "category": "nourriture"
+  },
+  "chermoula": {
+    "french": "sauce marinée épicée",
+    "category": "nourriture"
+  },
+  "شرمولة": {
+    "french": "sauce marinée épicée",
+    "category": "nourriture"
+  },
+  "7arissa": {
+    "french": "harissa (sauce piquante)",
+    "category": "nourriture"
+  },
+  "حريسة": {
+    "french": "harissa (sauce piquante)",
+    "category": "nourriture"
+  },
+  "tajin": {
+    "french": "tajine (œufs et viande)",
+    "category": "nourriture"
+  },
+  "طاجين": {
+    "french": "tajine",
+    "category": "gastronomie"
+  },
+  "magroun": {
+    "french": "pâtes (macaroni)",
+    "category": "nourriture"
+  },
+  "مقرون": {
+    "french": "pâtes (macaroni)",
+    "category": "nourriture"
+  },
+  "hzza": {
+    "french": "une fois / un coup",
+    "category": "quantificateurs"
+  },
+  "هزة": {
+    "french": "une fois / un coup",
+    "category": "quantificateurs"
+  },
+  "tawa": {
+    "french": "maintenant / tout de suite",
+    "category": "temps"
+  },
+  "توّا": {
+    "french": "maintenant / tout de suite",
+    "category": "temps"
+  },
+  "men ba3d": {
+    "french": "après / plus tard",
+    "category": "temps"
+  },
+  "من بعد": {
+    "french": "après / plus tard",
+    "category": "temps"
+  },
+  "qbel": {
+    "french": "avant",
+    "category": "temps"
+  },
+  "قبل": {
+    "french": "avant",
+    "category": "temps"
+  },
+  "dima": {
+    "french": "toujours / tout le temps",
+    "category": "temps"
+  },
+  "دائماً": {
+    "french": "toujours / tout le temps",
+    "category": "temps"
+  },
+  "3omrou": {
+    "french": "jamais",
+    "category": "temps"
+  },
+  "عمر": {
+    "french": "jamais",
+    "category": "temps"
+  },
+  "far7an": {
+    "french": "heureux",
+    "category": "émotions"
+  },
+  "فرحان": {
+    "french": "heureux",
+    "category": "émotions"
+  },
+  "7zin": {
+    "french": "triste",
+    "category": "émotions"
+  },
+  "حزين": {
+    "french": "triste",
+    "category": "émotions"
+  },
+  "z3alan": {
+    "french": "fâché / énervé",
+    "category": "émotions"
+  },
+  "زعلان": {
+    "french": "fâché / énervé",
+    "category": "émotions"
+  },
+  "khayef": {
+    "french": "avoir peur / effrayé",
+    "category": "émotions"
+  },
+  "خايف": {
+    "french": "avoir peur / effrayé",
+    "category": "émotions"
+  },
+  "mabsout": {
+    "french": "content / satisfait",
+    "category": "émotions"
+  },
+  "مبسوط": {
+    "french": "content / satisfait",
+    "category": "émotions"
+  },
+  "t3ban": {
+    "french": "fatigué",
+    "category": "émotions"
+  },
+  "تعبان": {
+    "french": "fatigué",
+    "category": "émotions"
+  },
+  "sab3i": {
+    "french": "cool / stylé (super)",
+    "category": "argot"
+  },
+  "صبعي": {
+    "french": "cool / stylé (super)",
+    "category": "argot"
+  },
+  "chbabi": {
+    "french": "jeune / branché",
+    "category": "argot"
+  },
+  "شبّابي": {
+    "french": "jeune / branché",
+    "category": "argot"
+  },
+  "flouka": {
+    "french": "voiture (argot)",
+    "category": "argot"
+  },
+  "فلوكة": {
+    "french": "voiture (argot)",
+    "category": "argot"
+  },
+  "glil": {
+    "french": "peu / rare",
+    "category": "argot"
+  },
+  "ڤليل": {
+    "french": "peu / rare",
+    "category": "argot"
+  },
+  "nishan": {
+    "french": "direct / précis",
+    "category": "argot"
+  },
+  "نيشان": {
+    "french": "direct / précis",
+    "category": "argot"
+  },
+  "sbar": {
+    "french": "attendre",
+    "category": "argot"
+  },
+  "صبّار": {
+    "french": "attendre",
+    "category": "argot"
+  },
+  "zbiba": {
+    "french": "quelque chose de bien / top",
+    "category": "argot"
+  },
+  "زبيبة": {
+    "french": "quelque chose de bien / top",
+    "category": "argot"
+  },
+  "y9aleb": {
+    "french": "fouiller / chercher",
+    "category": "argot"
+  },
+  "يقلب": {
+    "french": "fouiller / chercher",
+    "category": "argot"
+  },
+  "tal tal": {
+    "french": "hésiter / tergiverser",
+    "category": "argot"
+  },
+  "تالثالث": {
+    "french": "traîner / flemmarder",
+    "category": "divertissement"
+  },
+  "kibour": {
+    "french": "grand / important (ironie)",
+    "category": "argot"
+  },
+  "كيبور": {
+    "french": "grand / important (ironie)",
+    "category": "argot"
+  },
+  "boutik": {
+    "french": "magasin / boutique",
+    "category": "emprunts"
+  },
+  "بوتيك": {
+    "french": "magasin / boutique",
+    "category": "emprunts"
+  },
+  "tilfon": {
+    "french": "téléphone",
+    "category": "emprunts"
+  },
+  "تلفون": {
+    "french": "téléphone",
+    "category": "emprunts"
+  },
+  "tilfizyon": {
+    "french": "télévision",
+    "category": "emprunts"
+  },
+  "تلفزيون": {
+    "french": "télévision",
+    "category": "emprunts"
+  },
+  "tomobil": {
+    "french": "voiture",
+    "category": "emprunts"
+  },
+  "طوموبيل": {
+    "french": "voiture",
+    "category": "emprunts"
+  },
+  "sira": {
+    "french": "vélo / bicyclette",
+    "category": "emprunts"
+  },
+  "سيرة": {
+    "french": "vélo / bicyclette",
+    "category": "emprunts"
+  },
+  "pisin": {
+    "french": "piscine",
+    "category": "emprunts"
+  },
+  "بيسين": {
+    "french": "piscine",
+    "category": "emprunts"
+  },
+  "prestij": {
+    "french": "prestige / classe",
+    "category": "emprunts"
+  },
+  "برستيج": {
+    "french": "prestige / classe",
+    "category": "emprunts"
+  },
+  "mchkil": {
+    "french": "problème",
+    "category": "emprunts"
+  },
+  "مشكيل": {
+    "french": "problème",
+    "category": "emprunts"
+  },
+  "bufeh": {
+    "french": "buffet / buffet",
+    "category": "emprunts"
+  },
+  "بوفيه": {
+    "french": "buffet / buffet",
+    "category": "emprunts"
+  },
+  "villa": {
+    "french": "villa / maison",
+    "category": "emprunts"
+  },
+  "فيلا": {
+    "french": "villa / maison",
+    "category": "emprunts"
+  },
+  "kabout": {
+    "french": "capot (voiture)",
+    "category": "emprunts"
+  },
+  "كابوت": {
+    "french": "capot (voiture)",
+    "category": "emprunts"
+  },
+  "borta": {
+    "french": "porte / portière",
+    "category": "emprunts"
+  },
+  "بورطة": {
+    "french": "porte / portière",
+    "category": "emprunts"
+  },
+  "grambita": {
+    "french": "pastèque",
+    "category": "emprunts"
+  },
+  "قرمبيطة": {
+    "french": "pastèque",
+    "category": "emprunts"
+  },
+  "kamitchia": {
+    "french": "chemise",
+    "category": "emprunts"
+  },
+  "كاميتشيا": {
+    "french": "chemise",
+    "category": "emprunts"
+  },
+  "tayyeb": {
+    "french": "bien / d'accord (Sfax)",
+    "category": "expressions"
+  },
+  "طيّب": {
+    "french": "bien / d'accord (Sfax)",
+    "category": "expressions"
+  },
+  "dabbuz": {
+    "french": "une bouteille (Sfax)",
+    "category": "contenants"
+  },
+  "دبّوز": {
+    "french": "une bouteille (Sfax)",
+    "category": "contenants"
+  },
+  "chha7elek": {
+    "french": "comment ça va (Bizerte)",
+    "category": "salutations"
+  },
+  "شهالك": {
+    "french": "comment ça va (Bizerte)",
+    "category": "salutations"
+  },
+  "fareg": {
+    "french": "libre / disponible (Sahel)",
+    "category": "expressions"
+  },
+  "فارغ": {
+    "french": "libre / disponible (Sahel)",
+    "category": "expressions"
+  },
+  "elli ybakker yakhti": {
+    "french": "l'avance garantit le succès",
+    "category": "proverbes"
+  },
+  "اللي يبكر يخطي": {
+    "french": "l'avance garantit le succès",
+    "category": "proverbes"
+  },
+  "essbr mfta7 el faraj": {
+    "french": "la patience est la clé du bonheur",
+    "category": "proverbes"
+  },
+  "الصبر مفتاح الفرج": {
+    "french": "la patience est la clé du bonheur",
+    "category": "proverbes"
+  },
+  "el dar dar bouk": {
+    "french": "reste chez toi / à chacun son chez-soi",
+    "category": "proverbes"
+  },
+  "الدار دار بوك": {
+    "french": "reste chez toi / à chacun son chez-soi",
+    "category": "proverbes"
+  },
+  "elli y7ebb el khir ychrieh": {
+    "french": "si tu veux quelque chose, travaille pour l'avoir",
+    "category": "proverbes"
+  },
+  "اللي يحب الخير يشريه": {
+    "french": "si tu veux quelque chose, travaille pour l'avoir",
+    "category": "proverbes"
+  },
+  "bismillah": {
+    "french": "au nom de Dieu (avant de commencer)",
+    "category": "expressions_religieuses"
+  },
+  "بسم الله": {
+    "french": "au nom de Dieu (avant de commencer)",
+    "category": "expressions_religieuses"
+  },
+  "machallah": {
+    "french": "Dieu l'a voulu (admiration)",
+    "category": "expressions_religieuses"
+  },
+  "ماشاء الله": {
+    "french": "Dieu l'a voulu (admiration)",
+    "category": "expressions_religieuses"
+  },
+  "rabi yer7emou": {
+    "french": "que Dieu lui fasse grâce (défunt)",
+    "category": "expressions_religieuses"
+  },
+  "ربي يرحمو": {
+    "french": "que Dieu lui fasse grâce (défunt)",
+    "category": "expressions_religieuses"
+  },
+  "rabi ya3tik": {
+    "french": "que Dieu te donne / bénédiction",
+    "category": "expressions_religieuses"
+  },
+  "ربي يعطيك": {
+    "french": "que Dieu te donne / bénédiction",
+    "category": "expressions_religieuses"
+  },
+  "c'est mli7": {
+    "french": "c'est bien (mix FR/darija)",
+    "category": "code_switching"
+  },
+  "C'est mli7": {
+    "french": "c'est bien (mix FR/darija)",
+    "category": "code_switching"
+  },
+  "chokran beaucoup": {
+    "french": "merci beaucoup (mix)",
+    "category": "code_switching"
+  },
+  "Chokran beaucoup": {
+    "french": "merci beaucoup (mix)",
+    "category": "code_switching"
+  },
+  "normal 3adi": {
+    "french": "c'est normal (mix)",
+    "category": "code_switching"
+  },
+  "Normal 3adi": {
+    "french": "c'est normal (mix)",
+    "category": "code_switching"
+  },
+  "chems": {
+    "french": "soleil",
+    "category": "nature"
+  },
+  "شمس": {
+    "french": "soleil",
+    "category": "météo"
+  },
+  "mtar": {
+    "french": "pluie",
+    "category": "nature"
+  },
+  "مطر": {
+    "french": "pluie",
+    "category": "météo"
+  },
+  "berd": {
+    "french": "froid",
+    "category": "nature"
+  },
+  "برد": {
+    "french": "froid",
+    "category": "nature"
+  },
+  "7arr": {
+    "french": "chaud / chaleur",
+    "category": "nature"
+  },
+  "حر": {
+    "french": "chaud / chaleur",
+    "category": "nature"
+  },
+  "ri7": {
+    "french": "vent",
+    "category": "nature"
+  },
+  "ريح": {
+    "french": "vent",
+    "category": "nature"
+  },
+  "dar": {
+    "french": "maison / chez soi",
+    "category": "lieux"
+  },
+  "دار": {
+    "french": "maison / chez soi",
+    "category": "lieux"
+  },
+  "7ouma": {
+    "french": "quartier / cité",
+    "category": "lieux"
+  },
+  "حومة": {
+    "french": "quartier / cité",
+    "category": "lieux"
+  },
+  "souk": {
+    "french": "marché",
+    "category": "commerce"
+  },
+  "سوق": {
+    "french": "marché",
+    "category": "commerce"
+  },
+  "madrsa": {
+    "french": "école",
+    "category": "lieux"
+  },
+  "مدرسة": {
+    "french": "école",
+    "category": "éducation"
+  },
+  "7anout": {
+    "french": "magasin",
+    "category": "commerce"
+  },
+  "حانوت": {
+    "french": "magasin",
+    "category": "commerce"
+  },
+  "ras": {
+    "french": "tête",
+    "category": "corps"
+  },
+  "راس": {
+    "french": "tête",
+    "category": "corps"
+  },
+  "id": {
+    "french": "main",
+    "category": "corps"
+  },
+  "إيد": {
+    "french": "main",
+    "category": "corps"
+  },
+  "rejl": {
+    "french": "pied / jambe",
+    "category": "corps"
+  },
+  "رجل": {
+    "french": "pied / jambe",
+    "category": "corps"
+  },
+  "3ayn": {
+    "french": "œil",
+    "category": "corps"
+  },
+  "عين": {
+    "french": "œil",
+    "category": "corps"
+  },
+  "9leb": {
+    "french": "cœur",
+    "category": "corps"
+  },
+  "قلب": {
+    "french": "cœur",
+    "category": "corps"
+  },
+  "a7mer": {
+    "french": "rouge",
+    "category": "couleurs"
+  },
+  "أحمر": {
+    "french": "rouge",
+    "category": "couleurs"
+  },
+  "ezraq": {
+    "french": "bleu",
+    "category": "couleurs"
+  },
+  "أزرق": {
+    "french": "bleu",
+    "category": "couleurs"
+  },
+  "akhdar": {
+    "french": "vert",
+    "category": "couleurs"
+  },
+  "أخضر": {
+    "french": "vert",
+    "category": "couleurs"
+  },
+  "asfar": {
+    "french": "jaune",
+    "category": "couleurs"
+  },
+  "أصفر": {
+    "french": "jaune",
+    "category": "couleurs"
+  },
+  "abyad": {
+    "french": "blanc",
+    "category": "couleurs"
+  },
+  "أبيض": {
+    "french": "blanc",
+    "category": "couleurs"
+  },
+  "ased": {
+    "french": "lion",
+    "category": "animaux"
+  },
+  "أسود": {
+    "french": "noir",
+    "category": "couleurs"
+  },
+  "wa7ed": {
+    "french": "un",
+    "category": "nombres"
+  },
+  "واحد": {
+    "french": "un",
+    "category": "nombres"
+  },
+  "zouz": {
+    "french": "deux",
+    "category": "nombres"
+  },
+  "زوز": {
+    "french": "deux",
+    "category": "nombres"
+  },
+  "tletha": {
+    "french": "trois",
+    "category": "chiffres"
+  },
+  "ثلاثة": {
+    "french": "trois",
+    "category": "nombres"
+  },
+  "arba3a": {
+    "french": "quatre",
+    "category": "nombres"
+  },
+  "أربعة": {
+    "french": "quatre",
+    "category": "nombres"
+  },
+  "khamsa": {
+    "french": "cinq",
+    "category": "chiffres"
+  },
+  "خمسة": {
+    "french": "cinq",
+    "category": "chiffres"
+  },
+  "nhar": {
+    "french": "jour / journée",
+    "category": "temps"
+  },
+  "نهار": {
+    "french": "jour / journée",
+    "category": "temps"
+  },
+  "lil": {
+    "french": "nuit",
+    "category": "temps"
+  },
+  "ليل": {
+    "french": "nuit",
+    "category": "temps"
+  },
+  "jom3a": {
+    "french": "vendredi / semaine",
+    "category": "temps"
+  },
+  "جمعة": {
+    "french": "vendredi / semaine",
+    "category": "temps"
+  },
+  "simana": {
+    "french": "semaine",
+    "category": "temps"
+  },
+  "سيمانة": {
+    "french": "semaine",
+    "category": "temps"
+  },
+  "ta9s": {
+    "french": "temps / météo",
+    "category": "nature"
+  },
+  "طقس": {
+    "french": "temps / météo",
+    "category": "nature"
+  },
+  "ghim": {
+    "french": "nuage / ciel nuageux",
+    "category": "nature"
+  },
+  "غيم": {
+    "french": "nuage / ciel nuageux",
+    "category": "nature"
+  },
+  "metroh": {
+    "french": "métro",
+    "category": "transport"
+  },
+  "متر": {
+    "french": "métro",
+    "category": "transport"
+  },
+  "lubis": {
+    "french": "bus / transport en commun",
+    "category": "transport"
+  },
+  "لوبيس": {
+    "french": "bus / transport en commun",
+    "category": "transport"
+  },
+  "taksi": {
+    "french": "taxi",
+    "category": "transport"
+  },
+  "تاكسي": {
+    "french": "taxi",
+    "category": "transport"
+  },
+  "mrid": {
+    "french": "malade",
+    "category": "santé"
+  },
+  "مريض": {
+    "french": "malade",
+    "category": "santé"
+  },
+  "wji3": {
+    "french": "douleur / avoir mal",
+    "category": "santé"
+  },
+  "وجع": {
+    "french": "douleur / avoir mal",
+    "category": "santé"
+  },
+  "ṣ7i7": {
+    "french": "en bonne santé / guéri",
+    "category": "santé"
+  },
+  "صحّي": {
+    "french": "en bonne santé / guéri",
+    "category": "santé"
+  },
+  "dwa": {
+    "french": "médicament",
+    "category": "santé"
+  },
+  "دواء": {
+    "french": "médicament",
+    "category": "santé"
+  },
+  "drous": {
+    "french": "leçons / cours",
+    "category": "éducation"
+  },
+  "دروس": {
+    "french": "leçons / cours",
+    "category": "éducation"
+  },
+  "imti7en": {
+    "french": "examen",
+    "category": "éducation"
+  },
+  "امتحان": {
+    "french": "examen",
+    "category": "éducation"
+  },
+  "ustad": {
+    "french": "professeur",
+    "category": "éducation"
+  },
+  "أستاذ": {
+    "french": "professeur",
+    "category": "éducation"
+  },
+  "telmidh": {
+    "french": "élève / étudiant",
+    "category": "éducation"
+  },
+  "تلميذ": {
+    "french": "élève / étudiant",
+    "category": "éducation"
+  },
+  "flous": {
+    "french": "argent",
+    "category": "commerce"
+  },
+  "فلوس": {
+    "french": "argent",
+    "category": "commerce"
+  },
+  "khedma": {
+    "french": "travail / boulot",
+    "category": "travail"
+  },
+  "خدمة": {
+    "french": "travail / boulot",
+    "category": "travail"
+  },
+  "dinar": {
+    "french": "dinar (monnaie)",
+    "category": "argent"
+  },
+  "دينار": {
+    "french": "dinar (monnaie)",
+    "category": "argent"
+  },
+  "koura": {
+    "french": "football",
+    "category": "sport"
+  },
+  "كورة": {
+    "french": "football",
+    "category": "sport"
+  },
+  "musalsal": {
+    "french": "série / feuilleton",
+    "category": "divertissement"
+  },
+  "مسلسل": {
+    "french": "série / feuilleton",
+    "category": "divertissement"
+  },
+  "tral": {
+    "french": "traîner / flemmarder",
+    "category": "divertissement"
+  },
+  "ma...ch": {
+    "french": "ne...pas (négation)",
+    "category": "grammaire"
+  },
+  "ما...ش": {
+    "french": "ne...pas (négation)",
+    "category": "grammaire"
+  },
+  "mich": {
+    "french": "ne pas / non (affirmatif)",
+    "category": "grammaire"
+  },
+  "مش": {
+    "french": "ne pas / non (affirmatif)",
+    "category": "grammaire"
+  },
+  "win": {
+    "french": "où",
+    "category": "grammaire"
+  },
+  "وين": {
+    "french": "où",
+    "category": "grammaire"
+  },
+  "3alach": {
+    "french": "pourquoi",
+    "category": "grammaire"
+  },
+  "علاش": {
+    "french": "pourquoi",
+    "category": "grammaire"
+  },
+  "kifech": {
+    "french": "comment",
+    "category": "grammaire"
+  },
+  "كيفاش": {
+    "french": "comment",
+    "category": "grammaire"
+  },
+  "chkoun": {
+    "french": "qui",
+    "category": "grammaire"
+  },
+  "شكون": {
+    "french": "qui",
+    "category": "grammaire"
+  },
+  "wa9tech": {
+    "french": "quand",
+    "category": "grammaire"
+  },
+  "وقتاش": {
+    "french": "quand",
+    "category": "grammaire"
+  },
+  "el net": {
+    "french": "internet",
+    "category": "technologie"
+  },
+  "النت": {
+    "french": "internet",
+    "category": "technologie"
+  },
+  "pubji": {
+    "french": "PUBG (jeu vidéo)",
+    "category": "technologie"
+  },
+  "ببجي": {
+    "french": "PUBG (jeu vidéo)",
+    "category": "technologie"
+  },
+  "story": {
+    "french": "story (réseaux sociaux)",
+    "category": "technologie"
+  },
+  "ستوري": {
+    "french": "story (réseaux sociaux)",
+    "category": "technologie"
+  },
+  "live": {
+    "french": "live (stream)",
+    "category": "technologie"
+  },
+  "لايف": {
+    "french": "live (stream)",
+    "category": "technologie"
+  },
+  "tla9i": {
+    "french": "se retrouver / rencontrer (live)",
+    "category": "tiktok"
+  },
+  "تلاقي": {
+    "french": "se retrouver / rencontrer (live)",
+    "category": "tiktok"
+  },
+  "chir": {
+    "french": "partager (share)",
+    "category": "tiktok"
+  },
+  "شير": {
+    "french": "partager (share)",
+    "category": "tiktok"
+  },
+  "layk": {
+    "french": "j'aime (like)",
+    "category": "tiktok"
+  },
+  "لايك": {
+    "french": "j'aime (like)",
+    "category": "tiktok"
+  },
+  "komenti": {
+    "french": "commentaire",
+    "category": "tiktok"
+  },
+  "كومنتي": {
+    "french": "commentaire",
+    "category": "tiktok"
+  },
+  "folou": {
+    "french": "suivre / abonné",
+    "category": "tiktok"
+  },
+  "فولو": {
+    "french": "suivre / abonné",
+    "category": "tiktok"
+  },
+  "anfolou": {
+    "french": "se désabonner",
+    "category": "tiktok"
+  },
+  "أنفولو": {
+    "french": "se désabonner",
+    "category": "tiktok"
+  },
+  "trand": {
+    "french": "tendance / trend",
+    "category": "tiktok"
+  },
+  "ترند": {
+    "french": "tendance / trend",
+    "category": "tiktok"
+  },
+  "viral": {
+    "french": "viral / qui buzze",
+    "category": "tiktok"
+  },
+  "فيرال": {
+    "french": "viral / qui buzze",
+    "category": "tiktok"
+  },
+  "rils": {
+    "french": "reels (format vidéo courte)",
+    "category": "tiktok"
+  },
+  "ريلز": {
+    "french": "reels (format vidéo courte)",
+    "category": "tiktok"
+  },
+  "strimer": {
+    "french": "streameur",
+    "category": "tiktok"
+  },
+  "ستريمر": {
+    "french": "streameur",
+    "category": "tiktok"
+  },
+  "kritor": {
+    "french": "créateur de contenu",
+    "category": "tiktok"
+  },
+  "كريتور": {
+    "french": "créateur de contenu",
+    "category": "tiktok"
+  },
+  "influensar": {
+    "french": "influenceur",
+    "category": "tiktok"
+  },
+  "إنفلونسر": {
+    "french": "influenceur",
+    "category": "tiktok"
+  },
+  "kolabi": {
+    "french": "collaboration",
+    "category": "tiktok"
+  },
+  "كوليبي": {
+    "french": "collaboration",
+    "category": "tiktok"
+  },
+  "duwatch": {
+    "french": "duo / duet",
+    "category": "tiktok"
+  },
+  "دواتش": {
+    "french": "duo / duet",
+    "category": "tiktok"
+  },
+  "boufour": {
+    "french": "boyfriend/girlfriend (affectueux)",
+    "category": "tiktok"
+  },
+  "بوفور": {
+    "french": "boyfriend/girlfriend (affectueux)",
+    "category": "tiktok"
+  },
+  "chiba": {
+    "french": "classe / swag",
+    "category": "tiktok"
+  },
+  "شيبة": {
+    "french": "classe / swag",
+    "category": "tiktok"
+  },
+  "chalanj": {
+    "french": "défi / challenge",
+    "category": "tiktok"
+  },
+  "تشالنج": {
+    "french": "défi / challenge",
+    "category": "tiktok"
+  },
+  "vyu": {
+    "french": "vue (view)",
+    "category": "tiktok"
+  },
+  "فيو": {
+    "french": "vue (view)",
+    "category": "tiktok"
+  },
+  "notif": {
+    "french": "notification",
+    "category": "tiktok"
+  },
+  "نوتيف": {
+    "french": "notification",
+    "category": "tiktok"
+  },
+  "sawf": {
+    "french": "swipe (geste)",
+    "category": "tiktok"
+  },
+  "صاوف": {
+    "french": "swipe (geste)",
+    "category": "tiktok"
+  },
+  "fid": {
+    "french": "fil d'actualité (feed)",
+    "category": "tiktok"
+  },
+  "فيد": {
+    "french": "fil d'actualité (feed)",
+    "category": "tiktok"
+  },
+  "kloub haws": {
+    "french": "Clubhouse (audio)",
+    "category": "tiktok"
+  },
+  "كلوب هاوس": {
+    "french": "Clubhouse (audio)",
+    "category": "tiktok"
+  },
+  "post": {
+    "french": "publication / post",
+    "category": "tiktok"
+  },
+  "بوست": {
+    "french": "publication / post",
+    "category": "tiktok"
+  },
+  "riakchon": {
+    "french": "réaction",
+    "category": "tiktok"
+  },
+  "ريأكشن": {
+    "french": "réaction",
+    "category": "tiktok"
+  },
+  "hashtag": {
+    "french": "hashtag",
+    "category": "tiktok"
+  },
+  "هاشتاق": {
+    "french": "hashtag",
+    "category": "tiktok"
+  },
+  "filtar": {
+    "french": "filtre (photo/vidéo)",
+    "category": "tiktok"
+  },
+  "فيلتر": {
+    "french": "filtre (photo/vidéo)",
+    "category": "tiktok"
+  },
+  "snap": {
+    "french": "Snapchat",
+    "category": "tiktok"
+  },
+  "سنابشات": {
+    "french": "Snapchat",
+    "category": "tiktok"
+  },
+  "diam": {
+    "french": "DM / message privé",
+    "category": "tiktok"
+  },
+  "ديام": {
+    "french": "DM / message privé",
+    "category": "tiktok"
+  },
+  "fik": {
+    "french": "fake / faux",
+    "category": "tiktok"
+  },
+  "فيك": {
+    "french": "fake / faux",
+    "category": "tiktok"
+  },
+  "original": {
+    "french": "original / authentique",
+    "category": "tiktok"
+  },
+  "أوريجينال": {
+    "french": "original / authentique",
+    "category": "tiktok"
+  },
+  "makap": {
+    "french": "maquillage (makeup)",
+    "category": "tiktok"
+  },
+  "ماكب": {
+    "french": "maquillage (makeup)",
+    "category": "tiktok"
+  },
+  "tiwtoryal": {
+    "french": "tutoriel",
+    "category": "tiktok"
+  },
+  "تيوتوريال": {
+    "french": "tutoriel",
+    "category": "tiktok"
+  },
+  "online": {
+    "french": "en ligne",
+    "category": "tiktok"
+  },
+  "أونلاين": {
+    "french": "en ligne",
+    "category": "tiktok"
+  },
+  "offline": {
+    "french": "hors ligne",
+    "category": "tiktok"
+  },
+  "أوفلاين": {
+    "french": "hors ligne",
+    "category": "tiktok"
+  },
+  "boki": {
+    "french": "bouquet (cadeau live)",
+    "category": "tiktok"
+  },
+  "بوكيه": {
+    "french": "bouquet (cadeau live)",
+    "category": "tiktok"
+  },
+  "laf": {
+    "french": "amour / love (texte)",
+    "category": "tiktok"
+  },
+  "لاف": {
+    "french": "amour / love (texte)",
+    "category": "tiktok"
+  },
+  "krinj": {
+    "french": "gênant / embarrassant",
+    "category": "tiktok"
+  },
+  "كرينج": {
+    "french": "gênant / embarrassant",
+    "category": "tiktok"
+  },
+  "boynt": {
+    "french": "point / argument",
+    "category": "tiktok"
+  },
+  "بوينت": {
+    "french": "point / argument",
+    "category": "tiktok"
+  },
+  "fri fayr": {
+    "french": "Free Fire (jeu)",
+    "category": "tiktok"
+  },
+  "فري فاير": {
+    "french": "Free Fire (jeu)",
+    "category": "tiktok"
+  },
+  "falou bak": {
+    "french": "follow back",
+    "category": "tiktok"
+  },
+  "فالو باك": {
+    "french": "follow back",
+    "category": "tiktok"
+  },
+  "chbich": {
+    "french": "comment ça va (Sfax)",
+    "category": "dialecte_sfax"
+  },
+  "شبيش": {
+    "french": "comment ça va (Sfax)",
+    "category": "dialecte_sfax"
+  },
+  "wach": {
+    "french": "quoi / qu'est-ce que (Sfax)",
+    "category": "dialecte_sfax"
+  },
+  "وَشّ": {
+    "french": "quoi / qu'est-ce que (Sfax)",
+    "category": "dialecte_sfax"
+  },
+  "haka": {
+    "french": "comme ça / ainsi (Sfax)",
+    "category": "dialecte_sfax"
+  },
+  "هاكا": {
+    "french": "comme ça / ainsi (Sfax)",
+    "category": "dialecte_sfax"
+  },
+  "belzaf": {
+    "french": "beaucoup (Sfax)",
+    "category": "dialecte_sfax"
+  },
+  "بالزاف": {
+    "french": "beaucoup (Sfax)",
+    "category": "dialecte_sfax"
+  },
+  "jat": {
+    "french": "elle est venue / c'est arrivé (Sfax)",
+    "category": "dialecte_sfax"
+  },
+  "جات": {
+    "french": "elle est venue / c'est arrivé (Sfax)",
+    "category": "dialecte_sfax"
+  },
+  "ma dabiych": {
+    "french": "je ne sais pas (Sfax)",
+    "category": "dialecte_sfax"
+  },
+  "ما دابيش": {
+    "french": "je ne sais pas (Sfax)",
+    "category": "dialecte_sfax"
+  },
+  "dabi": {
+    "french": "je sais (Sfax)",
+    "category": "dialecte_sfax"
+  },
+  "دابي": {
+    "french": "je sais (Sfax)",
+    "category": "dialecte_sfax"
+  },
+  "ma fich": {
+    "french": "il n'y a pas / rien (Sfax)",
+    "category": "dialecte_sfax"
+  },
+  "ما فيش": {
+    "french": "il n'y a pas / rien (Sfax)",
+    "category": "dialecte_sfax"
+  },
+  "el 7aj": {
+    "french": "monsieur / terme de respect",
+    "category": "dialecte_sfax"
+  },
+  "الحاج": {
+    "french": "monsieur / terme de respect",
+    "category": "dialecte_sfax"
+  },
+  "fza3": {
+    "french": "aider / secourir (Sfax)",
+    "category": "dialecte_sfax"
+  },
+  "فزع": {
+    "french": "aider / secourir (Sfax)",
+    "category": "dialecte_sfax"
+  },
+  "soura": {
+    "french": "photo / image (Sfax)",
+    "category": "dialecte_sfax"
+  },
+  "سورة": {
+    "french": "photo / image (Sfax)",
+    "category": "dialecte_sfax"
+  },
+  "qaddich": {
+    "french": "combien (Sfax)",
+    "category": "dialecte_sfax"
+  },
+  "قدّيش": {
+    "french": "combien (Sfax)",
+    "category": "dialecte_sfax"
+  },
+  "ch7al": {
+    "french": "combien de temps / quelle heure (Sfax)",
+    "category": "dialecte_sfax"
+  },
+  "شحال": {
+    "french": "combien de temps / quelle heure (Sfax)",
+    "category": "dialecte_sfax"
+  },
+  "tayyes": {
+    "french": "bête / idiot (Sfax)",
+    "category": "dialecte_sfax"
+  },
+  "تيّس": {
+    "french": "bête / idiot (Sfax)",
+    "category": "dialecte_sfax"
+  },
+  "nishan fih": {
+    "french": "il est direct / franc (Sfax)",
+    "category": "dialecte_sfax"
+  },
+  "نيشان فيه": {
+    "french": "il est direct / franc (Sfax)",
+    "category": "dialecte_sfax"
+  },
+  "7awwat": {
+    "french": "poissonnier",
+    "category": "commerce"
+  },
+  "حوّط": {
+    "french": "mettre / poser (Sfax)",
+    "category": "dialecte_sfax"
+  },
+  "aji": {
+    "french": "viens / allons (Sfax)",
+    "category": "dialecte_sfax"
+  },
+  "أجي": {
+    "french": "viens / allons (Sfax)",
+    "category": "dialecte_sfax"
+  },
+  "oh": {
+    "french": "oui / ouais (Sfax)",
+    "category": "dialecte_sfax"
+  },
+  "أوه": {
+    "french": "oui / ouais (Sfax)",
+    "category": "dialecte_sfax"
+  },
+  "nqucha": {
+    "french": "coiffure / brushing (Sfax)",
+    "category": "dialecte_sfax"
+  },
+  "نقوشة": {
+    "french": "coiffure / brushing (Sfax)",
+    "category": "dialecte_sfax"
+  },
+  "bassa": {
+    "french": "regard / coup d'oeil (Sfax)",
+    "category": "dialecte_sfax"
+  },
+  "بصّة": {
+    "french": "regard / coup d'oeil (Sfax)",
+    "category": "dialecte_sfax"
+  },
+  "ma therrisch": {
+    "french": "ne te moque pas (Sfax)",
+    "category": "dialecte_sfax"
+  },
+  "ما تهرّيش": {
+    "french": "ne te moque pas (Sfax)",
+    "category": "dialecte_sfax"
+  },
+  "mdawwer": {
+    "french": "rond / pas direct (Sfax)",
+    "category": "dialecte_sfax"
+  },
+  "مدوّر": {
+    "french": "rond / pas direct (Sfax)",
+    "category": "dialecte_sfax"
+  },
+  "ma9loub": {
+    "french": "sens dessus dessous / mal",
+    "category": "dialecte_sfax"
+  },
+  "مقلوب": {
+    "french": "sens dessus dessous / mal",
+    "category": "dialecte_sfax"
+  },
+  "charba": {
+    "french": "soupe / bouillon (Sfax)",
+    "category": "dialecte_sfax"
+  },
+  "شاربة": {
+    "french": "soupe / bouillon (Sfax)",
+    "category": "dialecte_sfax"
+  },
+  "7out": {
+    "french": "poisson (Sfax — très fréquent)",
+    "category": "dialecte_sfax"
+  },
+  "حوت": {
+    "french": "poisson (Sfax — très fréquent)",
+    "category": "dialecte_sfax"
+  },
+  "sayyad": {
+    "french": "pêcheur",
+    "category": "dialecte_sfax"
+  },
+  "صيّاد": {
+    "french": "pêcheur",
+    "category": "dialecte_sfax"
+  },
+  "el mina": {
+    "french": "le port (Sfax)",
+    "category": "dialecte_sfax"
+  },
+  "المينا": {
+    "french": "le port (Sfax)",
+    "category": "dialecte_sfax"
+  },
+  "fartuta": {
+    "french": "omelette sfaxienne",
+    "category": "dialecte_sfax"
+  },
+  "فرتوتة": {
+    "french": "omelette sfaxienne",
+    "category": "dialecte_sfax"
+  },
+  "mloukhiya": {
+    "french": "corète (plat national)",
+    "category": "dialecte_sfax"
+  },
+  "ملوّخية": {
+    "french": "corète (plat national)",
+    "category": "dialecte_sfax"
+  },
+  "karmouss": {
+    "french": "figues de barbarie",
+    "category": "dialecte_sfax"
+  },
+  "كرموس": {
+    "french": "figues de barbarie",
+    "category": "dialecte_sfax"
+  },
+  "jallaba": {
+    "french": "djellaba (vêtement)",
+    "category": "dialecte_sfax"
+  },
+  "جلّابة": {
+    "french": "djellaba (vêtement)",
+    "category": "dialecte_sfax"
+  },
+  "saffar": {
+    "french": "siffleur / bavard (Sfax)",
+    "category": "dialecte_sfax"
+  },
+  "صفّار": {
+    "french": "siffleur / bavard (Sfax)",
+    "category": "dialecte_sfax"
+  },
+  "ghachach": {
+    "french": "tricheur / arnaqueur",
+    "category": "dialecte_sfax"
+  }
+}

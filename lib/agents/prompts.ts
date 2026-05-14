@@ -1,4 +1,5 @@
 import type { AgentIntent, StoreContext } from '@/types/ai-agent'
+import { DARIJA_LINGUISTIC_RULES } from './darija-rules'
 
 function formatDt(n: number): string {
   return `${n.toFixed(2)} DT`
@@ -180,6 +181,7 @@ Instructions:
 - Give 2–3 specific, actionable recommendations with real numbers from the context.
 - Max 200 words unless the user explicitly asks for a full report.
 - End with a section titled exactly: Recommendations:
+- Personality: ${DARIJA_LINGUISTIC_RULES}
 - Respond in French or Arabic (Tunisian context) when natural for the seller.`.trim()
 }
 
@@ -205,6 +207,7 @@ Focus:
 - Propose a promotion with a concrete discount percentage and a coupon code (e.g. RO2YA10).
 - Support French and/or Arabic output as appropriate.
 - Always include a clear call-to-action (CTA).
+- Personality: ${DARIJA_LINGUISTIC_RULES}
 - Stay grounded in the store data above.`.trim()
 }
 
@@ -233,6 +236,7 @@ Instructions:
 - Diagnose why these items may not convert (price, photos missing in data, stock, seasonality).
 - Suggest improved titles and short descriptions (French/Arabic ok).
 - Suggest pricing tweaks with justification.
+- Personality: ${DARIJA_LINGUISTIC_RULES}
 - Keep recommendations practical for a Tunisian marketplace.`.trim()
 }
 
@@ -265,6 +269,7 @@ ${nLines || '- none in sample'}
 Instructions:
 - Draft short vendor replies (under ~100 words each if multiple), empathetic, never defensive.
 - Spot recurring complaint patterns.
+- Personality: ${DARIJA_LINGUISTIC_RULES}
 - Use the review text above directly.`.trim()
 }
 
@@ -276,6 +281,7 @@ ${buildContextBlock(ctx)}
 Instructions:
 - Answer using the real figures above.
 - Be concise, proactive: flag urgent issues (unanswered negatives, out of stock, cancellations).
+- Personality: ${DARIJA_LINGUISTIC_RULES}
 - French or Arabic when appropriate.`.trim()
 }
 

@@ -292,6 +292,16 @@ export async function getUserProfileData() {
         .select('*', { count: 'exact', head: true })
         .eq('user_id', user.id);
 
+    // - Store follows (following)
+    const { count: followingCount } = await (supabase
+        .from('store_follows' as any)
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', user.id) as any);
+
+    // - Followers count (people following this user - optional feature)
+    // For now, let's just use 0 if not implemented elsewhere
+    const followersCount = 0;
+
     // 4. Fetch User's Orders (with Store info) for the new Orders tab
     const { data: userOrders, error: ordersError } = await supabase
         .from('orders' as any)
@@ -369,6 +379,27 @@ export async function getUserProfileData() {
 
     if (savedError) {
         console.error("Error fetching user saved places:", savedError)
+    }
+
+    // 6.5 Fetch User's Followed Stores
+    const { data: userFollowedStores, error: followsError } = await (supabase
+        .from('store_follows' as any)
+        .select(`
+            *,
+            stores!store_id (
+                id,
+                name,
+                logo_url,
+                category,
+                address,
+                rating_average
+            )
+        `)
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false }) as any);
+
+    if (followsError) {
+        console.error("Error fetching user followed stores:", followsError)
     }
 
     // 7. Fetch Activity (Latest 10 items from Reviews, Bookings, Orders)
@@ -453,9 +484,21 @@ export async function getUserProfileData() {
             bookingsCount: bookingsCount || 0,
             ordersCount: ordersCount || 0,
             savedCount: savedCount || 0,
+            followingCount: followingCount || 0,
+            followersCount: followersCount || 0,
             citiesCount: 1,
             helpfulVotes: 0,
         },
+        followedStores: (userFollowedStores || []).map((s: any) => ({
+            id: s.id.toString(),
+            storeId: s.stores?.id,
+            businessName: s.stores?.name || 'Unknown Business',
+            businessImage: s.stores?.logo_url || '/placeholder-business.svg',
+            businessCategory: s.stores?.category || 'General',
+            address: s.stores?.address || '',
+            rating: s.stores?.rating_average || 0,
+            date: new Date(s.created_at).toLocaleDateString('en-US', { month: 'long', year: 'numeric' }),
+        })),
         savedPlaces: (userSavedPlaces || []).map((s: any) => ({
             id: s.id.toString(),
             storeId: s.stores?.id,
