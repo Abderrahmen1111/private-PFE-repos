@@ -19,6 +19,7 @@ import { useSmartSearch } from '@/hooks/useSmartSearch';
 import { useSavesStore } from '@/lib/store/use-saves-store';
 import { useMessaging } from '@/hooks/useMessaging';
 import { useCartStore } from '@/lib/store/use-cart-store';
+import { useNotifications } from '@/hooks/useNotifications';
 import { toast } from 'sonner';
 
 // ─── Category menu data ───────────────────────────────────────────────────────
@@ -614,21 +615,13 @@ export default function Navbar() {
   const [user, setUser] = useState<any>(null);
   const [userRole, setUserRole] = useState<string | null>(null);
   const [dbProfile, setDbProfile] = useState<{ name?: string, avatar?: string } | null>(null);
+  const [profileOpen, setProfileOpen] = useState(false);
+  const { notifications, unreadCount, markAsRead, markAllAsRead } = useNotifications();
+  const [imageSearchOpen, setImageSearchOpen] = useState(false);
   const [storeId, setStoreId] = useState<string | null>(null);
   const [storeStatus, setStoreStatus] = useState<string | null>(null);
   const [ownedStores, setOwnedStores] = useState<any[]>([]);
 
-
-  const [profileOpen, setProfileOpen] = useState(false);
-
-  // Notifications State
-  const [notifications, setNotifications] = useState<Notification[]>([]);
-
-  const handleNotificationsChange = (updatedNotifications: Notification[]) => {
-    setNotifications(updatedNotifications);
-  };
-  
-  const [imageSearchOpen, setImageSearchOpen] = useState(false);
   const profileRef = useRef<HTMLDivElement>(null);
   
   const { isListening, transcript, isSupported, startListening, stopListening, resetTranscript } = useVoiceSearch({
@@ -1195,9 +1188,16 @@ export default function Navbar() {
 
                       {/* Notification Dropdown */}
                       <NotificationPopover
-  notifications={notifications}
-  onNotificationsChange={handleNotificationsChange}
-  buttonClassName="relative group/notification w-10 h-10 flex items-center justify-center rounded-2xl bg-[#11111198] hover:bg-[#111111d1] backdrop-blur-sm border border-white/10 transition-all duration-300"
+                        notifications={notifications.map(n => ({
+                          id: n.id,
+                          title: n.title,
+                          description: n.description || '',
+                          timestamp: new Date(n.created_at),
+                          read: n.is_read
+                        }))}
+                        onMarkAsRead={markAsRead}
+                        onMarkAllAsRead={markAllAsRead}
+                        buttonClassName="relative group/notification w-10 h-10 flex items-center justify-center rounded-2xl bg-[#11111198] hover:bg-[#111111d1] backdrop-blur-sm border border-white/10 transition-all duration-300"
   popoverClassName="bg-[#11111198] backdrop-blur-sm border border-white/10"
   textColor="text-white"
   hoverBgColor="hover:bg-white/10"

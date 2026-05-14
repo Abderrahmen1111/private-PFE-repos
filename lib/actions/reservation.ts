@@ -5,6 +5,7 @@ import { Database } from '@/types/supabase';
 import { revalidatePath } from 'next/cache';
 import { syncBookingTransaction } from './transactions';
 import { analyzeFraud, saveFraudAnalysis } from './fraud-detection';
+import { createNotification } from './notifications';
 
 export type BookingInsert = Database['public']['Tables']['bookings']['Insert'];
 export type BookingRow = Database['public']['Tables']['bookings']['Row'];
@@ -73,6 +74,16 @@ export async function createBooking(data: Omit<BookingInsert, 'booking_number' |
       console.error('[createBooking] Fraud Analysis failed:', fraudErr);
     }
     // ──────────────────────────────────────────────────────────────────────────
+
+    // Notify Store Owner
+    await createNotification({
+      userId: store.owner_id,
+      title: 'Nouvelle réservation !',
+      description: `Vous avez reçu une nouvelle demande de réservation ${bookingNumber} pour le ${data.booking_date} à ${data.start_time.split('T')[1]?.slice(0, 5) || ''}.`,
+      type: 'BOOKING',
+      link: `/dashboard/${data.store_id}/leads`,
+      metadata: { bookingId: booking.id, storeId: data.store_id }
+    });
   }
 
   revalidatePath(`/merchants/business/${data.store_id}`);
@@ -215,6 +226,25 @@ export async function updateBookingStatus(
   }
   revalidatePath(`/profile/user`); 
   revalidatePath(`/profile/cart`);
+  
+  if (data && data.customer_id) {
+    const statusLabels: Record<string, string> = {
+      'CONFIRMED': 'confirmée',
+      'CANCELLED': 'annulée',
+      'COMPLETED': 'terminée',
+    };
+    
+    if (statusLabels[status]) {
+      await createNotification({
+        userId: data.customer_id,
+        title: `Réservation ${statusLabels[status]}`,
+        description: `Votre réservation ${data.booking_number} pour le ${data.booking_date} a été ${statusLabels[status]}.`,
+        type: 'BOOKING',
+        link: `/profile/user?view=bookings`,
+        metadata: { bookingId: data.id, status }
+      });
+    }
+  }
 
   return data;
 }
