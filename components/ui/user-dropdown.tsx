@@ -45,6 +45,7 @@ export const UserDropdown = ({
 }: UserDropdownProps) => {
 
   const isClient = user.role?.toLowerCase() === 'client';
+  const isAdmin = user.role?.toLowerCase() === 'admin';
   const triggerName = businessTrigger?.name ?? user.name;
   const triggerImg = businessTrigger ? businessTrigger.logoUrl : user.avatar;
   const triggerSrc = getAvatarUrl(triggerImg, triggerName);
@@ -93,20 +94,49 @@ export const UserDropdown = ({
             <User className="w-4 h-4" />
             <span className="text-sm font-medium">Profile</span>
           </DropdownMenuItem>
-          <DropdownMenuItem
-            className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-white/70 hover:text-white hover:bg-white/10 cursor-pointer transition"
-            onClick={() => onAction(isClient ? 'notifications' : 'business-settings')}
-          >
-            {isClient ? <Bell className="w-4 h-4" /> : <Settings className="w-4 h-4" />}
-            <span className="text-sm font-medium">{isClient ? 'Notifications' : 'Business Settings'}</span>
-          </DropdownMenuItem>
-          <DropdownMenuItem
-            className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-white/70 hover:text-white hover:bg-white/10 cursor-pointer transition"
-            onClick={() => onAction(isClient ? 'panier' : 'billing')}
-          >
-            {isClient ? <ShoppingCart className="w-4 h-4" /> : <CreditCard className="w-4 h-4" />}
-            <span className="text-sm font-medium">{isClient ? 'Panier' : 'Billing'}</span>
-          </DropdownMenuItem>
+          
+          {isAdmin ? (
+            <>
+              <DropdownMenuItem
+                className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-white/70 hover:text-white hover:bg-white/10 cursor-pointer transition"
+                onClick={() => onAction('account-settings')}
+              >
+                <Settings className="w-4 h-4" />
+                <span className="text-sm font-medium">Account Settings</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-white/70 hover:text-white hover:bg-white/10 cursor-pointer transition"
+                onClick={() => onAction('security')}
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                <span className="text-sm font-medium">Security</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-white/70 hover:text-white hover:bg-white/10 cursor-pointer transition"
+                onClick={() => onAction('activity-logs')}
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+                <span className="text-sm font-medium">Activity Logs</span>
+              </DropdownMenuItem>
+            </>
+          ) : (
+            <>
+              <DropdownMenuItem
+                className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-white/70 hover:text-white hover:bg-white/10 cursor-pointer transition"
+                onClick={() => onAction(isClient ? 'notifications' : 'business-settings')}
+              >
+                {isClient ? <Bell className="w-4 h-4" /> : <Settings className="w-4 h-4" />}
+                <span className="text-sm font-medium">{isClient ? 'Notifications' : 'Business Settings'}</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-white/70 hover:text-white hover:bg-white/10 cursor-pointer transition"
+                onClick={() => onAction(isClient ? 'panier' : 'billing')}
+              >
+                {isClient ? <ShoppingCart className="w-4 h-4" /> : <CreditCard className="w-4 h-4" />}
+                <span className="text-sm font-medium">{isClient ? 'Panier' : 'Billing'}</span>
+              </DropdownMenuItem>
+            </>
+          )}
         </DropdownMenuGroup>
 
         {!isClient && user.ownedStores && user.ownedStores.length > 1 && (

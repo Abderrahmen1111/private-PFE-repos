@@ -38,7 +38,7 @@ export default function RootLayout({
           {children}
           <GlobalActionDrawer />
           <ChatHeads />
-          <Toaster />
+          <Toaster position="top-right" richColors />
         </SessionProvider>
       </body>
     </html>

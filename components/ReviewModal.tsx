@@ -22,9 +22,10 @@ interface ReviewModalProps {
     businessName: string
     storeId?: number | null
     businessId?: string // Directory ID from URL
+    itemId?: number // For product/service reviews
 }
 
-export function ReviewModal({ isOpen, onClose, businessName, storeId, businessId }: ReviewModalProps) {
+export function ReviewModal({ isOpen, onClose, businessName, storeId, businessId, itemId }: ReviewModalProps) {
     const [rating, setRating] = useState(0)
     const [hover, setHover] = useState(0)
     const [comment, setComment] = useState('')
@@ -44,6 +45,7 @@ export function ReviewModal({ isOpen, onClose, businessName, storeId, businessId
         try {
             const result = await submitReview({
                 store_id: storeId,
+                item_id: itemId,
                 rating,
                 comment,
                 businessId: businessId // Fixed key from directoryId to businessId

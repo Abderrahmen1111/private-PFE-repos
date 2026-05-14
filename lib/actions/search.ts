@@ -408,7 +408,7 @@ async function hybridSearchText(
     image_url:     i.main_image,
     location_city: i.stores?.city,
     category:      i.item_type,
-    metadata:      { price: i.price, store_name: i.stores?.name },
+    metadata:      { price: i.price, store_name: i.stores?.name, store_id: i.store_id || i.stores?.id },
   }))
 
   push(storesRes, 'STORE', i => ({

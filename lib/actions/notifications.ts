@@ -19,7 +19,8 @@ export interface Notification {
 }
 
 /**
- * Creates a new notification for a user.
+ * Creates a new notification for a user AND sends a push notification
+ * to all registered mobile devices for that user.
  * Truncates description to approximately 10 words if necessary.
  */
 export async function createNotification(data: {
@@ -58,6 +59,49 @@ export async function createNotification(data: {
   if (error) {
     console.error('Error creating notification:', error);
     return { success: false, error };
+  }
+
+  // ── Fire-and-forget push notification to mobile ──────────────────────────────
+  try {
+    const { data: tokens } = await supabaseAdmin
+      .from('user_push_tokens')
+      .select('token')
+      .eq('user_id', data.userId);
+
+    if (tokens && tokens.length > 0) {
+      const messages = tokens.map((row: { token: string }) => ({
+        to: row.token,
+        title: data.title,
+        body: processedDescription || data.title,
+        data: {
+          type: data.type,
+          link: data.link,
+          notificationId: notification.id,
+          ...(data.metadata || {}),
+        },
+        sound: 'default',
+        channelId: 'default',
+        priority: 'high',
+      }));
+
+      const EXPO_PUSH_URL = 'https://exp.host/--/api/v2/push/send';
+      for (let i = 0; i < messages.length; i += 100) {
+        const chunk = messages.slice(i, i + 100);
+        await fetch(EXPO_PUSH_URL, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Accept: 'application/json',
+            ...(process.env.EXPO_ACCESS_TOKEN
+              ? { Authorization: `Bearer ${process.env.EXPO_ACCESS_TOKEN}` }
+              : {}),
+          },
+          body: JSON.stringify(chunk),
+        }).catch((e) => console.error('[Push] send error:', e));
+      }
+    }
+  } catch (pushError) {
+    console.error('[Push] Failed to send push notification:', pushError);
   }
 
   return { success: true, data: notification };

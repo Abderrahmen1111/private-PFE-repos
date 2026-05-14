@@ -3,6 +3,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { syncOrderTransaction } from './transactions';
+import { createNotification } from './notifications';
 
 /**
  * Fetch all leads (orders and bookings) for a specific store
@@ -129,6 +130,25 @@ export async function updateOrderStatus(
     if (data && (status === 'VALIDATED' || status === 'COMPLETED' || status === 'CANCELLED')) {
         // Only sync if it's being validated or was already validated
         await syncOrderTransaction(data, supabase);
+
+        // Notify Customer
+        const statusMap: Record<string, string> = {
+            'VALIDATED': 'validée',
+            'COMPLETED': 'terminée',
+            'CANCELLED': 'refusée/annulée',
+            'SHIPPED': 'expédiée'
+        };
+
+        if (data.customer_id && statusMap[status]) {
+            await createNotification({
+                userId: data.customer_id,
+                title: `Commande ${statusMap[status]}`,
+                description: `Votre commande ${data.order_number} a été ${statusMap[status]} par le commerçant.`,
+                type: 'ORDER',
+                link: `/profile/user?view=commands`,
+                metadata: { orderId: data.id, status }
+            });
+        }
     }
     
     return data

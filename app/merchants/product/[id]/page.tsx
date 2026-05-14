@@ -10,6 +10,7 @@ import {
   Globe, BadgeCheck, ChevronRight, ShoppingBag, Clock, Wrench
 } from 'lucide-react';
 import Link from 'next/link';
+import { WriteReviewButton } from '@/components/WriteReviewButton';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function Stars({ rating, size = 'sm' }: { rating: number; size?: 'sm' | 'md' }) {
@@ -223,10 +224,17 @@ export default async function ProductProfilePage({ params }: { params: { id: str
 
             {/* Reviews */}
             <div className="bg-white rounded-2xl shadow-sm border border-stone-100 p-5">
-              <h2 className="font-bold text-stone-900 mb-4">
-                Avis clients
-                {reviews.length > 0 && <span className="ml-2 text-sm font-normal text-stone-400">({reviews.length})</span>}
-              </h2>
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="font-bold text-stone-900">
+                  Avis clients
+                  {reviews.length > 0 && <span className="ml-2 text-sm font-normal text-stone-400">({reviews.length})</span>}
+                </h2>
+                <WriteReviewButton 
+                  businessName={product.name} 
+                  storeId={product.store.id} 
+                  itemId={product.id} 
+                />
+              </div>
 
               {reviews.length === 0 ? (
                 <p className="text-sm text-stone-400 text-center py-6">Aucun avis pour ce produit.</p>

@@ -12,7 +12,7 @@ import { Input } from '@/components/ui/input';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { UserDropdown } from '@/components/ui/user-dropdown';
 import { cn } from '@/lib/utils';
-import { Toaster, toast } from 'sonner';
+
 import AIAgent from '@/components/ai-agent/AIAgent';
 import { getSidebarStats } from '@/lib/actions/overviews';
 import { createClient } from '@/lib/supabase/client';
@@ -747,7 +747,7 @@ export default function DashboardLayout({
             </motion.div>
           </>
         )}
-        <Toaster position="top-right" richColors />
+
         {!dashboardLocked && <AIAgent storeId={id} />}
         <UploadProgressManager />
       </div>

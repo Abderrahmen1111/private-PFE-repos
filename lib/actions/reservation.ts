@@ -5,6 +5,7 @@ import { Database } from '@/types/supabase';
 import { revalidatePath } from 'next/cache';
 import { syncBookingTransaction } from './transactions';
 import { analyzeFraud, saveFraudAnalysis } from './fraud-detection';
+import { createNotification } from './notifications';
 
 export type BookingInsert = Database['public']['Tables']['bookings']['Insert'];
 export type BookingRow = Database['public']['Tables']['bookings']['Row'];
@@ -73,6 +74,16 @@ export async function createBooking(data: Omit<BookingInsert, 'booking_number' |
       console.error('[createBooking] Fraud Analysis failed:', fraudErr);
     }
     // ──────────────────────────────────────────────────────────────────────────
+
+    // Notify Store Owner
+    await createNotification({
+      userId: store.owner_id,
+      title: 'Nouvelle réservation !',
+      description: `Vous avez reçu une nouvelle demande de réservation ${bookingNumber} pour le ${data.booking_date} à ${data.start_time.split('T')[1]?.slice(0, 5) || ''}.`,
+      type: 'BOOKING',
+      link: `/dashboard/${data.store_id}/leads`,
+      metadata: { bookingId: booking.id, storeId: data.store_id }
+    });
   }
 
   revalidatePath(`/merchants/business/${data.store_id}`);
@@ -182,7 +193,15 @@ export async function updateBookingStatus(
 
   const updateData: any = { status, updated_at: new Date().toISOString() };
   
-  if (status === 'CONFIRMED') updateData.confirmed_at = new Date().toISOString();
+  if (status === 'CONFIRMED') {
+    updateData.confirmed_at = new Date().toISOString();
+    // Generate a unique tracking code for QR scanning
+    const trackingCode = `QR-BOK-${Date.now().toString(36).toUpperCase()}-${Math.random()
+      .toString(36)
+      .substring(2, 10)
+      .toUpperCase()}`;
+    updateData.tracking_code = trackingCode;
+  }
   if (status === 'COMPLETED') updateData.completed_at = new Date().toISOString();
 
   // 3. Use admin client to bypass RLS
@@ -215,6 +234,25 @@ export async function updateBookingStatus(
   }
   revalidatePath(`/profile/user`); 
   revalidatePath(`/profile/cart`);
+  
+  if (data && data.customer_id) {
+    const statusLabels: Record<string, string> = {
+      'CONFIRMED': 'confirmée',
+      'CANCELLED': 'annulée',
+      'COMPLETED': 'terminée',
+    };
+    
+    if (statusLabels[status]) {
+      await createNotification({
+        userId: data.customer_id,
+        title: `Réservation ${statusLabels[status]}`,
+        description: `Votre réservation ${data.booking_number} pour le ${data.booking_date} a été ${statusLabels[status]}.`,
+        type: 'BOOKING',
+        link: `/profile/user?view=bookings`,
+        metadata: { bookingId: data.id, status }
+      });
+    }
+  }
 
   return data;
 }
@@ -238,4 +276,38 @@ export async function getStoreBookingsByDate(storeId: number, date: string) {
   }
 
   return data || [];
+}
+
+/**
+ * Get booking by tracking code (QR token)
+ * Used to retrieve booking details when QR code is scanned
+ */
+export async function getBookingByTrackingCode(trackingCode: string) {
+  const supabase = createClient();
+
+  const { data, error } = await supabase
+    .from('bookings')
+    .select(`
+      *,
+      stores (
+        id,
+        name,
+        owner_id
+      ),
+      items (
+        id,
+        name,
+        main_image
+      )
+    `)
+    .eq('tracking_code', trackingCode)
+    .eq('status', 'CONFIRMED')
+    .single();
+
+  if (error) {
+    console.error('Error fetching booking by tracking code:', error);
+    throw new Error('Réservation non trouvée ou déjà complétée');
+  }
+
+  return data as any;
 }

@@ -446,12 +446,12 @@ export async function getOrderByTrackingCode(trackingCode: string) {
     .from('orders')
     .select(`
       *,
-      stores (
+      stores!store_id (
         id,
         name,
         owner_id
       ),
-      items (
+      items!item_id (
         id,
         name,
         main_image
@@ -604,3 +604,4 @@ export async function updateOrderVendorNotes(orderId: number, notes: string) {
 
   return data;
 }
+

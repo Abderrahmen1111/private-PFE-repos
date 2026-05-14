@@ -12,7 +12,7 @@ export interface UserSuggestion {
   } | null;
 }
 
-export async function getFriendSuggestions(): Promise<UserSuggestion[]> {
+export async function getFriendSuggestions(searchQuery?: string): Promise<UserSuggestion[]> {
   const supabase = createClient();
   
   // 1. Get current user
@@ -25,11 +25,16 @@ export async function getFriendSuggestions(): Promise<UserSuggestion[]> {
   try {
     // 2. Query users who are NOT the current user
     // We remove the exclusion of messaged users because now we care about friendship status
-    const { data: suggestions, error: suggestionsError } = await supabase
+    let query = supabase
       .from('users')
       .select('id, full_name, avatar_url, city, role')
-      .neq('id', user.id)
-      .limit(20);
+      .neq('id', user.id);
+      
+    if (searchQuery && searchQuery.trim().length > 0) {
+      query = query.ilike('full_name', `%${searchQuery.trim()}%`);
+    }
+    
+    const { data: suggestions, error: suggestionsError } = await query.limit(20);
 
     if (suggestionsError) throw suggestionsError;
 

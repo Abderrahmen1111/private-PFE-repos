@@ -483,6 +483,7 @@ export async function getUserProfileData() {
             businessImage: o.stores?.logo_url || o.stores?.banner_url || null,
             status: o.status,
             total_price: o.total_price,
+            tracking_code: o.tracking_code,
             date: new Date(o.created_at).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }),
         })),
         bookings: userBookings || [],

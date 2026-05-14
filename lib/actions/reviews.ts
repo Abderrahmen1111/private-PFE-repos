@@ -7,6 +7,7 @@ import { hasCompletedTransactionWithStore } from './transactions'
 export type ReviewInput = {
     store_id: number | null | undefined; // Now explicitly allowing null/update from client
     businessId?: string; // We'll pass this explicitly now for directory reference
+    item_id?: number; // Added for product/service reviews
     rating: number;
     comment: string;
 }
@@ -126,6 +127,7 @@ export async function submitReview(input: ReviewInput) {
         .insert({
             author_id: user.id,
             store_id: resolvedStoreId,
+            item_id: input.item_id,
             rating: input.rating,
             comment: input.comment,
             is_approved: true

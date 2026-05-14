@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Bell } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
@@ -102,36 +102,56 @@ interface NotificationPopoverProps {
 export const NotificationPopover = ({
   notifications: initialNotifications = dummyNotifications,
   onNotificationsChange,
+  onMarkAsRead,
+  onMarkAllAsRead,
   buttonClassName = "w-10 h-10 rounded-xl bg-[#11111198] hover:bg-[#111111d1] shadow-[0_0_20px_rgba(0,0,0,0.2)]",
   popoverClassName = "bg-[#11111198] backdrop-blur-sm",
   textColor = "text-white",
   hoverBgColor = "hover:bg-[#ffffff37]",
   dividerColor = "divide-gray-200/40",
   headerBorderColor = "border-gray-200/50",
-}: NotificationPopoverProps) => {
+}: NotificationPopoverProps & {
+  onMarkAsRead?: (id: string) => void;
+  onMarkAllAsRead?: () => void;
+}) => {
   const [isOpen, setIsOpen] = useState(false);
-  const [notifications, setNotifications] =
+  const [internalNotifications, setInternalNotifications] =
     useState<Notification[]>(initialNotifications);
 
-  const unreadCount = notifications.filter((n) => !n.read).length;
+  // Sync internal state with props if provided
+  useEffect(() => {
+    if (initialNotifications !== dummyNotifications) {
+      setInternalNotifications(initialNotifications);
+    }
+  }, [initialNotifications]);
+
+  const unreadCount = internalNotifications.filter((n) => !n.read).length;
 
   const toggleOpen = () => setIsOpen(!isOpen);
 
-  const markAllAsRead = () => {
-    const updatedNotifications = notifications.map((n) => ({
-      ...n,
-      read: true,
-    }));
-    setNotifications(updatedNotifications);
-    onNotificationsChange?.(updatedNotifications);
+  const handleMarkAllAsRead = () => {
+    if (onMarkAllAsRead) {
+      onMarkAllAsRead();
+    } else {
+      const updatedNotifications = internalNotifications.map((n) => ({
+        ...n,
+        read: true,
+      }));
+      setInternalNotifications(updatedNotifications);
+      onNotificationsChange?.(updatedNotifications);
+    }
   };
 
-  const markAsRead = (id: string) => {
-    const updatedNotifications = notifications.map((n) =>
-      n.id === id ? { ...n, read: true } : n
-    );
-    setNotifications(updatedNotifications);
-    onNotificationsChange?.(updatedNotifications);
+  const handleMarkAsRead = (id: string) => {
+    if (onMarkAsRead) {
+      onMarkAsRead(id);
+    } else {
+      const updatedNotifications = internalNotifications.map((n) =>
+        n.id === id ? { ...n, read: true } : n
+      );
+      setInternalNotifications(updatedNotifications);
+      onNotificationsChange?.(updatedNotifications);
+    }
   };
 
   return (
@@ -141,9 +161,9 @@ export const NotificationPopover = ({
         size="icon"
         className={cn("relative", buttonClassName)}
       >
-        <Bell size={16} />
+        <Bell size={18} className="text-white/70 group-hover/notification:text-white transition-colors" />
         {unreadCount > 0 && (
-          <div className="absolute -top-1 -right-1 w-5 h-5 bg-black rounded-full flex items-center justify-center text-xs border border-gray-800 text-white">
+          <div className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-red-600 text-[10px] font-bold text-white ring-2 ring-black animate-in zoom-in duration-300">
             {unreadCount}
           </div>
         )}
@@ -166,7 +186,7 @@ export const NotificationPopover = ({
             >
               <h3 className="text-sm font-medium">Notifications</h3>
               <Button
-                onClick={markAllAsRead}
+                onClick={handleMarkAllAsRead}
                 variant="ghost"
                 size="sm"
                 className={`text-xs ${hoverBgColor} hover:text-white`}
@@ -176,8 +196,8 @@ export const NotificationPopover = ({
             </div>
 
             <NotificationList
-              notifications={notifications}
-              onMarkAsRead={markAsRead}
+              notifications={internalNotifications}
+              onMarkAsRead={handleMarkAsRead}
               textColor={textColor}
               hoverBgColor={hoverBgColor}
               dividerColor={dividerColor}
