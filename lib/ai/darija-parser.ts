@@ -12,7 +12,7 @@ import { generateEmbedding } from '@/lib/openrouter-embeddings'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-export type DarijaIntent = 'create_product' | 'create_promotion' | 'unknown'
+export type DarijaIntent = 'create_product' | 'create_promotion' | 'chat' | 'unknown'
 
 export interface ParsedProductData {
   intent: 'create_product'
@@ -35,6 +35,7 @@ export interface ParsedPromotionData {
 export type ParsedDarijaResult =
   | ParsedProductData
   | ParsedPromotionData
+  | { intent: 'chat'; message: string }
   | { intent: 'unknown'; raw: string }
 
 // ─── Anchor sentences for intent classification (baai/bge-m3) ─────────────────
@@ -45,6 +46,8 @@ const INTENT_ANCHORS: Record<DarijaIntent, string> = {
     'add a new product listing to the catalog with a name, price and description',
   create_promotion:
     'create a discount promotion offer with percentage reduction and validity dates',
+  chat:
+    'say hello, ask how are you, greeting, general talk, help request, information about the platform',
   unknown: '',
 }
 
@@ -82,23 +85,35 @@ async function classifyIntentWithEmbeddings(translatedPrompt: string): Promise<D
   const kw = keywordIntent(translatedPrompt)
 
   try {
-    const [promptVec, productVec, promoVec] = await Promise.all([
+    const [promptVec, productVec, promoVec, chatVec] = await Promise.all([
       generateEmbedding(translatedPrompt),
       generateEmbedding(INTENT_ANCHORS.create_product),
       generateEmbedding(INTENT_ANCHORS.create_promotion),
+      generateEmbedding(INTENT_ANCHORS.chat),
     ])
 
     const simProduct = cosineSimilarity(promptVec, productVec)
     const simPromo   = cosineSimilarity(promptVec, promoVec)
+    const simChat    = cosineSimilarity(promptVec, chatVec)
 
-    console.log(`[Darija Parser] BGE-M3 similarity → product: ${simProduct.toFixed(3)}, promo: ${simPromo.toFixed(3)}`)
+    console.log(`[Darija Parser] BGE-M3 similarity → product: ${simProduct.toFixed(3)}, promo: ${simPromo.toFixed(3)}, chat: ${simChat.toFixed(3)}`)
 
-    // If embeddings agree with keywords or embeddings are decisive → trust them
-    const embeddingIntent: DarijaIntent = simPromo > simProduct ? 'create_promotion' : 'create_product'
+    // Determine highest similarity
+    let maxSim = simChat
+    let bestIntent: DarijaIntent = 'chat'
 
-    // Require a minimum confidence gap (0.02) otherwise trust keywords
+    if (simProduct > maxSim) {
+      maxSim = simProduct
+      bestIntent = 'create_product'
+    }
+    if (simPromo > maxSim) {
+      maxSim = simPromo
+      bestIntent = 'create_promotion'
+    }
+
+    // Require a minimum confidence gap otherwise trust keywords
     if (Math.abs(simProduct - simPromo) < 0.02 && kw) return kw
-    return embeddingIntent
+    return bestIntent
 
   } catch (err) {
     console.warn('[Darija Parser] Embedding classification failed, using keywords:', (err as Error).message)
@@ -233,6 +248,46 @@ ${schemaInstructions}`
   return JSON.parse(jsonStr) as Record<string, unknown>
 }
 
+function isDarija(text: string): boolean {
+  // Detect Arabic chars, or common Darija latin words
+  const arabicPattern = /[\u0600-\u06FF]/
+  const darijaLatinWords = ['salem', 'wach', 'bech', 'ki', 'chnou', '3lach', 'kifeh', 'labas', 'mzien', 'barcha', 'zwina', 'wela', 'inti', 'ana', 'hia', 'houma', 'tawa', 'chbik', 'bhi']
+  const lower = text.toLowerCase()
+  if (arabicPattern.test(text)) return true
+  return darijaLatinWords.some(w => lower.includes(w))
+}
+
+async function generateChatResponse(prompt: string, translated: string): Promise<string> {
+  const geminiKey = process.env.GEMINI_API_KEY
+  if (!geminiKey) return "Salem ! Je suis votre assistant Ro2ya.";
+
+  const inDarija = isDarija(prompt)
+
+  const languageInstruction = inDarija
+    ? `L'utilisateur parle en Darija tunisien. OBLIGATOIREMENT réponds en Darija tunisien (latin ou arabe selon ce que l'utilisateur utilise). Utilise des expressions tunisiennes naturelles comme "walhi", "yessir", "barcha", "mzien", "tawa", etc.`
+    : `Réponds en Français de manière amicale et concise.`
+
+  const userText = `Tu es l'assistant de la plateforme Ro2ya, un marketplace tunisien.
+${languageInstruction}
+L'utilisateur a dit : "${prompt}"
+Traduction approximative : "${translated}"
+Réponds de manière utile, amicale et courte (maximum 3 phrases).`
+
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiKey}`
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      contents: [{ role: 'user', parts: [{ text: userText }] }],
+      generationConfig: { maxOutputTokens: 250, temperature: 0.8 },
+    }),
+  })
+
+  if (!res.ok) return inDarija ? "Salem ! Ana lkhdma b Ro2ya, kifeh naawen feek ?" : "Salem ! Je suis là pour vous aider.";
+  const data = await res.json()
+  return data.candidates?.[0]?.content?.parts?.[0]?.text || (inDarija ? "Labas, kifeh naawen feek ?" : "Salem !");
+}
+
 // ─── Main export ──────────────────────────────────────────────────────────────
 
 export async function parseDarijaPrompt(prompt: string): Promise<ParsedDarijaResult> {
@@ -246,7 +301,16 @@ export async function parseDarijaPrompt(prompt: string): Promise<ParsedDarijaRes
   const intent = await classifyIntentWithEmbeddings(translatedText)
   console.log(`[Darija Parser] Intent → ${intent}`)
 
-  // 3. Structured extraction: Cloudflare (Primary) → Fallback Gemini
+  // 3. Structured extraction OR Chat response
+  if (intent === 'chat') {
+    try {
+      const response = await generateChatResponse(prompt, translatedText);
+      return { intent: 'chat', message: response };
+    } catch (chatErr) {
+      return { intent: 'chat', message: "Salem ! Comment puis-je vous aider ?" };
+    }
+  }
+
   let parsed: Record<string, unknown>
   try {
     parsed = await extractWithCloudflare(prompt, translatedText, darijaWords, intent)

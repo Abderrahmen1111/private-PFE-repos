@@ -3,10 +3,7 @@
 import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 
-/**
- * Toggle follow status for a store
- */
-export async function toggleFollowStore(storeId: number) {
+export async function toggleFollowStore(storeId: number | string) {
   const supabase = createClient();
   
   const { data: { user }, error: authError } = await supabase.auth.getUser();
@@ -14,12 +11,28 @@ export async function toggleFollowStore(storeId: number) {
     throw new Error('Vous devez être connecté pour suivre une boutique.');
   }
 
+  let finalStoreId: number;
+
+  if (typeof storeId === 'string' && isNaN(Number(storeId))) {
+    // It's a slug, look up the ID
+    const { data: store } = await supabase
+      .from('stores')
+      .select('id')
+      .eq('slug', storeId)
+      .single();
+    
+    if (!store) throw new Error('Boutique introuvable');
+    finalStoreId = store.id;
+  } else {
+    finalStoreId = Number(storeId);
+  }
+
   // Check if already following
   const { data: existing } = await (supabase
     .from('store_follows' as any)
     .select('id')
     .eq('user_id', user.id)
-    .eq('store_id', storeId)
+    .eq('store_id', finalStoreId)
     .maybeSingle() as any);
 
   if (existing) {
@@ -49,20 +62,32 @@ export async function toggleFollowStore(storeId: number) {
   }
 }
 
-/**
- * Check if user is following a store
- */
-export async function isFollowingStore(storeId: number) {
+export async function isFollowingStore(storeId: number | string) {
   const supabase = createClient();
   
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return false;
 
+  let finalStoreId: number;
+
+  if (typeof storeId === 'string' && isNaN(Number(storeId))) {
+    const { data: store } = await supabase
+      .from('stores')
+      .select('id')
+      .eq('slug', storeId)
+      .single();
+    
+    if (!store) return false;
+    finalStoreId = store.id;
+  } else {
+    finalStoreId = Number(storeId);
+  }
+
   const { data } = await (supabase
     .from('store_follows' as any)
     .select('id')
     .eq('user_id', user.id)
-    .eq('store_id', storeId)
+    .eq('store_id', finalStoreId)
     .maybeSingle() as any);
 
   return !!data;

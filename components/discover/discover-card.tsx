@@ -11,8 +11,9 @@ import { useSavesStore } from '@/lib/store/use-saves-store'
 import { trackReelInteraction } from '@/lib/actions/reels'
 import { CommentDrawer } from '@/components/discover/comment-drawer'
 import { useRouter } from 'next/navigation'
-import { Loader2, AlertCircle } from 'lucide-react'
+import { Loader2, AlertCircle, UserPlus, UserCheck } from 'lucide-react'
 import { useTracking } from '@/hooks/useTracking'
+import { toggleFollowStore } from '@/lib/actions/store-follows'
 
 type DiscoverCardProps = {
   item: DiscoverFeedItem & { merchantScore?: number }
@@ -26,12 +27,32 @@ function DiscoverCardComponent({ item, priority = false }: DiscoverCardProps) {
   const [showLikeBurst, setShowLikeBurst] = useState(false)
   const [isDimmed, setIsDimmed] = useState(false)
   const [commentsOpen, setCommentsOpen] = useState(false)
+  const [followed, setFollowed] = useState<boolean>(item.hasFollowed || false)
   const [isMediaLoading, setIsMediaLoading] = useState(true)
   const [mediaError, setMediaError] = useState(false)
   const [currentMediaIndex, setCurrentMediaIndex] = useState(0)
+  const [isFollowingLoading, setIsFollowingLoading] = useState(false)
   const lastTapTsRef = useRef<number>(0)
   const videoRef = useRef<HTMLVideoElement>(null)
   const router = useRouter()
+
+  const handleToggleFollow = useCallback(async (e: React.MouseEvent) => {
+    e.stopPropagation()
+    if (!item.merchantId) return
+    
+    setIsFollowingLoading(true)
+    try {
+      const res = await toggleFollowStore(parseInt(item.merchantId))
+      setFollowed(res.followed)
+      if (res.followed) {
+        toast.success(`Vous suivez maintenant ${item.merchantName}`)
+      }
+    } catch (err: any) {
+      toast.error(err.message || "Erreur lors du suivi")
+    } finally {
+      setIsFollowingLoading(false)
+    }
+  }, [item.merchantId, item.merchantName])
 
   const { trackLike, trackUnlike, trackSave, trackUnsave, trackClick, trackImpression } = useTracking()
 
@@ -412,6 +433,30 @@ function DiscoverCardComponent({ item, priority = false }: DiscoverCardProps) {
                   {item.merchantName}
                 </p>
               </div>
+              <button
+                onClick={handleToggleFollow}
+                disabled={isFollowingLoading}
+                className={cn(
+                  "flex h-6 items-center gap-1.5 rounded-full px-2.5 text-[10px] font-bold uppercase tracking-wider transition-all duration-300 backdrop-blur-md border",
+                  followed 
+                    ? "bg-white/20 text-white border-white/20" 
+                    : "bg-blue-600/80 text-white border-blue-500/50 hover:bg-blue-600 shadow-[0_0_12px_rgba(37,99,235,0.3)]"
+                )}
+              >
+                {isFollowingLoading ? (
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                ) : followed ? (
+                  <>
+                    <UserCheck className="h-3 w-3" />
+                    <span>Suivi</span>
+                  </>
+                ) : (
+                  <>
+                    <UserPlus className="h-3 w-3" />
+                    <span>Suivre</span>
+                  </>
+                )}
+              </button>
               {isTopSeller ? (
                 <span className="flex h-6 items-center rounded-full bg-[#22C55E]/20 px-2.5 text-[10px] font-bold uppercase tracking-wider text-[#22C55E] border border-[#22C55E]/20">
                   Top Seller

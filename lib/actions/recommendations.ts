@@ -23,17 +23,21 @@ export async function getPersonalizedReels(): Promise<DiscoverFeedItem[]> {
     let searchHistory: string[] = [];
 
     if (user) {
-        const [profileRes, prefsRes, interRes, searchRes] = await Promise.all([
+        const [profileRes, prefsRes, interRes, searchRes, followsRes] = await Promise.all([
             (supabase as any).from('users').select('city').eq('id', user.id).maybeSingle(),
             (supabase as any).from('user_preferences').select('category, score').eq('user_id', user.id),
             (supabase as any).from('user_interactions').select('reel_id, store_id, type').eq('user_id', user.id),
-            (supabase as any).from('user_search_history').select('query').eq('user_id', user.id).order('created_at', { ascending: false }).limit(20)
+            (supabase as any).from('user_search_history').select('query').eq('user_id', user.id).order('created_at', { ascending: false }).limit(20),
+            (supabase as any).from('store_follows').select('store_id').eq('user_id', user.id)
         ]);
-
+        
         userCity = (profileRes.data as any)?.city;
         preferredCategories = prefsRes.data || [];
         recentInteractions = interRes.data || [];
         searchHistory = (searchRes.data || []).map((s: any) => s.query);
+        const followedStoreIds = (followsRes.data || []).map((f: any) => f.store_id);
+
+        (user as any).followedStoreIds = followedStoreIds;
     }
 
     // 2. Fetch Reels with store details for scoring
@@ -142,6 +146,7 @@ export async function getPersonalizedReels(): Promise<DiscoverFeedItem[]> {
             shares: stats.clicks_count || 0,
             hasLiked: recentInteractions.some(i => i.reel_id === reel.id && i.type === 'like'),
             hasSaved: recentInteractions.some(i => i.reel_id === reel.id && i.type === 'save'),
+            hasFollowed: user && (user as any).followedStoreIds ? (user as any).followedStoreIds.includes(reel.store_id) : false,
             category: (reel.category || store.category || 'lifestyle').toLowerCase(),
             popularityScore: popularityScore,
             engagementScore: personalScore, // We use engagementScore to represent personalization

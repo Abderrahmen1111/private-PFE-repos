@@ -170,6 +170,7 @@ export type DiscoverFeedItem = {
   itemType?: 'PRODUCT' | 'SERVICE'
   hasLiked?: boolean
   hasSaved?: boolean
+  hasFollowed?: boolean
 }
 
 const clamp = (value: number, min = 0, max = 100) => Math.max(min, Math.min(max, value))

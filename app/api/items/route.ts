@@ -1,15 +1,21 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
-import { getLatestItems, upsertItem } from '@/lib/actions/items'
+import { getLatestItems, upsertItem, getPublicItemsByStoreId } from '@/lib/actions/items'
 import { searchItems } from '@/lib/actions/search'
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url)
   const query = searchParams.get('q')
   const category = searchParams.get('category')
+  const storeId = searchParams.get('storeId')
   const limit = parseInt(searchParams.get('limit') || '20')
 
   try {
+    if (storeId) {
+      const items = await getPublicItemsByStoreId(parseInt(storeId))
+      return NextResponse.json(items)
+    }
+
     if (query || category) {
       const { data, error } = await searchItems(query || undefined, category || undefined)
       if (error) return NextResponse.json({ error }, { status: 400 })

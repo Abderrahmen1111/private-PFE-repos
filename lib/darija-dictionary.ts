@@ -3,10 +3,16 @@
  * Inclut: Arabe, Phonétique (français/chiffres), Variations régionales
  */
 
-import corpus100k from './darija-corpus.json';
+import corpusPart1 from './darija-corpus-1.json';
+import corpusPart2 from './darija-corpus-2.json';
+import corpusPart3 from './darija-corpus-3.json';
+import corpusPart4 from './darija-corpus-4.json';
 
 export const DARIJA_TUNISIAN_DICTIONARY: Record<string, { french: string; category: string }> = {
-  ...corpus100k,
+  ...corpusPart1,
+  ...corpusPart2,
+  ...corpusPart3,
+  ...corpusPart4,
   // ========== VERBES COURANTS ==========
   
   // "Vouloir" (toutes variantes)
@@ -25,14 +31,33 @@ export const DARIJA_TUNISIAN_DICTIONARY: Record<string, { french: string; catego
   'nba7eth': { french: 'chercher', category: 'verb' },
   
   // "Manger"
-  'نأكل': { french: 'manger', category: 'verb' },
-  'nekel': { french: 'manger', category: 'verb' },
-  'nkel': { french: 'manger', category: 'verb' },
-  'nkl': { french: 'manger', category: 'verb' },
-  'nekil': { french: 'manger', category: 'verb' },
-  'n7ib nekel': { french: 'je veux manger', category: 'verb' },
-  'nhb nkl': { french: 'je veux manger', category: 'verb' },
-  'nhb nkel': { french: 'je veux manger', category: 'verb' },
+  'نأكل': { french: 'manger', category: 'nourriture' },
+  'nekel': { french: 'manger', category: 'nourriture' },
+  'nakel': { french: 'manger', category: 'nourriture' },  // ← variante manquante !
+  'nkel':  { french: 'manger', category: 'nourriture' },
+  'nkl':   { french: 'manger', category: 'nourriture' },
+  'nekil': { french: 'manger', category: 'nourriture' },
+  'nakol': { french: 'manger', category: 'nourriture' },
+  'kel':   { french: 'manger', category: 'nourriture' },
+  'akel':  { french: 'manger', category: 'nourriture' },
+  // "J'ai faim / Affamé" — ji3an / dj3an et variantes
+  'ji3an':  { french: 'faim restaurant nourriture', category: 'nourriture' },
+  'j3an':   { french: 'faim restaurant nourriture', category: 'nourriture' },
+  'dj3an':  { french: 'faim restaurant nourriture', category: 'nourriture' },
+  'jia3':   { french: 'faim restaurant nourriture', category: 'nourriture' },
+  'jia3an': { french: 'faim restaurant nourriture', category: 'nourriture' },
+  'جيعان':  { french: 'faim restaurant nourriture', category: 'nourriture' },
+  'جعان':   { french: 'faim restaurant nourriture', category: 'nourriture' },
+  // "Restaurant" en darija
+  'resto':      { french: 'restaurant', category: 'nourriture' },
+  'restorant':  { french: 'restaurant', category: 'nourriture' },
+  'mta3 makel': { french: 'restaurant nourriture', category: 'nourriture' },
+  // Phrases combinées fréquentes
+  'nhb nakel':          { french: 'je veux manger restaurant', category: 'nourriture' },
+  'nhb nakel ji3an':    { french: 'je veux manger j ai faim restaurant', category: 'nourriture' },
+  'n7ib nekel':         { french: 'je veux manger restaurant', category: 'nourriture' },
+  'nhb nkl':            { french: 'je veux manger restaurant', category: 'nourriture' },
+  'nhb nkel':           { french: 'je veux manger restaurant', category: 'nourriture' },
   
   // "Acheter"
   'نشري': { french: 'acheter', category: 'verb' },
