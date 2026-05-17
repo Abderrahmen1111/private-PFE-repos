@@ -338,41 +338,41 @@ flowchart LR
 
 ```mermaid
 sequenceDiagram
-    actor Utilisateur
-    participant Application as Application Mobile
+    actor Client / Commerçant
+    participant App as Application Web & Mobile
     participant RateLimiter as Limiteur de requêtes
     participant SupabaseAuth as Supabase Auth
     participant BD as Base de données
     participant Email as Service Email (SendGrid)
 
-    Utilisateur->>Application: Remplit le formulaire d'inscription
-    Application->>Application: Vérifie que tous les champs sont remplis
-    Application->>Application: Vérifie que l'email est valide
-    Application->>RateLimiter: Vérifie le nombre de tentatives
+    Client->>App: Remplit le formulaire d'inscription
+    App->>App: Vérifie que tous les champs sont remplis
+    App->>App: Vérifie que l'email est valide
+    App->>SupabaseAuth: Vérifie le nombre de tentatives
     alt Trop de tentatives
-        RateLimiter-->>Application: Accès temporairement bloqué
-        Application-->>Utilisateur: "Réessayez dans 15 minutes"
+        SupabaseAuth-->>App: Accès temporairement bloqué
+        App-->>Client: "Réessayez dans 15 minutes"
     else Autorisé
-        Application->>SupabaseAuth: Envoie les données d'inscription
+        App->>SupabaseAuth: Envoie les données d'inscription
         SupabaseAuth->>BD: Vérifie si l'email existe déjà
         alt Email déjà utilisé
             BD-->>SupabaseAuth: Email trouvé
-            SupabaseAuth-->>Application: "Email déjà utilisé"
-            Application-->>Utilisateur: Affiche le message d'erreur
+            SupabaseAuth-->>App: "Email déjà utilisé"
+            App-->>Client: Affiche le message d'erreur
         else Email disponible
             SupabaseAuth->>BD: Enregistre le nouvel utilisateur
             BD-->>SupabaseAuth: Confirmation
             SupabaseAuth->>Email: Envoie le code de vérification OTP
             Email-->>Utilisateur: Code OTP reçu par email
-            Utilisateur->>Application: Saisit le code OTP
-            Application->>SupabaseAuth: Envoie le code OTP
+            Client->>App: Saisit le code OTP
+            App->>SupabaseAuth: Envoie le code OTP
             alt Code invalide ou expiré
-                SupabaseAuth-->>Application: Code incorrect
-                Application-->>Utilisateur: "Code invalide ou expiré"
+                SupabaseAuth-->>App: Code incorrect
+                App-->>Client: "Code invalide ou expiré"
             else Code valide
                 SupabaseAuth->>BD: Active le compte
-                SupabaseAuth-->>Application: Jeton de session
-                Application-->>Utilisateur: Compte activé — Bienvenue
+                SupabaseAuth-->>App: Jeton de session
+                App-->>Client: Compte activé — Bienvenue
             end
         end
     end
@@ -384,32 +384,32 @@ sequenceDiagram
 
 ```mermaid
 sequenceDiagram
-    actor Utilisateur
-    participant Application as Application Mobile
+    actor Client / Commerçant
+    participant App as Application Web & Mobile
     participant RateLimiter as Limiteur de requêtes
     participant SupabaseAuth as Supabase Auth
     participant BD as Base de données
 
-    Utilisateur->>Application: Saisit email et mot de passe
-    Application->>RateLimiter: Vérifie le nombre de tentatives
+    Client->>App: Saisit email et mot de passe
+    App->>SupabaseAuth: Vérifie le nombre de tentatives
     alt Trop de tentatives
-        RateLimiter-->>Application: Compte temporairement verrouillé
-        Application-->>Utilisateur: "Réessayez dans 15 minutes"
+        SupabaseAuth-->>App: Compte temporairement verrouillé
+        App-->>Client: "Réessayez dans 15 minutes"
     else Autorisé
-        Application->>SupabaseAuth: Envoie les identifiants
+        App->>SupabaseAuth: Envoie les identifiants
         SupabaseAuth->>BD: Cherche l'utilisateur par email
         alt Identifiants incorrects
             BD-->>SupabaseAuth: Utilisateur non trouvé ou mot de passe invalide
-            SupabaseAuth-->>Application: Identifiants incorrects
-            Application-->>Utilisateur: "Email ou mot de passe incorrect"
+            SupabaseAuth-->>App: Identifiants incorrects
+            App-->>Client: "Email ou mot de passe incorrect"
         else Compte suspendu
-            SupabaseAuth-->>Application: Compte suspendu
-            Application-->>Utilisateur: "Compte suspendu — Contactez le support"
+            SupabaseAuth-->>App: Compte suspendu
+            App-->>Client: "Compte suspendu — Contactez le support"
         else Connexion réussie
             SupabaseAuth->>BD: Met à jour la date de dernière connexion
-            SupabaseAuth-->>Application: Jeton de session (JWT)
-            Application->>Application: Sauvegarde la session
-            Application-->>Utilisateur: Connecté — Redirection vers l'accueil
+            SupabaseAuth-->>App: Jeton de session (JWT)
+            App->>App: Sauvegarde la session
+            App-->>Client: Connecté — Redirection vers l'accueil
         end
     end
 ```
@@ -479,25 +479,24 @@ flowchart LR
 ```mermaid
 sequenceDiagram
     actor Commerçant
-    participant Dashboard as Dashboard Web (Next.js)
+    participant App as Application Web & Mobile
     participant Cloudinary as Serveur d'images (Cloudinary)
-    participant Serveur as API Boutiques
-    participant BD as Base de données (PostGIS)
+    participant BD as Base de données (Supabase/PostGIS)
 
     Commerçant->>Dashboard: Remplit les informations de la boutique
     Commerçant->>Dashboard: Ajoute logo et photos
-    Dashboard->>Cloudinary: Envoie les images
+    App->>Cloudinary: Envoie les images
     Cloudinary->>Cloudinary: Compresse et optimise les images
-    Cloudinary-->>Dashboard: Liens des images hébergées
-    Dashboard->>Dashboard: Vérifie que tous les champs sont remplis
+    Cloudinary-->>App: Liens des images hébergées
+    App->>App: Vérifie que tous les champs sont remplis
     alt Informations manquantes
-        Dashboard-->>Commerçant: Affiche les erreurs
+        App-->>Commerçant: Affiche les erreurs
     else Informations complètes
-        Dashboard->>Serveur: Envoie les données avec les liens images
-        Serveur->>BD: Enregistre la boutique avec coordonnées GPS
-        BD-->>Serveur: Identifiant de la boutique
-        Serveur-->>Dashboard: Boutique créée
-        Dashboard-->>Commerçant: "En attente de validation par l'admin"
+        App->>BD: Envoie les données avec les liens images
+        BD->>BD: Enregistre la boutique avec coordonnées GPS
+        BD-->>Django: Identifiant de la boutique
+        BD-->>App: Boutique créée
+        App-->>Commerçant: "En attente de validation par l'admin"
     end
 ```
 
@@ -555,35 +554,35 @@ flowchart LR
 ```mermaid
 sequenceDiagram
     actor Client
-    participant Application as Application Mobile
+    participant App as Application Web & Mobile
     participant Panier as Panier (Stockage local)
     participant Serveur as API Commandes
     participant BD as Base de données
     participant Notif as Supabase Realtime
 
     Client->>Application: Ajoute un produit au panier
-    Application->>Panier: Vérifie que le produit vient de la même boutique
+    App->>Panier: Vérifie que le produit vient de la même boutique
     alt Produit d'une autre boutique
-        Panier-->>Application: Conflit détecté
-        Application-->>Client: "Vider le panier et ajouter ce produit ?"
+        Panier-->>App: Conflit détecté
+        App-->>Client: "Vider le panier et ajouter ce produit ?"
     else Même boutique
         Panier->>Panier: Met à jour la quantité et le total
-        Application-->>Client: Panier mis à jour
+        App-->>Client: Panier mis à jour
     end
     Client->>Application: Valide le panier et confirme la commande
-    Application->>Serveur: Envoie la commande
-    Serveur->>BD: Vérifie la disponibilité du stock
+    App->>BD: Envoie la commande
+    BD->>BD: Vérifie la disponibilité du stock
     alt Stock insuffisant
-        BD-->>Serveur: Rupture de stock
-        Serveur-->>Application: "Stock insuffisant pour [produit]"
-        Application-->>Client: Affiche le message d'erreur
+        BD-->>Django: Rupture de stock
+        BD-->>App: "Stock insuffisant pour [produit]"
+        App-->>Client: Affiche le message d'erreur
     else Stock disponible
-        Serveur->>BD: Enregistre la commande et réduit le stock
-        BD-->>Serveur: Commande créée
-        Serveur->>Notif: Notifie le commerçant
-        Notif-->>Commerçant: "Nouvelle commande reçue"
-        Serveur-->>Application: Numéro de commande
-        Application-->>Client: "Commande envoyée avec succès"
+        BD->>BD: Enregistre la commande et réduit le stock
+        BD-->>Django: Commande créée
+        Django->>BD: Notifie le commerçant
+        BD-->>Commerçant: "Nouvelle commande reçue"
+        BD-->>App: Numéro de commande
+        App-->>Client: "Commande envoyée avec succès"
     end
 ```
 
@@ -636,31 +635,31 @@ flowchart LR
 ```mermaid
 sequenceDiagram
     actor Client
-    participant Application as Application Mobile
+    participant App as Application Web & Mobile
     participant Serveur as API Réservations
     participant BD as Base de données
     participant Notif as Supabase Realtime
 
     Client->>Application: Consulte les créneaux disponibles
-    Application->>Serveur: Demande les créneaux libres du commerçant
-    Serveur->>BD: Récupère le calendrier et filtre les créneaux occupés
-    BD-->>Serveur: Créneaux disponibles pour la date choisie
-    Serveur-->>Application: Affiche les créneaux libres
+    App->>BD: Demande les créneaux libres du commerçant
+    BD->>BD: Récupère le calendrier et filtre les créneaux occupés
+    BD-->>Django: Créneaux disponibles pour la date choisie
+    BD-->>App: Affiche les créneaux libres
     Client->>Application: Sélectionne un créneau et confirme
-    Application->>Serveur: Envoie la demande de réservation
-    Serveur->>BD: Vérifie que le créneau est toujours libre
+    App->>BD: Envoie la demande de réservation
+    BD->>BD: Vérifie que le créneau est toujours libre
     alt Créneau déjà pris
-        BD-->>Serveur: Créneau occupé par un autre client
-        Serveur-->>Application: "Ce créneau n'est plus disponible"
-        Application-->>Client: Propose de choisir un autre horaire
+        BD-->>Django: Créneau occupé par un autre client
+        BD-->>App: "Ce créneau n'est plus disponible"
+        App-->>Client: Propose de choisir un autre horaire
     else Créneau encore libre
-        Serveur->>BD: Enregistre la réservation
-        Serveur->>BD: Marque le créneau comme occupé
-        BD-->>Serveur: Réservation confirmée
-        Serveur->>Notif: Notifie le commerçant en temps réel
-        Notif-->>Commerçant: "Nouvelle réservation reçue"
-        Serveur-->>Application: Confirmation avec détails du RDV
-        Application-->>Client: "Réservation confirmée"
+        BD->>BD: Enregistre la réservation
+        BD->>BD: Marque le créneau comme occupé
+        BD-->>Django: Réservation confirmée
+        Django->>BD: Notifie le commerçant en temps réel
+        BD-->>Commerçant: "Nouvelle réservation reçue"
+        BD-->>App: Confirmation avec détails du RDV
+        App-->>Client: "Réservation confirmée"
     end
 ```
 
@@ -714,22 +713,22 @@ flowchart LR
 ```mermaid
 sequenceDiagram
     actor Client
-    participant Application as Application Mobile
-    participant ServeurIA as API Recherche Sémantique
+    participant App as Application Web & Mobile
+    participant LLM as OpenRouter (LLM Cloud)
     participant LLM as OpenRouter (LLM Cloud)
     participant BD as PostgreSQL (pgvector)
 
     Client->>Application: Tape une recherche (ex : "حلاق" ou "coiffeur")
-    Application->>ServeurIA: Envoie le texte de recherche brut
-    ServeurIA->>ServeurIA: Nettoie et normalise le texte saisi
-    ServeurIA->>LLM: Envoie le texte pour traduction Darija → Français
-    LLM-->>ServeurIA: Terme traduit et normalisé
-    ServeurIA->>LLM: Demande la conversion du texte en vecteur numérique
-    LLM-->>ServeurIA: Vecteur de représentation sémantique
-    ServeurIA->>BD: Recherche les boutiques les plus proches (distance cosinus)
+    App->>LLM: Envoie le texte de recherche brut
+    LLM->>LLM: Nettoie et normalise le texte saisi
+    App->>LLM: Envoie le texte pour traduction Darija → Français
+    LLM-->>App: Terme traduit et normalisé
+    App->>LLM: Demande la conversion du texte en vecteur numérique
+    LLM-->>App: Vecteur de représentation sémantique
+    App->>BD: Recherche les boutiques les plus proches (distance cosinus)
     BD-->>ServeurIA: Résultats classés par pertinence
-    ServeurIA-->>Application: Liste des boutiques correspondantes
-    Application-->>Client: Affiche les résultats triés par pertinence
+    BD-->>App: Liste des boutiques correspondantes
+    App-->>Client: Affiche les résultats triés par pertinence
 ```
 
 > *[Figure : Diagramme de séquence — Recherche sémantique]*
@@ -739,25 +738,25 @@ sequenceDiagram
 ```mermaid
 sequenceDiagram
     actor Client
-    participant Application as Application Mobile
-    participant ServeurIA as API Vision (Image Search)
+    participant App as Application Web & Mobile
+    participant GroqVision as Groq Vision (IA Cloud)
     participant GroqVision as Groq Vision (IA Cloud)
     participant BD as PostgreSQL (Recherche texte)
 
     Client->>Application: Prend une photo d'un produit ou d'un plat
-    Application->>Application: Compresse et encode l'image en base64
-    Application->>ServeurIA: Envoie l'image pour analyse
-    ServeurIA->>GroqVision: Soumet l'image au modèle de vision
+    App->>App: Compresse et encode l'image en base64
+    App->>LLM: Envoie l'image pour analyse
+    App->>GroqVision: Soumet l'image au modèle de vision
     GroqVision->>GroqVision: Analyse l'image et identifie les objets
     GroqVision-->>ServeurIA: Description des objets identifiés
     alt Objet non reconnu
-        ServeurIA-->>Application: "Impossible d'identifier l'objet"
-        Application-->>Client: Propose la recherche manuelle
+        BD-->>App: "Impossible d'identifier l'objet"
+        App-->>Client: Propose la recherche manuelle
     else Objet reconnu
-        ServeurIA->>BD: Recherche en texte intégral avec les mots-clés extraits
+        App->>BD: Recherche en texte intégral avec les mots-clés extraits
         BD-->>ServeurIA: Boutiques et produits correspondants
-        ServeurIA-->>Application: Résultats de recherche
-        Application-->>Client: Affiche les boutiques qui vendent cet objet
+        BD-->>App: Résultats de recherche
+        App-->>Client: Affiche les boutiques qui vendent cet objet
     end
 ```
 
@@ -768,33 +767,36 @@ sequenceDiagram
 ```mermaid
 sequenceDiagram
     actor Commerçant
-    participant Dashboard as Dashboard Web (Next.js)
-    participant Serveur as API Commandes
+    actor Administrateur
+    participant App as Application Web & Mobile
+    participant BD as Base de données (Supabase)
     participant IA as Moteur de détection IA (Groq)
-    participant BD as Base de données
-    participant Admin as Dashboard Admin (SaaS)
+    participant AdminPortal as Dashboard Admin (SaaS)
+    participant Django as Backend Django
 
-    Commerçant->>Dashboard: Crée une nouvelle commande ou promotion
-    Dashboard->>Serveur: Envoie les données de la transaction
-    Serveur->>BD: Récupère l'historique récent du commerçant
-    BD-->>Serveur: Historique des transactions et comportements
-    Serveur->>IA: Envoie les données pour analyse de risque
-    IA->>IA: Analyse les indicateurs de fraude
-    IA->>IA: Vérifie les prix anormalement bas ou élevés
-    IA->>IA: Détecte les volumes inhabituels de commandes
-    IA-->>Serveur: Score de risque (0-100) et détails
+    Commerçant->>App: Crée une transaction (commande/réservation)
+    App->>BD: INSERT transaction (status = "pending")
+    BD->>IA: Déclenche une analyse automatique de risque (Trigger)
+    IA->>IA: Calcule le score de risque de fraude (0-100)
+    
     alt Score de risque élevé (> 80)
-        Serveur->>BD: Bloque la transaction automatiquement
-        Serveur->>Admin: Notification "Fraude potentielle détectée"
-        Dashboard-->>Commerçant: "Transaction suspendue — En cours de vérification"
+        IA->>BD: Met à jour le statut à "blocked" et génère un rapport
+        BD->>Django: webhook de fraude détectée
+        Django->>AdminPortal: Alerte de fraude en temps réel (WebSocket)
+        AdminPortal-->>Administrateur: 🚨 Alerte fraude à examiner d'urgence
+        BD-->>App: "Transaction suspendue — En cours de vérification"
+        App-->>Commerçant: ❌ Transaction bloquée temporairement
     else Score de risque moyen (40-80)
-        Serveur->>BD: Marque la transaction comme "À surveiller"
-        Dashboard-->>Commerçant: Transaction acceptée avec surveillance
+        IA->>BD: Met à jour le statut à "suspected"
+        BD->>Django: webhook pour suivi de transaction
+        Django->>AdminPortal: Notification discrète de surveillance
+        BD-->>App: Transaction acceptée avec avertissement
+        App-->>Commerçant: ✅ Transaction enregistrée (à surveiller)
     else Score de risque faible (< 40)
-        Serveur->>BD: Enregistre la transaction normalement
-        Dashboard-->>Commerçant: Transaction confirmée
-    end
-```
+        IA->>BD: Enregistre la transaction normalement
+        BD-->>App: Confirmation d'insertion
+        App-->>Commerçant: ✅ Transaction validée avec succès
+    end```
 
 > *[Figure : Diagramme de séquence — Détection de fraude]*
 
@@ -803,26 +805,26 @@ sequenceDiagram
 ```mermaid
 sequenceDiagram
     actor Commerçant
-    participant Dashboard as Dashboard Web (Next.js)
-    participant Serveur as API Avis
+    participant App as Application Web & Mobile
+    participant BD as Base de données (Supabase)
     participant BD as Base de données
     participant IA as Moteur d'analyse IA (Groq / OpenRouter)
 
     Commerçant->>Dashboard: Ouvre la section "Avis clients"
-    Dashboard->>Serveur: Demande les avis de la boutique
-    Serveur->>BD: Récupère tous les avis non analysés
-    BD-->>Serveur: Liste des avis avec texte brut
-    Serveur->>IA: Envoie les textes des avis pour analyse de sentiment
+    App->>BD: Demande les avis de la boutique
+    BD->>BD: Récupère tous les avis non analysés
+    BD-->>Django: Liste des avis avec texte brut
+    App->>IA: Envoie les textes des avis pour analyse de sentiment
     IA->>IA: Analyse chaque commentaire (positif, neutre, négatif)
     IA->>IA: Extrait les thèmes récurrents (qualité, prix, service)
-    IA-->>Serveur: Résultats d'analyse (sentiment + thèmes + score)
-    Serveur->>BD: Enregistre les résultats d'analyse
-    BD-->>Serveur: Analyse sauvegardée
-    Serveur-->>Dashboard: Résultats formatés avec statistiques
+    IA-->>App: Résultats d'analyse (sentiment + thèmes + score)
+    BD->>BD: Enregistre les résultats d'analyse
+    BD-->>Django: Analyse sauvegardée
+    BD-->>App: Résultats formatés avec statistiques
     alt Majorité de commentaires négatifs
-        Dashboard-->>Commerçant: "Attention : baisse de satisfaction sur le thème Service"
+        App-->>Commerçant: "Attention : baisse de satisfaction sur le thème Service"
     else Commentaires globalement positifs
-        Dashboard-->>Commerçant: Tableau de bord sentiment avec graphiques
+        App-->>Commerçant: Tableau de bord sentiment avec graphiques
     end
 ```
 
@@ -833,31 +835,31 @@ sequenceDiagram
 ```mermaid
 sequenceDiagram
     actor Commerçant
-    participant Dashboard as Dashboard Web (Next.js)
-    participant Serveur as API Promotions
+    participant App as Application Web & Mobile
+    participant BD as Base de données (Supabase)
     participant BD as Base de données
     participant IA as Moteur de recommandation IA (OpenRouter)
 
     Commerçant->>Dashboard: Clique "Créer une promotion assistée par IA"
-    Dashboard->>Serveur: Demande une recommandation de promotion
-    Serveur->>BD: Récupère les données de vente des 30 derniers jours
-    Serveur->>BD: Identifie les produits à faible rotation de stock
-    BD-->>Serveur: Données commerciales complètes
-    Serveur->>IA: Envoie les données pour analyse et recommandation
+    App->>BD: Demande une recommandation de promotion
+    BD->>BD: Récupère les données de vente des 30 derniers jours
+    BD->>BD: Identifie les produits à faible rotation de stock
+    BD-->>Django: Données commerciales complètes
+    App->>IA: Envoie les données pour analyse et recommandation
     IA->>IA: Calcule le pourcentage de remise optimal
     IA->>IA: Propose une durée de promotion adaptée
     IA->>IA: Génère un texte promotionnel attractif
-    IA-->>Serveur: Recommandation complète (produits, remise %, durée, texte)
-    Serveur-->>Dashboard: Proposition de promotion pré-remplie
+    IA-->>App: Recommandation complète (produits, remise %, durée, texte)
+    BD-->>App: Proposition de promotion pré-remplie
     alt Commerçant accepte la suggestion
         Commerçant->>Dashboard: Valide et publie la promotion
-        Dashboard->>Serveur: Enregistre la promotion
-        Serveur->>BD: INSERT promotion avec dates de début et fin
-        Dashboard-->>Commerçant: "Promotion publiée"
+        App->>BD: Enregistre la promotion
+        BD->>BD: INSERT promotion avec dates de début et fin
+        App-->>Commerçant: "Promotion publiée"
     else Commerçant modifie la suggestion
         Commerçant->>Dashboard: Ajuste les paramètres manuellement
-        Dashboard->>Serveur: Enregistre la version modifiée
-        Dashboard-->>Commerçant: "Promotion personnalisée publiée"
+        App->>BD: Enregistre la version modifiée
+        App-->>Commerçant: "Promotion personnalisée publiée"
     end
 ```
 
@@ -867,22 +869,22 @@ sequenceDiagram
 
 ```mermaid
 sequenceDiagram
-    actor Utilisateur
-    participant Application as Application Mobile
+    actor Client / Commerçant
+    participant App as Application Web & Mobile
     participant ServeurIA as API Assistant IA
     participant BD as PostgreSQL (pgvector - RAG)
     participant LLM as OpenRouter (LLM Cloud)
 
-    Utilisateur->>Application: Pose une question à l'assistant
-    Application->>ServeurIA: Envoie la question
-    ServeurIA->>ServeurIA: Analyse l'intention de la question
-    ServeurIA->>BD: Recherche les données pertinentes (produits, commandes, stock)
+    Client->>App: Pose une question à l'assistant
+    App->>LLM: Envoie la question
+    LLM->>LLM: Analyse l'intention de la question
+    App->>BD: Recherche les données pertinentes (produits, commandes, stock)
     BD-->>ServeurIA: Données contextuelles de la boutique
-    ServeurIA->>ServeurIA: Construit le prompt avec le contexte réel
-    ServeurIA->>LLM: Envoie le prompt enrichi au modèle IA
-    LLM-->>ServeurIA: Génère la réponse en streaming (mot par mot)
-    ServeurIA-->>Application: Transmet la réponse progressivement
-    Application-->>Utilisateur: Affiche la réponse mot par mot
+    LLM->>LLM: Construit le prompt avec le contexte réel
+    App->>LLM: Envoie le prompt enrichi au modèle IA
+    LLM-->>App: Génère la réponse en streaming (mot par mot)
+    BD-->>App: Transmet la réponse progressivement
+    App-->>Client: Affiche la réponse mot par mot
 ```
 
 > *[Figure : Diagramme de séquence — Assistant IA conversationnel]*
@@ -920,22 +922,22 @@ flowchart LR
 ```mermaid
 sequenceDiagram
     actor Commerçant
-    participant Dashboard as Dashboard Web (Next.js)
+    participant App as Application Web & Mobile
     participant Cloudinary as Cloudinary (CDN Cloud)
-    participant Serveur as API Contenu
+    participant BD as Base de données (Supabase)
     participant BD as Base de données
 
     Commerçant->>Dashboard: Sélectionne une vidéo ou une image à publier
-    Dashboard->>Cloudinary: Envoie le fichier pour hébergement
+    App->>Cloudinary: Envoie le fichier pour hébergement
     Cloudinary->>Cloudinary: Transcode la vidéo et génère une miniature
-    Cloudinary-->>Dashboard: Lien sécurisé du contenu hébergé
-    Dashboard->>Serveur: Envoie les métadonnées et le lien du fichier
+    Cloudinary-->>App: Lien sécurisé du contenu hébergé
+    App->>BD: Envoie les métadonnées et le lien du fichier
     alt Publication d'un Reel
-        Serveur->>BD: Enregistre le Reel avec le lien Cloudinary
-        Dashboard-->>Commerçant: "Reel publié avec succès"
+        BD->>BD: Enregistre le Reel avec le lien Cloudinary
+        App-->>Commerçant: "Reel publié avec succès"
     else Publication d'une Story
-        Serveur->>BD: Enregistre la Story avec expiration 24h
-        Dashboard-->>Commerçant: "Story publiée — Expire dans 24 heures"
+        BD->>BD: Enregistre la Story avec expiration 24h
+        App-->>Commerçant: "Story publiée — Expire dans 24 heures"
     end
 ```
 
@@ -946,10 +948,10 @@ sequenceDiagram
 ```mermaid
 sequenceDiagram
     actor Client
-    participant AppClient as Application Mobile
+    participant App as Application Web & Mobile
     participant Supabase as Supabase Realtime (WebSocket)
     participant BD as Base de données
-    participant AppPro as Dashboard Web (Next.js)
+    participant App as Application Web & Mobile
     actor Commerçant
 
     Client->>AppClient: Écrit et envoie un message
@@ -973,23 +975,23 @@ sequenceDiagram
 ```mermaid
 sequenceDiagram
     actor Client
-    participant Application as Application Mobile
-    participant Serveur as API Avis
+    participant App as Application Web & Mobile
+    participant BD as Base de données (Supabase)
     participant BD as Base de données
 
     Client->>Application: Note la prestation et écrit un commentaire
-    Application->>Serveur: Envoie l'avis
-    Serveur->>BD: Vérifie qu'une transaction réelle a eu lieu
+    App->>BD: Envoie l'avis
+    BD->>BD: Vérifie qu'une transaction réelle a eu lieu
     alt Aucune transaction vérifiée
-        BD-->>Serveur: Pas de commande ou réservation confirmée
-        Serveur-->>Application: "Vous devez avoir effectué un achat"
-        Application-->>Client: Affiche le message d'erreur
+        BD-->>Django: Pas de commande ou réservation confirmée
+        BD-->>App: "Vous devez avoir effectué un achat"
+        App-->>Client: Affiche le message d'erreur
     else Transaction confirmée
-        Serveur->>BD: Enregistre l'avis et recalcule la note moyenne
-        BD-->>Serveur: Nouvelle note moyenne
-        Serveur-->>Commerçant: Notification "Nouvel avis reçu"
-        Serveur-->>Application: Avis publié
-        Application-->>Client: "Merci pour votre avis"
+        BD->>BD: Enregistre l'avis et recalcule la note moyenne
+        BD-->>Django: Nouvelle note moyenne
+        BD-->>Commerçant: Notification "Nouvel avis reçu"
+        BD-->>App: Avis publié
+        App-->>Client: "Merci pour votre avis"
     end
 ```
 
@@ -1028,26 +1030,27 @@ flowchart LR
 ```mermaid
 sequenceDiagram
     actor Client
-    participant Application as Application Mobile
-    participant Serveur as API Modération
-    participant BD as Base de données
-    participant Admin as Dashboard Admin (SaaS)
+    actor Administrateur
+    participant App as Application Web & Mobile
+    participant BD as Base de données (Supabase)
+    participant AdminPortal as Dashboard Admin (SaaS)
+    participant Django as Backend Django
 
-    Client->>Application: Clique "Signaler" sur un contenu inapproprié
-    Application->>Serveur: Envoie le signalement avec le motif
-    Serveur->>BD: Enregistre le signalement
-    Serveur->>BD: Compte le total des signalements pour ce contenu
-    BD-->>Serveur: Nombre total de signalements
+    Client->>App: Signale un contenu inapproprié (Reel/Story/Avis)
+    App->>BD: INSERT signalement (content_id, reason)
+    BD->>BD: Compte le nombre total de signalements
+    
     alt Seuil de signalements dépassé (> 3)
-        Serveur->>BD: Masque automatiquement le contenu
-        Serveur->>Admin: Notification "Contenu à examiner"
-        Admin-->>Administrateur: Nouveau contenu à modérer
+        BD->>BD: Masque automatiquement le contenu (status = "hidden")
+        BD->>Django: Webhook de modération requise
+        Django->>AdminPortal: Notification de contenu masqué
+        AdminPortal-->>Administrateur: 🔔 Nouveau contenu masqué à valider
     else Seuil non atteint
-        BD-->>Serveur: Signalement enregistré
+        BD-->>App: Signalement enregistré avec succès
     end
-    Serveur-->>Application: "Signalement enregistré — Merci"
-    Application-->>Client: Confirmation du signalement
-```
+    
+    BD-->>App: Confirmation du traitement
+    App-->>Client: ✅ "Merci pour votre signalement — En cours de traitement"```
 
 > *[Figure : Diagramme de séquence — Signalement et modération]*
 
@@ -1056,21 +1059,24 @@ sequenceDiagram
 ```mermaid
 sequenceDiagram
     actor Administrateur
-    participant Admin as Dashboard Admin (SaaS)
-    participant Serveur as API Administration (Django)
-    participant BD as Base de données
+    participant AdminPortal as Dashboard Admin (SaaS)
+    participant Django as Backend Django
+    participant BD as Base de données (Supabase)
 
-    Administrateur->>Admin: Recherche un utilisateur suspect
-    Admin->>Serveur: Demande les informations de l'utilisateur
-    Serveur->>BD: Récupère le profil, l'historique et les signalements
-    BD-->>Serveur: Données complètes de l'utilisateur
-    Serveur-->>Admin: Affiche le profil et l'historique
-    Administrateur->>Admin: Clique "Suspendre le compte" avec motif
-    Admin->>Serveur: Demande de suspension
-    Serveur->>BD: Met à jour le statut à "Suspendu" avec motif et date
-    BD-->>Serveur: Confirmation de suspension
-    Admin-->>Administrateur: "Compte suspendu — Utilisateur déconnecté"
-```
+    Administrateur->>AdminPortal: Recherche un utilisateur suspect ou signalé
+    AdminPortal->>Django: GET /api/admin/users/{id}
+    Django->>BD: Query profil, transactions & signalements
+    BD-->>Django: Données complètes de l'utilisateur
+    Django-->>AdminPortal: Affiche la fiche utilisateur
+    
+    Administrateur->>AdminPortal: Clique "Suspendre le compte" (indique le motif)
+    AdminPortal->>Django: POST /api/admin/users/{id}/suspend
+    Django->>BD: UPDATE users SET status = "suspended", reason = {motif}
+    BD-->>Django: Confirmation de suspension
+    Django->>BD: Révoque toutes les sessions Supabase (User Session Revoke)
+    BD-->>Django: Sessions révoquées
+    Django-->>AdminPortal: Suspension confirmée
+    AdminPortal-->>Administrateur: ✅ "Compte suspendu — Utilisateur déconnecté immédiatement"```
 
 > *[Figure : Diagramme de séquence — Suspension d'un utilisateur]*
 
@@ -1078,17 +1084,14 @@ sequenceDiagram
 
 ```mermaid
 sequenceDiagram
-    participant Action as Événement système
-    participant BD as Base de données
+    participant BD as Base de données (Supabase)
     participant Realtime as Supabase Realtime (WebSocket)
-    participant Application as Application Mobile / Dashboard
+    participant App as Application Web & Mobile
 
-    Action->>BD: Un événement métier se produit (commande, like, message)
-    BD->>BD: Trigger PostgreSQL détecte l'insertion
-    BD->>Realtime: Déclenche une diffusion sur le canal concerné
-    Realtime->>Application: Pousse la notification via WebSocket
-    Application-->>Utilisateur: Notification affichée (badge, bannière, son)
-```
+    BD->>BD: Trigger PostgreSQL détecte un événement (insert/update)
+    BD->>Realtime: Diffuse l'événement sur le canal concerné (realtime payload)
+    Realtime->>App: Pousse la notification via WebSocket (latence < 100ms)
+    App-->>Client/Commerçant: 🔔 Notification affichée (bannière / badge)```
 
 > *[Figure : Diagramme de séquence — Notifications temps réel]*
 
@@ -1096,7 +1099,7 @@ sequenceDiagram
 
 ### 3.5.8 Diagramme de classes global
 
-Le diagramme de classes global représente la structure statique et relationnelle de la base de données de la plateforme RO2YA, telle qu'implémentée sous Supabase. Il met en évidence les entités métier clés, leurs attributs avec types réels de base de données, ainsi que les multiplicités et relations de clés étrangères.
+Le diagramme de classes global représente la structure statique, relationnelle et exhaustive de la base de données de la plateforme RO2YA, telle qu'implémentée sous Supabase. Ce modèle regroupe l'intégralité des tables nécessaires aux fonctionnalités métiers avancées : e-commerce (produits, commandes), réservations, analytiques et logs d'événements, interactions sociales (stories, reels, avis, messagerie), détection de fraude IA, et abonnements/tickets de support.
 
 ```mermaid
 classDiagram
@@ -1116,6 +1119,34 @@ classDiagram
         +timestamp created_at
         +string status
         +boolean two_factor_enabled
+        +boolean email_notifications_enabled
+        +boolean login_alerts_enabled
+        +string language
+        +string country
+        +boolean used_web
+        +boolean used_mobile
+        +string bio
+    }
+
+    class UserProfile {
+        +uuid user_id
+        +string avatar_url
+        +string bio
+        +array preferred_categories
+        +double preferred_price_min
+        +double preferred_price_max
+        +timestamp created_at
+        +timestamp updated_at
+    }
+
+    class UserPushToken {
+        +uuid id
+        +uuid user_id
+        +string token
+        +string device_id
+        +string platform
+        +timestamp created_at
+        +timestamp updated_at
     }
 
     class Store {
@@ -1140,8 +1171,67 @@ classDiagram
         +decimal rating_average
         +integer total_reviews
         +integer total_orders
+        +integer view_count
+        +decimal sentiment_positive_percent
         +jsonb opening_hours
         +jsonb gallery
+        +bigint business_directory_id
+        +bigint id_business
+        +bigint service_id
+        +boolean is_active
+        +string country
+        +timestamp created_at
+        +timestamp updated_at
+    }
+
+    class BusinessDirectoryTunisia {
+        +bigint id
+        +string title
+        +decimal totalScore
+        +integer reviewsCount
+        +string street
+        +string city
+        +string state
+        +string countryCode
+        +string website
+        +string phone
+        +array categories
+        +string url
+        +string categoryName
+        +string place_id
+        +string vitrine_category
+        +string full_address
+        +decimal latitude
+        +decimal longitude
+        +boolean is_claimed
+        +timestamp claimed_at
+        +uuid claimed_by
+        +bigint store_id
+        +boolean verified
+        +string business_status
+        +string description
+        +jsonb opening_hours
+        +array photos
+        +array tags
+    }
+
+    class ServiceDirectory {
+        +bigint service_id
+        +uuid owner_id
+        +string name
+        +string slug
+        +string description
+        +string category
+        +string phone
+        +string address
+        +string city
+        +double latitude
+        +double longitude
+        +string status
+        +double rating_average
+        +integer total_reviews
+        +jsonb opening_hours
+        +timestamp created_at
     }
 
     class Item {
@@ -1158,10 +1248,36 @@ classDiagram
         +jsonb available_days
         +item_status status
         +string main_image
+        +string image_2
+        +string image_3
+        +integer view_count
+        +integer order_count
+        +integer booking_count
+        +decimal rating_average
+        +integer total_reviews
         +bigint store_id
         +string category
         +boolean is_active
         +jsonb metadata
+    }
+
+    class ServiceSchedule {
+        +bigint id
+        +bigint item_id
+        +integer day_of_week
+        +time start_time
+        +time end_time
+        +integer max_bookings
+        +boolean is_active
+    }
+
+    class ItemMedia {
+        +uuid id
+        +bigint item_id
+        +string media_type
+        +string url
+        +integer duration_seconds
+        +timestamp created_at
     }
 
     class Order {
@@ -1185,6 +1301,7 @@ classDiagram
         +string fraud_level
         +boolean merchant_override_fraud
         +timestamp created_at
+        +timestamp updated_at
     }
 
     class Booking {
@@ -1199,12 +1316,37 @@ classDiagram
         +integer duration_minutes
         +string customer_name
         +string customer_phone
+        +string customer_email
+        +string notes
         +decimal price
         +booking_status status
         +integer fraud_score
         +string fraud_level
         +boolean merchant_override_fraud
         +timestamp created_at
+        +timestamp updated_at
+    }
+
+    class OrderFraudCheck {
+        +uuid id
+        +bigint order_id
+        +integer score
+        +string level
+        +jsonb signals
+        +string recommendation
+        +string ai_reasoning
+        +timestamp checked_at
+    }
+
+    class BookingFraudCheck {
+        +uuid id
+        +bigint booking_id
+        +integer score
+        +string level
+        +jsonb signals
+        +string recommendation
+        +string ai_reasoning
+        +timestamp checked_at
     }
 
     class Transaction {
@@ -1213,12 +1355,51 @@ classDiagram
         +string order_number
         +bigint booking_id
         +uuid customer_id
+        +string customer_name
         +bigint merchant_id
+        +string merchant_number
+        +string merchant_name
+        +string driver_name
+        +string drop_location
         +decimal amount
         +decimal fee
         +transaction_status status
         +transaction_type type
         +timestamp date
+        +timestamp time_created
+        +timestamp time_accepted
+        +timestamp collection_time
+        +timestamp pickup_time
+        +timestamp time_delivered
+        +integer wait_duration_minutes
+        +integer delivery_duration_minutes
+        +decimal km
+        +string qr_code_token
+    }
+
+    class Driver {
+        +uuid id
+        +string name
+        +string email
+        +string phone
+        +string status
+        +string address
+        +string city
+        +string vehicle_type
+        +string vehicle_license_plate
+        +string vehicle_make
+        +string vehicle_model
+        +integer vehicle_year
+        +integer vehicle_capacity_kg
+        +double rating
+        +double completion_rate
+        +integer avg_delivery_time_minutes
+        +double acceptance_rate
+        +decimal current_lat
+        +decimal current_lng
+        +string bank_name
+        +string account_number
+        +decimal total_earnings
     }
 
     class Review {
@@ -1231,9 +1412,15 @@ classDiagram
         +integer rating
         +string title
         +string comment
+        +string image_1
+        +string image_2
+        +boolean is_verified
+        +string qr_token
+        +timestamp qr_scanned_at
         +decimal sentiment_score
         +sentiment_label sentiment_label
         +string vendor_response
+        +string vendor_response_ai_suggestion
         +timestamp created_at
     }
 
@@ -1244,10 +1431,38 @@ classDiagram
         +string title
         +string description
         +decimal discount_percent
+        +string discount_text
         +date valid_from
         +date valid_until
         +boolean active
         +boolean apply_to_all
+    }
+
+    class Banner {
+        +bigint id
+        +bigint store_id
+        +string title
+        +string description
+        +string image_url
+        +string target_url
+        +string placement
+        +string status
+        +integer priority
+        +date start_date
+        +date end_date
+        +integer impressions
+        +integer clicks
+        +decimal conversion_rate
+    }
+
+    class AdCampaign {
+        +uuid id
+        +bigint store_id
+        +double budget
+        +double bid_cpc
+        +boolean is_active
+        +timestamp start_at
+        +timestamp end_at
     }
 
     class Reel {
@@ -1257,10 +1472,86 @@ classDiagram
         +string media_path
         +string media_type
         +string title
+        +string subtitle
         +decimal price
         +string cta_type
         +string cta_value
         +boolean is_sponsored
+        +string status
+        +timestamp created_at
+    }
+
+    class ReelStats {
+        +bigint reel_id
+        +integer views_count
+        +integer likes_count
+        +integer clicks_count
+        +integer contact_count
+        +integer saves_count
+    }
+
+    class ReelComment {
+        +bigint id
+        +bigint reel_id
+        +uuid user_id
+        +string content
+        +string attachment_url
+        +string attachment_type
+        +timestamp created_at
+    }
+
+    class Story {
+        +bigint id
+        +bigint store_id
+        +uuid author_id
+        +string media_url
+        +string media_type
+        +string caption
+        +integer views_count
+        +boolean is_approved
+        +timestamp expires_at
+        +timestamp created_at
+    }
+
+    class StoryView {
+        +bigint id
+        +bigint story_id
+        +uuid viewer_id
+        +timestamp viewed_at
+    }
+
+    class SavedPlace {
+        +bigint id
+        +uuid user_id
+        +bigint store_id
+        +timestamp created_at
+    }
+
+    class StoreFollow {
+        +uuid id
+        +uuid user_id
+        +bigint store_id
+        +timestamp created_at
+    }
+
+    class Friendship {
+        +uuid id
+        +uuid user_id
+        +uuid friend_id
+        +friendship_status status
+        +timestamp created_at
+    }
+
+    class Subscription {
+        +bigint id
+        +uuid user_id
+        +string plan_name
+        +decimal price
+        +timestamp current_period_start
+        +timestamp current_period_end
+        +string status
+        +boolean auto_renew
+        +timestamp created_at
     }
 
     class Message {
@@ -1270,6 +1561,7 @@ classDiagram
         +string content
         +boolean is_read
         +message_type type
+        +string attachment_url
         +bigint store_id
         +timestamp created_at
     }
@@ -1284,6 +1576,18 @@ classDiagram
         +support_ticket_priority priority
         +support_ticket_status status
         +support_ticket_channel channel
+        +uuid assigned_to
+        +timestamp created_at
+        +timestamp last_reply_at
+    }
+
+    class SupportMessage {
+        +uuid id
+        +uuid ticket_id
+        +uuid sender_id
+        +string sender_type
+        +string content
+        +boolean is_read
         +timestamp created_at
     }
 
@@ -1292,7 +1596,17 @@ classDiagram
     User "1" --> "0..*" Booking : "réserve (customer_id)"
     User "1" --> "0..*" Review : "rédige (author_id)"
     User "1" --> "0..*" Message : "envoie/reçoit"
-    
+    User "1" --> "0..1" UserProfile : "possède"
+    User "1" --> "0..*" UserPushToken : "enregistre"
+    User "1" --> "0..*" SavedPlace : "sauvegarde"
+    User "1" --> "0..*" StoreFollow : "suit"
+    User "1" --> "0..*" Friendship : "ami avec"
+    User "1" --> "0..1" Subscription : "souscrit"
+    User "1" --> "0..*" ReelComment : "commente"
+    User "1" --> "0..*" Story : "publie"
+    User "1" --> "0..*" StoryView : "visionne"
+    User "1" --> "0..*" SupportTicket : "ouvre en tant que client"
+
     Store "1" --> "0..*" Item : "contient (store_id)"
     Store "1" --> "0..*" Order : "reçoit (store_id)"
     Store "1" --> "0..*" Booking : "gère (store_id)"
@@ -1300,15 +1614,35 @@ classDiagram
     Store "1" --> "0..*" Promotion : "propose (store_id)"
     Store "1" --> "0..*" Reel : "publie (store_id)"
     Store "1" --> "0..*" Transaction : "encaisse (merchant_id)"
-    Store "1" --> "0..*" SupportTicket : "fait l'objet de (store_id)"
+    Store "1" --> "0..*" SupportTicket : "gère le support (store_id)"
+    Store "1" --> "0..*" Banner : "affiche"
+    Store "1" --> "0..*" AdCampaign : "finance"
+    Store "1" --> "0..*" SavedPlace : "est sauvegardée par"
+    Store "1" --> "0..*" StoreFollow : "est suivie par"
+    Store "1" --> "0..*" Story : "partage"
+    Store "1" --> "0..1" BusinessDirectoryTunisia : "rattachée à"
+    Store "1" --> "0..1" ServiceDirectory : "référencée dans"
 
     Item "1" --> "0..*" Booking : "concerne (item_id)"
     Item "1" --> "0..*" Review : "reçoit (item_id)"
     Item "1" --> "0..*" Promotion : "cible (item_id)"
     Item "1" --> "0..1" Reel : "promouvoit (item_id)"
+    Item "1" --> "0..*" ServiceSchedule : "planifié selon"
+    Item "1" --> "0..*" ItemMedia : "illustré par"
 
     Order "1" --> "0..1" Transaction : "génère"
+    Order "1" --> "1" OrderFraudCheck : "analysée par"
     Booking "1" --> "0..1" Transaction : "génère"
+    Booking "1" --> "1" BookingFraudCheck : "analysée par"
+
+    Transaction "0..*" --> "0..1" Driver : "livrée par (driver_name)"
+
+    Reel "1" --> "1" ReelStats : "possède"
+    Reel "1" --> "0..*" ReelComment : "commente"
+
+    Story "1" --> "0..*" StoryView : "comporte"
+
+    SupportTicket "1" --> "0..*" SupportMessage : "comprend"
 ```
 
 *Figure : Diagramme de classes global de RO2YA*

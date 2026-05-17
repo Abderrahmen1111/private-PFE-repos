@@ -4,7 +4,7 @@
 ---
 # 🔐 SECTION 1 : AUTHENTIFICATION
 
-### Diagramme de cas d'utilisation — Authentification
+### 📊 Diagramme de cas d'utilisation — Authentification
 
 ```mermaid
 flowchart LR
@@ -30,43 +30,43 @@ flowchart LR
 
 ```mermaid
 sequenceDiagram
-    actor Utilisateur
-    participant Application as Application Mobile
+    actor Client / Commerçant
+    participant App as Application Web & Mobile
     participant RateLimiter as Limiteur de requêtes
     participant SupabaseAuth as Supabase Auth
     participant BD as Base de données
     participant Email as Service Email (SendGrid)
 
-    Utilisateur->>Application: Remplit le formulaire d'inscription
-    Application->>Application: Vérifie que tous les champs sont remplis
-    Application->>Application: Vérifie que l'email est valide
-    Application->>RateLimiter: Vérifie le nombre de tentatives
+    Client->>App: Remplit le formulaire d'inscription
+    App->>App: Vérifie que tous les champs sont remplis
+    App->>App: Vérifie que l'email est valide
+    App->>SupabaseAuth: Vérifie le nombre de tentatives
     alt Trop de tentatives
-        RateLimiter-->>Application: Accès temporairement bloqué
-        Application-->>Utilisateur: "Réessayez dans 15 minutes"
+        SupabaseAuth-->>App: Accès temporairement bloqué
+        App-->>Client: "Réessayez dans 15 minutes"
     else Autorisé
-        Application->>SupabaseAuth: Envoie les données d'inscription
+        App->>SupabaseAuth: Envoie les données d'inscription
         SupabaseAuth->>BD: Vérifie si l'email existe déjà
         alt Email déjà utilisé
             BD-->>SupabaseAuth: Email trouvé
-            SupabaseAuth-->>Application: "Email déjà utilisé"
-            Application-->>Utilisateur: Affiche le message d'erreur
+            SupabaseAuth-->>App: "Email déjà utilisé"
+            App-->>Client: Affiche le message d'erreur
         else Email disponible
             SupabaseAuth->>BD: Enregistre le nouvel utilisateur
             BD-->>SupabaseAuth: Confirmation
             SupabaseAuth->>Email: Envoie le code de vérification
             Email-->>Utilisateur: 📧 Code OTP reçu par email
-            SupabaseAuth-->>Application: "Vérifiez votre email"
-            Application-->>Utilisateur: Affiche l'écran de vérification
-            Utilisateur->>Application: Saisit le code OTP
-            Application->>SupabaseAuth: Envoie le code OTP
+            SupabaseAuth-->>App: "Vérifiez votre email"
+            App-->>Client: Affiche l'écran de vérification
+            Client->>App: Saisit le code OTP
+            App->>SupabaseAuth: Envoie le code OTP
             alt Code invalide ou expiré
-                SupabaseAuth-->>Application: Code incorrect
-                Application-->>Utilisateur: "Code invalide ou expiré"
+                SupabaseAuth-->>App: Code incorrect
+                App-->>Client: "Code invalide ou expiré"
             else Code valide
                 SupabaseAuth->>BD: Active le compte
-                SupabaseAuth-->>Application: Jeton de session
-                Application-->>Utilisateur: ✅ Compte activé — Bienvenue !
+                SupabaseAuth-->>App: Jeton de session
+                App-->>Client: ✅ Compte activé — Bienvenue !
             end
         end
     end
@@ -79,32 +79,32 @@ sequenceDiagram
 
 ```mermaid
 sequenceDiagram
-    actor Utilisateur
-    participant Application as Application Mobile
+    actor Client / Commerçant
+    participant App as Application Web & Mobile
     participant RateLimiter as Limiteur de requêtes
     participant SupabaseAuth as Supabase Auth
     participant BD as Base de données
 
-    Utilisateur->>Application: Saisit email et mot de passe
-    Application->>RateLimiter: Vérifie le nombre de tentatives
+    Client->>App: Saisit email et mot de passe
+    App->>SupabaseAuth: Vérifie le nombre de tentatives
     alt Trop de tentatives
-        RateLimiter-->>Application: Compte temporairement verrouillé
-        Application-->>Utilisateur: "Réessayez dans 15 minutes"
+        SupabaseAuth-->>App: Compte temporairement verrouillé
+        App-->>Client: "Réessayez dans 15 minutes"
     else Autorisé
-        Application->>SupabaseAuth: Envoie les identifiants
+        App->>SupabaseAuth: Envoie les identifiants
         SupabaseAuth->>BD: Cherche l'utilisateur par email
         alt Identifiants incorrects
             BD-->>SupabaseAuth: Utilisateur non trouvé ou mot de passe invalide
-            SupabaseAuth-->>Application: Identifiants incorrects
-            Application-->>Utilisateur: "Email ou mot de passe incorrect"
+            SupabaseAuth-->>App: Identifiants incorrects
+            App-->>Client: "Email ou mot de passe incorrect"
         else Compte suspendu
-            SupabaseAuth-->>Application: Compte suspendu
-            Application-->>Utilisateur: "Compte suspendu — Contactez le support"
+            SupabaseAuth-->>App: Compte suspendu
+            App-->>Client: "Compte suspendu — Contactez le support"
         else Connexion réussie
             SupabaseAuth->>BD: Met à jour la date de dernière connexion
-            SupabaseAuth-->>Application: Jeton de session (JWT)
-            Application->>Application: Sauvegarde la session
-            Application-->>Utilisateur: ✅ Connecté — Redirection vers l'accueil
+            SupabaseAuth-->>App: Jeton de session (JWT)
+            App->>App: Sauvegarde la session
+            App-->>Client: ✅ Connecté — Redirection vers l'accueil
         end
     end
 ```
@@ -116,29 +116,29 @@ sequenceDiagram
 
 ```mermaid
 sequenceDiagram
-    actor Utilisateur
-    participant Navigateur as Navigateur / Application
+    actor Client / Commerçant
+    participant App as Application Web & Mobile
     participant Middleware as Vérificateur de session
     participant SupabaseAuth as Supabase Auth
     participant BD as Base de données
 
-    Utilisateur->>Navigateur: Accède à une page réservée
-    Navigateur->>Middleware: Présente le jeton de session
-    Middleware->>SupabaseAuth: Vérifie la validité du jeton
+    Client->>App: Accède à une page réservée
+    App->>SupabaseAuth: Présente le jeton de session
+    SupabaseAuth->>SupabaseAuth: Vérifie la validité du jeton
     alt Jeton absent ou expiré
-        SupabaseAuth-->>Middleware: Jeton invalide
-        Middleware-->>Navigateur: Redirige vers la connexion
-        Navigateur-->>Utilisateur: Page de connexion
+        SupabaseAuth-->>App: Jeton invalide
+        App-->>App: Redirige vers la connexion
+        App-->>Client: Page de connexion
     else Jeton valide
-        SupabaseAuth-->>Middleware: Identité et rôle de l'utilisateur
-        Middleware->>BD: Vérifie les droits d'accès
+        SupabaseAuth-->>App: Identité et rôle de l'utilisateur
+        SupabaseAuth->>BD: Vérifie les droits d'accès
         alt Droits insuffisants
-            BD-->>Middleware: Accès non autorisé
-            Middleware-->>Navigateur: Page "Accès refusé"
-            Navigateur-->>Utilisateur: ❌ Accès interdit
+            BD-->>SupabaseAuth: Accès non autorisé
+            App-->>App: Page "Accès refusé"
+            App-->>Client: ❌ Accès interdit
         else Autorisé
-            Middleware-->>Navigateur: Accès accordé
-            Navigateur-->>Utilisateur: ✅ Page affichée
+            App-->>App: Accès accordé
+            App-->>Client: ✅ Page affichée
         end
     end
 ```
@@ -148,7 +148,7 @@ sequenceDiagram
 
 # 🏪 SECTION 2 : GESTION ÉTABLISSEMENT
 
-### Diagramme de cas d'utilisation — Gestion des Boutiques
+### 📊 Diagramme de cas d'utilisation — Gestion des Boutiques
 
 ```mermaid
 flowchart LR
@@ -179,26 +179,25 @@ flowchart LR
 ```mermaid
 sequenceDiagram
     actor Commerçant
-    participant Dashboard as Dashboard Web (Next.js)
+    participant App as Application Web & Mobile
     participant Cloudinary as Serveur d'images (Cloudinary)
-    participant Serveur as API Boutiques
-    participant BD as Base de données (PostGIS)
+    participant BD as Base de données (Supabase/PostGIS)
 
     Commerçant->>Dashboard: Remplit les informations de la boutique
     Commerçant->>Dashboard: Ajoute logo et photos
-    Dashboard->>Cloudinary: Envoie les images
+    App->>Cloudinary: Envoie les images
     Cloudinary->>Cloudinary: Compresse et optimise les images
-    Cloudinary-->>Dashboard: Liens des images hébergées
-    Dashboard->>Dashboard: Vérifie que tous les champs sont remplis
+    Cloudinary-->>App: Liens des images hébergées
+    App->>App: Vérifie que tous les champs sont remplis
     alt Informations manquantes
-        Dashboard-->>Commerçant: Affiche les erreurs
+        App-->>Commerçant: Affiche les erreurs
     else Informations complètes
-        Dashboard->>Serveur: Envoie les données avec les liens images
-        Serveur->>BD: Enregistre la boutique avec coordonnées GPS
+        App->>BD: Envoie les données avec les liens images
+        BD->>BD: Enregistre la boutique avec coordonnées GPS
         Note over Serveur,BD: Statut initial = "En attente de validation"
-        BD-->>Serveur: Identifiant de la boutique
-        Serveur-->>Dashboard: Boutique créée
-        Dashboard-->>Commerçant: ✅ "En attente de validation par l'admin"
+        BD-->>Django: Identifiant de la boutique
+        BD-->>App: Boutique créée
+        App-->>Commerçant: ✅ "En attente de validation par l'admin"
     end
 ```
 **Fichiers :** `app/dashboard/stores/create/page.tsx` · `lib/actions/stores.ts` · `lib/cloudinary.ts`
@@ -210,33 +209,33 @@ sequenceDiagram
 ```mermaid
 sequenceDiagram
     actor Administrateur
-    participant Dashboard as Dashboard Admin (SaaS)
-    participant Serveur as API Administration (Django)
-    participant BD as Base de données
-    participant Notif as Système de notifications
+    participant AdminPortal as Dashboard Admin (SaaS)
+    participant Django as Backend Django
+    participant BD as Base de données (Supabase)
 
-    Administrateur->>Dashboard: Consulte les boutiques en attente
-    Dashboard->>Serveur: Demande la liste des boutiques "En attente"
-    Serveur->>BD: Récupère les boutiques avec leurs documents
-    BD-->>Serveur: Liste des boutiques
-    Serveur-->>Dashboard: Affiche la liste
-    Administrateur->>Dashboard: Examine les documents et décide
+    Administrateur->>AdminPortal: Consulte les boutiques en attente
+    AdminPortal->>Django: Demande la liste des boutiques "En attente"
+    Django->>BD: Récupère les boutiques avec leurs documents
+    BD-->>Django: Liste des boutiques
+    Django-->>AdminPortal: Affiche la liste des boutiques
+    Administrateur->>AdminPortal: Examine les documents et décide
     alt Boutique approuvée
-        Dashboard->>Serveur: Approuver la boutique
-        Serveur->>BD: Met à jour le statut à "Approuvée"
-        BD-->>Serveur: Confirmation
-        Serveur->>Notif: Déclenche une notification
-        Notif-->>Commerçant: 🔔 "Votre boutique a été approuvée"
-        Dashboard-->>Administrateur: ✅ Approbation confirmée
+        AdminPortal->>Django: Approuver la boutique (store_id)
+        Django->>BD: Met à jour le statut à "Approuvée"
+        BD-->>Django: Confirmation de mise à jour
+        Django->>BD: Enregistre le log de validation (audit trail)
+        BD-->>Commerçant: 🔔 "Votre boutique a été approuvée"
+        Django-->>AdminPortal: Approbation confirmée
+        AdminPortal-->>Administrateur: ✅ Boutique approuvée avec succès
     else Boutique rejetée
-        Dashboard->>Serveur: Rejeter avec motif
-        Serveur->>BD: Met à jour le statut à "Rejetée"
-        BD-->>Serveur: Confirmation
-        Serveur->>Notif: Déclenche une notification
-        Notif-->>Commerçant: 🔔 "Votre boutique a été rejetée"
-        Dashboard-->>Administrateur: ✅ Rejet confirmé
-    end
-```
+        AdminPortal->>Django: Rejeter la boutique avec motif
+        Django->>BD: Met à jour le statut à "Rejetée" avec motif
+        BD-->>Django: Confirmation de mise à jour
+        Django->>BD: Enregistre le log de rejet (audit trail)
+        BD-->>Commerçant: 🔔 "Votre boutique a été rejetée : [motif]"
+        Django-->>AdminPortal: Rejet enregistré
+        AdminPortal-->>Administrateur: ❌ Boutique rejetée avec succès
+    end```
 **Fichiers :** `saas/app/admin/stores/pending/page.tsx` · `saas/backend/stores/admin.py`
 
 ---
@@ -246,31 +245,30 @@ sequenceDiagram
 ```mermaid
 sequenceDiagram
     actor Commerçant
-    participant Dashboard as Dashboard Web
-    participant Serveur as API Profil
-    participant BD as Base de données (RLS)
+    participant App as Application Web & Mobile
+    participant BD as Base de données (Supabase/RLS)
 
     Commerçant->>Dashboard: Modifie horaires, bio ou réseaux sociaux
-    Dashboard->>Serveur: Envoie les modifications
-    Serveur->>BD: Vérifie que le commerçant est propriétaire de la boutique
+    App->>BD: Envoie les modifications
+    BD->>BD: Vérifie que le commerçant est propriétaire de la boutique
     alt Propriétaire non confirmé
-        BD-->>Serveur: Accès refusé
-        Serveur-->>Dashboard: Modification non autorisée
-        Dashboard-->>Commerçant: ❌ Erreur d'autorisation
+        BD-->>Django: Accès refusé
+        BD-->>App: Modification non autorisée
+        App-->>Commerçant: ❌ Erreur d'autorisation
     else Propriétaire confirmé
-        Serveur->>BD: Enregistre les modifications
-        BD-->>Serveur: Confirmation
-        Serveur-->>Dashboard: Mise à jour réussie
-        Dashboard-->>Commerçant: ✅ "Profil mis à jour avec succès"
+        BD->>BD: Enregistre les modifications
+        BD-->>Django: Confirmation
+        BD-->>App: Mise à jour réussie
+        App-->>Commerçant: ✅ "Profil mis à jour avec succès"
     end
 ```
 **Fichiers :** `app/dashboard/profile/page.tsx` · `lib/actions/profile.ts`
 
 ---
 
-# 🛍️ SECTION 3 : CATALOGUE & PRODUITS
+# 🛍️ SECTION 3 : SHOP & PRODUITS
 
-### Diagramme de cas d'utilisation — Catalogue et Produits
+### 📊 Diagramme de cas d'utilisation — Shop et Produits
 
 ```mermaid
 flowchart LR
@@ -278,7 +276,7 @@ flowchart LR
     P(["Commercant PRO"])
     A(["Administrateur"])
 
-    subgraph S3 ["Section 3 - Catalogue et Produits"]
+    subgraph S3 ["Section 3 - Shop et Produits"]
         UC1(["Ajouter un produit"])
         UC2(["Modifier un produit"])
         UC3(["Retirer un produit"])
@@ -297,47 +295,45 @@ flowchart LR
 ```mermaid
 sequenceDiagram
     actor Commerçant
-    participant Dashboard as Dashboard Web (Next.js)
+    participant App as Application Web & Mobile
     participant Cloudinary as Serveur d'images (Cloudinary)
-    participant Serveur as API Catalogue
-    participant BD as Base de données
+    participant BD as Base de données (Supabase)
 
     Commerçant->>Dashboard: Remplit les informations du produit
     Commerçant->>Dashboard: Ajoute une photo
-    Dashboard->>Cloudinary: Envoie la photo
-    Cloudinary-->>Dashboard: Lien de l'image optimisée
-    Dashboard->>Dashboard: Vérifie les données (prix, nom, catégorie)
+    App->>Cloudinary: Envoie la photo
+    Cloudinary-->>App: Lien de l'image optimisée
+    App->>App: Vérifie les données (prix, nom, catégorie)
     alt Données invalides
-        Dashboard-->>Commerçant: ❌ Affiche les erreurs
+        App-->>Commerçant: ❌ Affiche les erreurs
     else Données valides
-        Dashboard->>Serveur: Envoie les informations du produit
-        Serveur->>BD: Enregistre le produit dans le catalogue
-        BD-->>Serveur: Confirmation
-        Serveur-->>Dashboard: Produit créé
-        Dashboard-->>Commerçant: ✅ "Produit ajouté au catalogue"
+        App->>BD: Envoie les informations du produit
+        BD->>BD: Enregistre le produit dans le catalogue
+        BD-->>Django: Confirmation
+        BD-->>App: Produit créé
+        App-->>Commerçant: ✅ "Produit ajouté au Shop"
     end
 ```
 **Fichiers :** `app/dashboard/products/add/page.tsx` · `lib/actions/items.ts` · `lib/cloudinary.ts`
 
 ---
 
-## 8️⃣ Consultation du catalogue et modération
+## 8️⃣ Consultation du Shop (Client)
 
 ```mermaid
 sequenceDiagram
     actor Client
-    participant Application as Application Mobile
-    participant Serveur as API Catalogue
-    participant BD as Base de données
+    participant App as Application Web & Mobile
+    participant BD as Base de données (Supabase)
 
-    Client->>Application: Parcourt le catalogue
-    Application->>Serveur: Demande la liste des produits (page suivante)
-    Serveur->>BD: Récupère 20 produits actifs triés par date
-    BD-->>Serveur: Liste de produits
-    Serveur-->>Application: Produits reçus
-    Application-->>Client: ✅ Affiche les nouveaux produits
+    Client->>Application: Parcourt le Shop
+    App->>BD: Demande la liste des produits (page suivante)
+    BD->>BD: Récupère 20 produits actifs triés par date
+    BD-->>Django: Liste de produits
+    BD-->>App: Produits reçus
+    App-->>Client: ✅ Affiche les nouveaux produits
 
-    Note over Application: Le défilement infini charge automatiquement la suite
+    Note over App: Le défilement infini charge automatiquement la suite
 ```
 **Fichiers :** `app/search/results.tsx` · `lib/items.ts`
 
@@ -345,7 +341,7 @@ sequenceDiagram
 
 # 📦 SECTION 4 : COMMANDES
 
-### Diagramme de cas d'utilisation — Commandes
+### 📊 Diagramme de cas d'utilisation — Commandes
 
 ```mermaid
 flowchart LR
@@ -373,36 +369,36 @@ flowchart LR
 ```mermaid
 sequenceDiagram
     actor Client
-    participant Application as Application Mobile
+    participant App as Application Web & Mobile
     participant Panier as Panier (Stockage local)
     participant Serveur as API Commandes
     participant BD as Base de données
     participant Notif as Système de notifications
 
     Client->>Application: Ajoute un produit au panier
-    Application->>Panier: Vérifie que le produit vient de la même boutique
+    App->>Panier: Vérifie que le produit vient de la même boutique
     alt Produit d'une autre boutique
-        Panier-->>Application: Conflit détecté
-        Application-->>Client: "Vider le panier et ajouter ce produit ?"
+        Panier-->>App: Conflit détecté
+        App-->>Client: "Vider le panier et ajouter ce produit ?"
     else Même boutique
         Panier->>Panier: Met à jour la quantité et le total
-        Application-->>Client: Panier mis à jour
+        App-->>Client: Panier mis à jour
     end
 
     Client->>Application: Valide le panier et confirme la commande
-    Application->>Serveur: Envoie la commande
-    Serveur->>BD: Vérifie la disponibilité du stock
+    App->>BD: Envoie la commande
+    BD->>BD: Vérifie la disponibilité du stock
     alt Stock insuffisant
-        BD-->>Serveur: Rupture de stock
-        Serveur-->>Application: "Stock insuffisant pour [produit]"
-        Application-->>Client: ❌ Affiche le message d'erreur
+        BD-->>Django: Rupture de stock
+        BD-->>App: "Stock insuffisant pour [produit]"
+        App-->>Client: ❌ Affiche le message d'erreur
     else Stock disponible
-        Serveur->>BD: Enregistre la commande et réduit le stock
-        BD-->>Serveur: Commande créée
-        Serveur->>Notif: Notifie le commerçant
-        Notif-->>Commerçant: 🔔 "Nouvelle commande reçue"
-        Serveur-->>Application: Numéro de commande
-        Application-->>Client: ✅ "Commande envoyée avec succès"
+        BD->>BD: Enregistre la commande et réduit le stock
+        BD-->>Django: Commande créée
+        Django->>BD: Notifie le commerçant
+        BD-->>Commerçant: 🔔 "Nouvelle commande reçue"
+        BD-->>App: Numéro de commande
+        App-->>Client: ✅ "Commande envoyée avec succès"
     end
 ```
 **Fichiers :** `app/cart.tsx` · `app/checkout.tsx` · `store/cartStore.ts` · `lib/actions/orders.ts`
@@ -415,32 +411,34 @@ sequenceDiagram
 sequenceDiagram
     actor Commerçant
     actor Client
-    participant Dashboard as Dashboard Web
+    actor Livreur
+    participant App as Application Web & Mobile
+    participant App as Application Web & Mobile
     participant Serveur as API Commandes
     participant BD as Base de données
     participant Notif as Système de notifications
 
     Commerçant->>Dashboard: Reçoit une nouvelle commande
     Commerçant->>Dashboard: Clique "Accepter"
-    Dashboard->>Serveur: Met à jour le statut à "Acceptée"
-    Serveur->>BD: Enregistre le changement
-    BD-->>Serveur: Confirmation
-    Serveur->>Notif: Notifie le client
-    Notif-->>Client: 🔔 "Votre commande est confirmée"
-    Dashboard-->>Commerçant: ✅ Commande acceptée
+    App->>BD: Met à jour le statut à "Acceptée"
+    BD->>BD: Enregistre le changement
+    BD-->>Django: Confirmation
+    Django->>BD: Notifie le client
+    BD-->>Client: 🔔 "Votre commande est confirmée"
+    App-->>Commerçant: ✅ Commande acceptée
 
     Client->>Client: Se présente en boutique avec son QR Code
     Commerçant->>Dashboard: Scanne le QR Code du client
-    Dashboard->>Serveur: Vérifie la validité du QR Code
+    App->>BD: Vérifie la validité du QR Code
     alt QR invalide ou expiré
-        Serveur-->>Dashboard: QR Code invalide
-        Dashboard-->>Commerçant: ❌ "QR Code invalide"
+        BD-->>App: QR Code invalide
+        App-->>Commerçant: ❌ "QR Code invalide"
     else QR valide
-        Serveur->>BD: Marque la commande comme livrée
-        BD-->>Serveur: Confirmation
-        Serveur->>Notif: Notifie le client
-        Notif-->>Client: 🔔 "Commande reçue — Laissez un avis"
-        Dashboard-->>Commerçant: ✅ "Livraison confirmée"
+        BD->>BD: Marque la commande comme livrée
+        BD-->>Django: Confirmation
+        Django->>BD: Notifie le client
+        BD-->>Client: 🔔 "Commande reçue — Laissez un avis"
+        App-->>Commerçant: ✅ "Livraison confirmée"
     end
 ```
 **Fichiers :** `app/dashboard/orders/page.tsx` · `app/dashboard/qr-verify/[code]/page.tsx` · `lib/actions/orders.ts`
@@ -449,7 +447,7 @@ sequenceDiagram
 
 # 📅 SECTION 5 : RÉSERVATIONS
 
-### Diagramme de cas d'utilisation — Reservations
+### 📊 Diagramme de cas d'utilisation — Reservations
 
 ```mermaid
 flowchart LR
@@ -476,32 +474,32 @@ flowchart LR
 ```mermaid
 sequenceDiagram
     actor Client
-    participant Application as Application Mobile
+    participant App as Application Web & Mobile
     participant Serveur as API Réservations
     participant BD as Base de données
     participant Notif as Supabase Realtime
 
     Client->>Application: Consulte les créneaux disponibles d'un service
-    Application->>Serveur: Demande les créneaux libres du commerçant
-    Serveur->>BD: Récupère le calendrier et filtre les créneaux occupés
-    BD-->>Serveur: Créneaux disponibles pour la date choisie
-    Serveur-->>Application: Affiche les créneaux libres
+    App->>BD: Demande les créneaux libres du commerçant
+    BD->>BD: Récupère le calendrier et filtre les créneaux occupés
+    BD-->>Django: Créneaux disponibles pour la date choisie
+    BD-->>App: Affiche les créneaux libres
     Client->>Application: Sélectionne un créneau et confirme
 
-    Application->>Serveur: Envoie la demande de réservation
-    Serveur->>BD: Vérifie que le créneau est toujours libre
+    App->>BD: Envoie la demande de réservation
+    BD->>BD: Vérifie que le créneau est toujours libre
     alt Créneau déjà pris entre-temps
-        BD-->>Serveur: Créneau occupé par un autre client
-        Serveur-->>Application: "Ce créneau n'est plus disponible"
-        Application-->>Client: ❌ Propose de choisir un autre horaire
+        BD-->>Django: Créneau occupé par un autre client
+        BD-->>App: "Ce créneau n'est plus disponible"
+        App-->>Client: ❌ Propose de choisir un autre horaire
     else Créneau encore libre
-        Serveur->>BD: Enregistre la réservation avec statut "Confirmée"
-        Serveur->>BD: Marque le créneau comme occupé
-        BD-->>Serveur: Réservation confirmée
-        Serveur->>Notif: Notifie le commerçant en temps réel
-        Notif-->>Commerçant: 🔔 "Nouvelle réservation reçue"
-        Serveur-->>Application: Confirmation avec détails du RDV
-        Application-->>Client: ✅ "Réservation confirmée pour [date] à [heure]"
+        BD->>BD: Enregistre la réservation avec statut "Confirmée"
+        BD->>BD: Marque le créneau comme occupé
+        BD-->>Django: Réservation confirmée
+        Django->>BD: Notifie le commerçant en temps réel
+        BD-->>Commerçant: 🔔 "Nouvelle réservation reçue"
+        BD-->>App: Confirmation avec détails du RDV
+        App-->>Client: ✅ "Réservation confirmée pour [date] à [heure]"
     end
 
     Note over Serveur,BD: Vérification anti-chevauchement côté serveur avant chaque insertion
@@ -515,25 +513,25 @@ sequenceDiagram
 ```mermaid
 sequenceDiagram
     actor Commerçant
-    participant Dashboard as Dashboard Web (Next.js)
+    participant App as Application Web & Mobile
     participant Serveur as API Réservations
     participant BD as Base de données
     participant Notif as Supabase Realtime
 
     Commerçant->>Dashboard: Consulte ses réservations du jour
-    Dashboard->>Serveur: Demande les réservations confirmées du jour
-    Serveur->>BD: Récupère les réservations du jour pour cette boutique
-    BD-->>Serveur: Liste des réservations
-    Serveur-->>Dashboard: Affiche les réservations avec détails client
+    App->>BD: Demande les réservations confirmées du jour
+    BD->>BD: Récupère les réservations du jour pour cette boutique
+    BD-->>Django: Liste des réservations
+    BD-->>App: Affiche les réservations avec détails client
 
     Commerçant->>Dashboard: Marque une réservation comme terminée
-    Dashboard->>Serveur: Met à jour le statut à "Terminée"
-    Serveur->>BD: Enregistre la clôture avec date de complétion
-    BD-->>Serveur: Confirmation
-    Serveur->>Notif: Envoie une notification au client
-    Notif-->>Client: 🔔 "Prestation terminée — Laissez un avis !"
-    Serveur-->>Dashboard: Confirmation de la clôture
-    Dashboard-->>Commerçant: ✅ "Réservation clôturée"
+    App->>BD: Met à jour le statut à "Terminée"
+    BD->>BD: Enregistre la clôture avec date de complétion
+    BD-->>Django: Confirmation
+    Django->>BD: Envoie une notification au client
+    BD-->>Client: 🔔 "Prestation terminée — Laissez un avis !"
+    BD-->>App: Confirmation de la clôture
+    App-->>Commerçant: ✅ "Réservation clôturée"
 ```
 **Fichiers :** `app/dashboard/reservations/page.tsx` · `lib/actions/reservation.ts`
 
@@ -541,7 +539,7 @@ sequenceDiagram
 
 # 🔍 SECTION 6 : RECHERCHE & INTELLIGENCE ARTIFICIELLE
 
-### Diagramme de cas d'utilisation — Recherche et Intelligence Artificielle
+### 📊 Diagramme de cas d'utilisation — Recherche et Intelligence Artificielle
 
 ```mermaid
 flowchart LR
@@ -567,24 +565,24 @@ flowchart LR
 ```mermaid
 sequenceDiagram
     actor Client
-    participant Application as Application Mobile
-    participant ServeurIA as API Recherche Sémantique
+    participant App as Application Web & Mobile
+    participant LLM as OpenRouter (LLM Cloud)
     participant LLM as OpenRouter (LLM Cloud)
     participant BD as PostgreSQL (pgvector)
 
     Client->>Application: Tape une recherche (ex : "حلاق" ou "coiffeur")
-    Application->>ServeurIA: Envoie le texte de recherche brut
-    ServeurIA->>ServeurIA: Nettoie et normalise le texte saisi
-    ServeurIA->>LLM: Envoie le texte pour traduction Darija → Français
-    LLM-->>ServeurIA: Terme traduit et normalisé (ex : "salon de coiffure")
-    ServeurIA->>LLM: Demande la conversion du texte en vecteur numérique
-    LLM-->>ServeurIA: Vecteur de représentation sémantique
-    ServeurIA->>BD: Recherche les boutiques les plus proches (distance cosinus)
+    App->>LLM: Envoie le texte de recherche brut
+    LLM->>LLM: Nettoie et normalise le texte saisi
+    App->>LLM: Envoie le texte pour traduction Darija → Français
+    LLM-->>App: Terme traduit et normalisé (ex : "salon de coiffure")
+    App->>LLM: Demande la conversion du texte en vecteur numérique
+    LLM-->>App: Vecteur de représentation sémantique
+    App->>BD: Recherche les boutiques les plus proches (distance cosinus)
     BD-->>ServeurIA: Résultats classés par pertinence sémantique
-    ServeurIA-->>Application: Liste des boutiques correspondantes
-    Application-->>Client: ✅ Affiche les résultats triés par pertinence
+    BD-->>App: Liste des boutiques correspondantes
+    App-->>Client: ✅ Affiche les résultats triés par pertinence
 
-    Note over ServeurIA,LLM: Le moteur comprend les synonymes, les dialectes et les variantes orthographiques
+    Note over App,LLM: Le moteur comprend les synonymes, les dialectes et les variantes orthographiques
     Note over BD: Extension pgvector pour la recherche vectorielle SQL native
 ```
 **Fichiers :** `compnents/search/searchBar.tsx` · `app/api/semantic-search/route.ts` · `lib/darija-dictionary.ts`
@@ -596,25 +594,25 @@ sequenceDiagram
 ```mermaid
 sequenceDiagram
     actor Client
-    participant Application as Application Mobile
-    participant ServeurIA as API Vision (Image Search)
+    participant App as Application Web & Mobile
+    participant GroqVision as Groq Vision (IA Cloud)
     participant GroqVision as Groq Vision (IA Cloud)
     participant BD as PostgreSQL (Recherche texte)
 
     Client->>Application: Prend une photo d'un plat ou d'un vêtement
-    Application->>Application: Compresse et encode l'image en base64
-    Application->>ServeurIA: Envoie l'image pour analyse
-    ServeurIA->>GroqVision: Soumet l'image au modèle de vision
+    App->>App: Compresse et encode l'image en base64
+    App->>LLM: Envoie l'image pour analyse
+    App->>GroqVision: Soumet l'image au modèle de vision
     GroqVision->>GroqVision: Analyse l'image et identifie les objets
     GroqVision-->>ServeurIA: Description des objets identifiés (ex : "Pizza Margherita")
     alt Objet non reconnu
-        ServeurIA-->>Application: "Impossible d'identifier l'objet"
-        Application-->>Client: ❌ Propose la recherche manuelle
+        BD-->>App: "Impossible d'identifier l'objet"
+        App-->>Client: ❌ Propose la recherche manuelle
     else Objet reconnu
-        ServeurIA->>BD: Recherche en texte intégral avec les mots-clés extraits
+        App->>BD: Recherche en texte intégral avec les mots-clés extraits
         BD-->>ServeurIA: Boutiques et produits correspondants
-        ServeurIA-->>Application: Résultats de recherche
-        Application-->>Client: ✅ Affiche les boutiques qui vendent cet objet
+        BD-->>App: Résultats de recherche
+        App-->>Client: ✅ Affiche les boutiques qui vendent cet objet
     end
 
     Note over GroqVision: Modèle multimodal capable d'analyser des images en temps réel
@@ -628,19 +626,19 @@ sequenceDiagram
 ```mermaid
 sequenceDiagram
     actor Client
-    participant Application as Application Mobile
-    participant Serveur as API Exploration
+    participant App as Application Web & Mobile
+    participant BD as Base de données (Supabase/PostGIS)
     participant BD as PostgreSQL (PostGIS)
 
     Client->>Application: Active sa localisation GPS
     Client->>Application: Applique des filtres (catégorie, distance < 5km)
-    Application->>Serveur: Envoie la position GPS et les filtres choisis
-    Serveur->>BD: Recherche les boutiques dans le rayon demandé
+    App->>BD: Envoie la position GPS et les filtres choisis
+    BD->>BD: Recherche les boutiques dans le rayon demandé
     Note over Serveur,BD: Requête spatiale ST_DWithin(position, boutique, rayon)
-    BD-->>Serveur: Boutiques trouvées avec distances calculées
-    Serveur->>Serveur: Trie par distance croissante
-    Serveur-->>Application: Résultats filtrés avec coordonnées
-    Application-->>Client: ✅ Affiche les boutiques sur la carte interactive
+    BD-->>Django: Boutiques trouvées avec distances calculées
+    App->>App: Trie par distance croissante
+    BD-->>App: Résultats filtrés avec coordonnées
+    App-->>Client: ✅ Affiche les boutiques sur la carte interactive
 ```
 **Fichiers :** `app/search/mapView.tsx` · `lib/actions/explore.ts`
 
@@ -648,7 +646,7 @@ sequenceDiagram
 
 # 📱 SECTION 7 : CONTENU VIDÉO (REELS & STORIES)
 
-### Diagramme de cas d'utilisation — Contenu Video
+### 📊 Diagramme de cas d'utilisation — Contenu Video (Reels/Stories)
 
 ```mermaid
 flowchart LR
@@ -674,28 +672,28 @@ flowchart LR
 ```mermaid
 sequenceDiagram
     actor Commerçant
-    participant Dashboard as Dashboard Web (Next.js)
+    participant App as Application Web & Mobile
     participant Cloudinary as Cloudinary (CDN Cloud)
-    participant Serveur as API Contenu
+    participant BD as Base de données (Supabase)
     participant BD as Base de données
 
     Commerçant->>Dashboard: Sélectionne une vidéo (max 60s) ou une image
-    Dashboard->>Cloudinary: Envoie le fichier pour hébergement
+    App->>Cloudinary: Envoie le fichier pour hébergement
     Cloudinary->>Cloudinary: Transcode la vidéo et génère une miniature
-    Cloudinary-->>Dashboard: Lien sécurisé du contenu hébergé
-    Dashboard->>Serveur: Envoie les métadonnées + lien du fichier
-    Serveur->>Serveur: Valide le format et la taille
+    Cloudinary-->>App: Lien sécurisé du contenu hébergé
+    App->>BD: Envoie les métadonnées + lien du fichier
+    App->>App: Valide le format et la taille
 
     alt Publication d'un Reel (permanent)
-        Serveur->>BD: Enregistre le Reel avec le lien Cloudinary
-        BD-->>Serveur: Reel ID créé
-        Serveur-->>Dashboard: Confirmation
-        Dashboard-->>Commerçant: ✅ "Reel publié avec succès"
+        BD->>BD: Enregistre le Reel avec le lien Cloudinary
+        BD-->>Django: Reel ID créé
+        BD-->>App: Confirmation
+        App-->>Commerçant: ✅ "Reel publié avec succès"
     else Publication d'une Story (éphémère)
-        Serveur->>BD: Enregistre la Story avec expiration = maintenant + 24h
-        BD-->>Serveur: Story ID créée
-        Serveur-->>Dashboard: Confirmation
-        Dashboard-->>Commerçant: ✅ "Story publiée — Expire dans 24 heures"
+        BD->>BD: Enregistre la Story avec expiration = maintenant + 24h
+        BD-->>Django: Story ID créée
+        BD-->>App: Confirmation
+        App-->>Commerçant: ✅ "Story publiée — Expire dans 24 heures"
     end
 
     Note over Cloudinary: Compression automatique + conversion WebP/MP4 optimisé
@@ -710,26 +708,26 @@ sequenceDiagram
 ```mermaid
 sequenceDiagram
     actor Client
-    participant Application as Application Mobile
-    participant Serveur as API Interactions
+    participant App as Application Web & Mobile
+    participant BD as Base de données (Supabase)
     participant BD as Base de données
 
     Client->>Application: Appuie deux fois sur la vidéo (Like)
-    Application-->>Client: Affiche l'animation de cœur immédiatement
-    Application->>Serveur: Enregistre l'interaction en arrière-plan
-    Serveur->>BD: Vérifie si le like existe déjà
+    App-->>Client: Affiche l'animation de cœur immédiatement
+    App->>BD: Enregistre l'interaction en arrière-plan
+    BD->>BD: Vérifie si le like existe déjà
 
     alt Like déjà donné → retrait
-        Serveur->>BD: Supprime le like et décrémente le compteur
-        BD-->>Serveur: Like retiré
-        Serveur-->>Application: Like annulé
+        BD->>BD: Supprime le like et décrémente le compteur
+        BD-->>Django: Like retiré
+        BD-->>App: Like annulé
     else Nouveau like → ajout
-        Serveur->>BD: Ajoute le like et incrémente le compteur
-        BD-->>Serveur: Like enregistré
-        Serveur-->>Application: Like confirmé
+        BD->>BD: Ajoute le like et incrémente le compteur
+        BD-->>Django: Like enregistré
+        BD-->>App: Like confirmé
     end
 
-    Note over Application: Mise à jour optimiste — l'UI réagit avant la réponse du serveur
+    Note over App: Mise à jour optimiste — l'UI réagit avant la réponse du serveur
     Note over BD: Compteur incrémenté via fonction RPC PostgreSQL (anti-conflit)
 ```
 **Fichiers :** `app/reels/feed.tsx` · `lib/actions/favorites.ts`
@@ -738,7 +736,7 @@ sequenceDiagram
 
 # 💬 SECTION 8 : MESSAGERIE & AVIS
 
-### Diagramme de cas d'utilisation — Messagerie et Avis
+### 📊 Diagramme de cas d'utilisation — Messagerie et Avis
 
 ```mermaid
 flowchart LR
@@ -764,10 +762,10 @@ flowchart LR
 ```mermaid
 sequenceDiagram
     actor Client
-    participant AppClient as Application Mobile
+    participant App as Application Web & Mobile
     participant Supabase as Supabase Realtime (WebSocket)
     participant BD as Base de données
-    participant AppPro as Dashboard Web (Next.js)
+    participant App as Application Web & Mobile
     actor Commerçant
 
     Client->>AppClient: Écrit et envoie un message
@@ -796,25 +794,25 @@ sequenceDiagram
 ```mermaid
 sequenceDiagram
     actor Client
-    participant Application as Application Mobile
-    participant Serveur as API Avis
+    participant App as Application Web & Mobile
+    participant BD as Base de données (Supabase)
     participant BD as Base de données
     participant LLM as LLM Cloud (Génération texte)
 
     Client->>Application: Note la prestation (1-5 étoiles) et écrit un commentaire
-    Application->>Serveur: Envoie l'avis
-    Serveur->>BD: Vérifie qu'une transaction réelle a eu lieu entre les deux parties
+    App->>BD: Envoie l'avis
+    BD->>BD: Vérifie qu'une transaction réelle a eu lieu entre les deux parties
     alt Aucune transaction vérifiée
-        BD-->>Serveur: Pas de commande ou réservation confirmée
-        Serveur-->>Application: "Vous devez avoir effectué un achat pour laisser un avis"
-        Application-->>Client: ❌ Affiche le message d'erreur
+        BD-->>Django: Pas de commande ou réservation confirmée
+        BD-->>App: "Vous devez avoir effectué un achat pour laisser un avis"
+        App-->>Client: ❌ Affiche le message d'erreur
     else Transaction confirmée
-        Serveur->>BD: Enregistre l'avis
-        Serveur->>BD: Recalcule la note moyenne de la boutique
-        BD-->>Serveur: Nouvelle note moyenne
-        Serveur-->>Commerçant: 🔔 "Nouvel avis reçu — 5 étoiles"
-        Serveur-->>Application: Avis publié
-        Application-->>Client: ✅ "Merci pour votre avis !"
+        BD->>BD: Enregistre l'avis
+        BD->>BD: Recalcule la note moyenne de la boutique
+        BD-->>Django: Nouvelle note moyenne
+        BD-->>Commerçant: 🔔 "Nouvel avis reçu — 5 étoiles"
+        BD-->>App: Avis publié
+        App-->>Client: ✅ "Merci pour votre avis !"
     end
 
     Note over Serveur,BD: Seuls les clients ayant une transaction validée peuvent laisser un avis
@@ -825,7 +823,7 @@ sequenceDiagram
 
 # 🛡️ SECTION 9 : DÉTECTION DE FRAUDE IA
 
-### Diagramme de cas d'utilisation — Detection de Fraude IA
+### 📊 Diagramme de cas d'utilisation — Détection de Fraude IA
 
 ```mermaid
 flowchart LR
@@ -853,55 +851,43 @@ flowchart LR
 ```mermaid
 sequenceDiagram
     actor Commerçant
-    participant Dashboard as Dashboard Web (Next.js)
-    participant Serveur as API Commandes
+    actor Administrateur
+    participant App as Application Web & Mobile
+    participant BD as Base de données (Supabase)
     participant IA as Moteur de détection IA (Groq)
-    participant BD as Base de données
-    participant Admin as Dashboard Admin (SaaS)
+    participant AdminPortal as Dashboard Admin (SaaS)
+    participant Django as Backend Django
 
-    Commerçant->>Dashboard: Crée une nouvelle commande ou promotion suspecte
-    Dashboard->>Serveur: Envoie les données de la transaction
-    Serveur->>BD: Récupère l'historique récent du commerçant
-    BD-->>Serveur: Historique des transactions et comportements
-
-    Serveur->>IA: Envoie les données pour analyse de risque
-    IA->>IA: Analyse les indicateurs de fraude
-    IA->>IA: Vérifie les prix anormalement bas ou élevés
-    IA->>IA: Détecte les volumes inhabituels de commandes
-    IA->>IA: Compare avec les patterns de fraude connus
-    IA-->>Serveur: Score de risque (0-100) et détails
-
+    Commerçant->>App: Crée une transaction (commande/réservation)
+    App->>BD: INSERT transaction (status = "pending")
+    BD->>IA: Déclenche une analyse automatique de risque (Trigger)
+    IA->>IA: Calcule le score de risque de fraude (0-100)
+    
     alt Score de risque élevé (> 80)
-        Serveur->>BD: Bloque la transaction automatiquement
-        Serveur->>BD: Enregistre l'alerte avec les preuves
-        BD-->>Serveur: Transaction bloquée
-        Serveur->>Admin: Notification "Fraude potentielle détectée"
-        Admin-->>Administrateur: 🚨 Alerte fraude à examiner
-        Serveur-->>Dashboard: "Transaction suspendue — En cours de vérification"
-        Dashboard-->>Commerçant: ❌ Transaction en attente de vérification
+        IA->>BD: Met à jour le statut à "blocked" et génère un rapport
+        BD->>Django: webhook de fraude détectée
+        Django->>AdminPortal: Alerte de fraude en temps réel (WebSocket)
+        AdminPortal-->>Administrateur: 🚨 Alerte fraude à examiner d'urgence
+        BD-->>App: "Transaction suspendue — En cours de vérification"
+        App-->>Commerçant: ❌ Transaction bloquée temporairement
     else Score de risque moyen (40-80)
-        Serveur->>BD: Marque la transaction comme "À surveiller"
-        BD-->>Serveur: Confirmation
-        Serveur->>Admin: Notification discrète pour surveillance
-        Serveur-->>Dashboard: Transaction acceptée avec surveillance
-        Dashboard-->>Commerçant: ✅ Transaction acceptée
+        IA->>BD: Met à jour le statut à "suspected"
+        BD->>Django: webhook pour suivi de transaction
+        Django->>AdminPortal: Notification discrète de surveillance
+        BD-->>App: Transaction acceptée avec avertissement
+        App-->>Commerçant: ✅ Transaction enregistrée (à surveiller)
     else Score de risque faible (< 40)
-        Serveur->>BD: Enregistre la transaction normalement
-        BD-->>Serveur: Confirmation
-        Serveur-->>Dashboard: Transaction acceptée
-        Dashboard-->>Commerçant: ✅ Transaction confirmée
-    end
-
-    Note over IA: Indicateurs analysés : fréquence anormale, prix aberrants, géolocalisation incohérente
-    Note over Serveur,BD: Chaque analyse est journalisée pour audit et amélioration du modèle
-```
+        IA->>BD: Enregistre la transaction normalement
+        BD-->>App: Confirmation d'insertion
+        App-->>Commerçant: ✅ Transaction validée avec succès
+    end```
 **Fichiers :** `lib/actions/orders.ts` · `app/api/fraud-check/route.ts` · `saas/backend/transactions/api.py`
 
 ---
 
 # 📊 SECTION 10 : ANALYTIQUES & ASSISTANT IA
 
-### Diagramme de cas d'utilisation — Analytiques et Assistant IA
+### 📊 Diagramme de cas d'utilisation — Analytiques et Assistant IA
 
 ```mermaid
 flowchart LR
@@ -928,19 +914,19 @@ flowchart LR
 ```mermaid
 sequenceDiagram
     actor Commerçant
-    participant Dashboard as Dashboard Web (Next.js)
-    participant Serveur as API Analytiques
+    participant App as Application Web & Mobile
+    participant BD as Base de données (Supabase)
     participant BD as PostgreSQL (Agrégation SQL)
 
     Commerçant->>Dashboard: Ouvre l'onglet statistiques
-    Dashboard->>Serveur: Demande les métriques de la période choisie
-    Serveur->>BD: Calcule le chiffre d'affaires (SUM des commandes complétées)
-    Serveur->>BD: Compte le nombre de commandes et réservations
-    Serveur->>BD: Calcule le nombre de vues du profil
-    Serveur->>BD: Calcule le taux de conversion (commandes / vues)
-    BD-->>Serveur: Données agrégées par jour/semaine/mois
-    Serveur-->>Dashboard: Métriques formatées pour les graphiques
-    Dashboard-->>Commerçant: ✅ Affiche les graphiques et indicateurs clés
+    App->>BD: Demande les métriques de la période choisie
+    BD->>BD: Calcule le chiffre d'affaires (SUM des commandes complétées)
+    BD->>BD: Compte le nombre de commandes et réservations
+    BD->>BD: Calcule le nombre de vues du profil
+    BD->>BD: Calcule le taux de conversion (commandes / vues)
+    BD-->>Django: Données agrégées par jour/semaine/mois
+    BD-->>App: Métriques formatées pour les graphiques
+    App-->>Commerçant: ✅ Affiche les graphiques et indicateurs clés
 
     Note over Serveur,BD: Requêtes SQL d'agrégation : SUM, COUNT, AVG, GROUP BY période
 ```
@@ -952,22 +938,22 @@ sequenceDiagram
 
 ```mermaid
 sequenceDiagram
-    actor Utilisateur
-    participant Application as Application Mobile
+    actor Client / Commerçant
+    participant App as Application Web & Mobile
     participant ServeurIA as API Assistant IA
     participant BD as PostgreSQL (pgvector - RAG)
     participant LLM as OpenRouter (LLM Cloud)
 
-    Utilisateur->>Application: Pose une question (ex : "Quels sont mes produits les plus vendus ?")
-    Application->>ServeurIA: Envoie la question
-    ServeurIA->>ServeurIA: Analyse l'intention de la question
-    ServeurIA->>BD: Recherche les données pertinentes (produits, commandes, stock)
+    Client->>App: Pose une question (ex : "Quels sont mes produits les plus vendus ?")
+    App->>LLM: Envoie la question
+    LLM->>LLM: Analyse l'intention de la question
+    App->>BD: Recherche les données pertinentes (produits, commandes, stock)
     BD-->>ServeurIA: Données contextuelles de la boutique
-    ServeurIA->>ServeurIA: Construit le prompt avec le contexte réel
-    ServeurIA->>LLM: Envoie le prompt enrichi au modèle IA
-    LLM-->>ServeurIA: Génère la réponse en streaming (mot par mot)
-    ServeurIA-->>Application: Transmet la réponse progressivement
-    Application-->>Utilisateur: ✅ Affiche la réponse mot par mot (effet typewriter)
+    LLM->>LLM: Construit le prompt avec le contexte réel
+    App->>LLM: Envoie le prompt enrichi au modèle IA
+    LLM-->>App: Génère la réponse en streaming (mot par mot)
+    BD-->>App: Transmet la réponse progressivement
+    App-->>Client: ✅ Affiche la réponse mot par mot (effet typewriter)
 
     Note over ServeurIA,BD: RAG : l'IA se base sur les données réelles de la boutique, pas de réponse inventée
     Note over LLM: Streaming via Server-Sent Events — réponse affichée en temps réel
@@ -981,31 +967,31 @@ sequenceDiagram
 ```mermaid
 sequenceDiagram
     actor Commerçant
-    participant Dashboard as Dashboard Web (Next.js)
-    participant Serveur as API Avis
+    participant App as Application Web & Mobile
+    participant BD as Base de données (Supabase)
     participant BD as Base de données
     participant IA as Moteur d'analyse IA (Groq / OpenRouter)
 
     Commerçant->>Dashboard: Ouvre la section "Avis clients"
-    Dashboard->>Serveur: Demande les avis de la boutique
-    Serveur->>BD: Récupère tous les avis non analysés
-    BD-->>Serveur: Liste des avis avec texte brut
+    App->>BD: Demande les avis de la boutique
+    BD->>BD: Récupère tous les avis non analysés
+    BD-->>Django: Liste des avis avec texte brut
 
-    Serveur->>IA: Envoie les textes des avis pour analyse de sentiment
+    App->>IA: Envoie les textes des avis pour analyse de sentiment
     IA->>IA: Analyse chaque commentaire (positif, neutre, négatif)
     IA->>IA: Extrait les thèmes récurrents (qualité, prix, service, propreté)
     IA->>IA: Identifie les suggestions d'amélioration
-    IA-->>Serveur: Résultats d'analyse (sentiment + thèmes + score par catégorie)
+    IA-->>App: Résultats d'analyse (sentiment + thèmes + score par catégorie)
 
-    Serveur->>BD: Enregistre les résultats d'analyse pour chaque avis
-    BD-->>Serveur: Analyse sauvegardée
-    Serveur-->>Dashboard: Résultats formatés avec statistiques
+    BD->>BD: Enregistre les résultats d'analyse pour chaque avis
+    BD-->>Django: Analyse sauvegardée
+    BD-->>App: Résultats formatés avec statistiques
 
     alt Majorité de commentaires négatifs détectés
-        Dashboard-->>Commerçant: ⚠️ "Attention : baisse de satisfaction sur le thème Service"
-        Dashboard->>Dashboard: Affiche des recommandations d'amélioration
+        App-->>Commerçant: ⚠️ "Attention : baisse de satisfaction sur le thème Service"
+        App->>App: Affiche des recommandations d'amélioration
     else Commentaires globalement positifs
-        Dashboard-->>Commerçant: ✅ Tableau de bord sentiment avec graphiques
+        App-->>Commerçant: ✅ Tableau de bord sentiment avec graphiques
     end
 
     Note over IA: L'IA identifie automatiquement les points forts et les axes d'amélioration
@@ -1020,42 +1006,42 @@ sequenceDiagram
 ```mermaid
 sequenceDiagram
     actor Commerçant
-    participant Dashboard as Dashboard Web (Next.js)
-    participant Serveur as API Promotions
+    participant App as Application Web & Mobile
+    participant BD as Base de données (Supabase)
     participant BD as Base de données
     participant IA as Moteur de recommandation IA (OpenRouter)
 
     Commerçant->>Dashboard: Clique sur "Créer une promotion assistée par IA"
-    Dashboard->>Serveur: Demande une recommandation de promotion
-    Serveur->>BD: Récupère les données de la boutique
-    Serveur->>BD: Analyse les ventes des 30 derniers jours
-    Serveur->>BD: Identifie les produits à faible rotation de stock
-    Serveur->>BD: Récupère les tendances de la catégorie
-    BD-->>Serveur: Données commerciales complètes
+    App->>BD: Demande une recommandation de promotion
+    BD->>BD: Récupère les données de la boutique
+    BD->>BD: Analyse les ventes des 30 derniers jours
+    BD->>BD: Identifie les produits à faible rotation de stock
+    BD->>BD: Récupère les tendances de la catégorie
+    BD-->>Django: Données commerciales complètes
 
-    Serveur->>IA: Envoie les données pour analyse et recommandation
+    App->>IA: Envoie les données pour analyse et recommandation
     IA->>IA: Analyse les produits à écouler en priorité
     IA->>IA: Calcule le pourcentage de remise optimal
     IA->>IA: Propose une durée de promotion adaptée
     IA->>IA: Génère un texte promotionnel attractif
-    IA-->>Serveur: Recommandation complète (produits, remise %, durée, texte)
+    IA-->>App: Recommandation complète (produits, remise %, durée, texte)
 
-    Serveur-->>Dashboard: Proposition de promotion pré-remplie
-    Dashboard-->>Commerçant: 📋 "Promotion suggérée par l'IA"
+    BD-->>App: Proposition de promotion pré-remplie
+    App-->>Commerçant: 📋 "Promotion suggérée par l'IA"
 
     alt Commerçant accepte la suggestion
         Commerçant->>Dashboard: Valide et publie la promotion
-        Dashboard->>Serveur: Enregistre la promotion
-        Serveur->>BD: INSERT promotion avec dates de début et fin
-        BD-->>Serveur: Promotion créée
-        Serveur-->>Dashboard: Confirmation
-        Dashboard-->>Commerçant: ✅ "Promotion publiée — Visible par les clients"
+        App->>BD: Enregistre la promotion
+        BD->>BD: INSERT promotion avec dates de début et fin
+        BD-->>Django: Promotion créée
+        BD-->>App: Confirmation
+        App-->>Commerçant: ✅ "Promotion publiée — Visible par les clients"
     else Commerçant modifie la suggestion
         Commerçant->>Dashboard: Ajuste les paramètres manuellement
-        Dashboard->>Serveur: Enregistre la version modifiée
-        Serveur->>BD: INSERT promotion personnalisée
-        BD-->>Serveur: Promotion créée
-        Dashboard-->>Commerçant: ✅ "Promotion personnalisée publiée"
+        App->>BD: Enregistre la version modifiée
+        BD->>BD: INSERT promotion personnalisée
+        BD-->>Django: Promotion créée
+        App-->>Commerçant: ✅ "Promotion personnalisée publiée"
     end
 
     Note over IA: L'IA recommande des remises basées sur les données réelles de vente (pas de suggestion aléatoire)
@@ -1067,7 +1053,7 @@ sequenceDiagram
 
 # 🤖 SECTION 11 : ANALYSE IA (SENTIMENT & PROMOTIONS)
 
-### Diagramme de cas d'utilisation — Analyse IA
+### 📊 Diagramme de cas d'utilisation — Analyse IA (Sentiment & Promotions)
 
 ```mermaid
 flowchart LR
@@ -1091,7 +1077,7 @@ flowchart LR
 
 # 🛡️ SECTION 12 : ADMINISTRATION & SUPPORT
 
-### Diagramme de cas d'utilisation — Administration et Support
+### 📊 Diagramme de cas d'utilisation — Administration et Support
 
 ```mermaid
 flowchart LR
@@ -1118,29 +1104,27 @@ flowchart LR
 ```mermaid
 sequenceDiagram
     actor Client
-    participant Application as Application Mobile
-    participant Serveur as API Modération
-    participant BD as Base de données
-    participant Admin as Dashboard Admin (SaaS)
+    actor Administrateur
+    participant App as Application Web & Mobile
+    participant BD as Base de données (Supabase)
+    participant AdminPortal as Dashboard Admin (SaaS)
+    participant Django as Backend Django
 
-    Client->>Application: Clique "Signaler" sur un contenu inapproprié
-    Application->>Serveur: Envoie le signalement avec le motif
-    Serveur->>BD: Enregistre le signalement
-    Serveur->>BD: Compte le total des signalements pour ce contenu
-    BD-->>Serveur: Nombre total de signalements
-
+    Client->>App: Signale un contenu inapproprié (Reel/Story/Avis)
+    App->>BD: INSERT signalement (content_id, reason)
+    BD->>BD: Compte le nombre total de signalements
+    
     alt Seuil de signalements dépassé (> 3)
-        Serveur->>BD: Masque automatiquement le contenu
-        BD-->>Serveur: Contenu masqué
-        Serveur->>Admin: Notification "Contenu à examiner"
-        Admin-->>Administrateur: 🔔 Nouveau contenu à modérer
+        BD->>BD: Masque automatiquement le contenu (status = "hidden")
+        BD->>Django: Webhook de modération requise
+        Django->>AdminPortal: Notification de contenu masqué
+        AdminPortal-->>Administrateur: 🔔 Nouveau contenu masqué à valider
     else Seuil non atteint
-        BD-->>Serveur: Signalement enregistré
+        BD-->>App: Signalement enregistré avec succès
     end
-
-    Serveur-->>Application: "Signalement enregistré — Merci"
-    Application-->>Client: ✅ Confirmation du signalement
-```
+    
+    BD-->>App: Confirmation du traitement
+    App-->>Client: ✅ "Merci pour votre signalement — En cours de traitement"```
 **Fichiers :** `saas/app/admin/moderation/page.tsx` · `saas/backend/content/admin.py`
 
 ---
@@ -1150,26 +1134,24 @@ sequenceDiagram
 ```mermaid
 sequenceDiagram
     actor Administrateur
-    participant Admin as Dashboard Admin (SaaS)
-    participant Serveur as API Administration (Django)
-    participant BD as Base de données
+    participant AdminPortal as Dashboard Admin (SaaS)
+    participant Django as Backend Django
+    participant BD as Base de données (Supabase)
 
-    Administrateur->>Admin: Recherche un utilisateur suspect
-    Admin->>Serveur: Demande les informations de l'utilisateur
-    Serveur->>BD: Récupère le profil, l'historique et les signalements
-    BD-->>Serveur: Données complètes de l'utilisateur
-    Serveur-->>Admin: Affiche le profil et l'historique
-    Administrateur->>Admin: Clique "Suspendre le compte" avec motif
-
-    Admin->>Serveur: Demande de suspension
-    Serveur->>BD: Met à jour le statut à "Suspendu" avec motif et date
-    BD-->>Serveur: Confirmation de suspension
-    Serveur-->>Admin: Suspension confirmée
-    Admin-->>Administrateur: ✅ "Compte suspendu — Utilisateur déconnecté"
-
-    Note over Serveur,BD: L'utilisateur suspendu est déconnecté immédiatement de tous ses appareils
-    Note over BD: Toutes les actions de modération sont journalisées (audit trail)
-```
+    Administrateur->>AdminPortal: Recherche un utilisateur suspect ou signalé
+    AdminPortal->>Django: GET /api/admin/users/{id}
+    Django->>BD: Query profil, transactions & signalements
+    BD-->>Django: Données complètes de l'utilisateur
+    Django-->>AdminPortal: Affiche la fiche utilisateur
+    
+    Administrateur->>AdminPortal: Clique "Suspendre le compte" (indique le motif)
+    AdminPortal->>Django: POST /api/admin/users/{id}/suspend
+    Django->>BD: UPDATE users SET status = "suspended", reason = {motif}
+    BD-->>Django: Confirmation de suspension
+    Django->>BD: Révoque toutes les sessions Supabase (User Session Revoke)
+    BD-->>Django: Sessions révoquées
+    Django-->>AdminPortal: Suspension confirmée
+    AdminPortal-->>Administrateur: ✅ "Compte suspendu — Utilisateur déconnecté immédiatement"```
 **Fichiers :** `saas/app/admin/users/page.tsx` · `saas/backend/users/admin.py` · `saas/backend/support/admin.py`
 
 ---
@@ -1178,20 +1160,14 @@ sequenceDiagram
 
 ```mermaid
 sequenceDiagram
-    participant Action as Événement système
-    participant BD as Base de données
+    participant BD as Base de données (Supabase)
     participant Realtime as Supabase Realtime (WebSocket)
-    participant Application as Application Mobile / Dashboard
+    participant App as Application Web & Mobile
 
-    Action->>BD: Un événement métier se produit (commande, like, message, avis)
-    BD->>BD: Trigger PostgreSQL détecte l'insertion
-    BD->>Realtime: Déclenche une diffusion sur le canal concerné
-    Realtime->>Application: Pousse la notification via WebSocket
-    Application-->>Utilisateur: 🔔 Notification affichée (badge, bannière, son)
-
-    Note over BD,Realtime: Notifications automatiques sans action manuelle — déclenchées par les triggers PostgreSQL
-    Note over Realtime: Connexion WebSocket permanente — latence < 100ms
-```
+    BD->>BD: Trigger PostgreSQL détecte un événement (insert/update)
+    BD->>Realtime: Diffuse l'événement sur le canal concerné (realtime payload)
+    Realtime->>App: Pousse la notification via WebSocket (latence < 100ms)
+    App-->>Client/Commerçant: 🔔 Notification affichée (bannière / badge)```
 **Fichiers :** `lib/actions/notifications.ts` · `lib/notifications.ts`
 
 ---
