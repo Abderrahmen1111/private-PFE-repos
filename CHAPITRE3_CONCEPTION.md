@@ -1094,26 +1094,224 @@ sequenceDiagram
 
 ---
 
-### 3.5.8 Diagramme de classe global
+### 3.5.8 Diagramme de classes global
 
-Le diagramme de classes global représente la structure statique de la base de données de la plateforme RO2YA. Il décrit les entités principales du système, leurs attributs et les relations qui les unissent.
+Le diagramme de classes global représente la structure statique et relationnelle de la base de données de la plateforme RO2YA, telle qu'implémentée sous Supabase. Il met en évidence les entités métier clés, leurs attributs avec types réels de base de données, ainsi que les multiplicités et relations de clés étrangères.
 
-> *[Figure : Diagramme de classes global de RO2YA]*
+```mermaid
+classDiagram
+    direction TB
 
-| Entité | Attributs principaux | Relations |
-|--------|---------------------|-----------|
-| **User** | id, email, role, status, created_at | 1 User → 0..1 Store |
-| **Store** | id, owner_id, name, status, location (GPS), rating | 1 Store → N Items, N Orders, N Bookings |
-| **Item** | id, store_id, name, price, stock_qty, is_active, image_url | N Items → N OrderItems |
-| **Order** | id, customer_id, store_id, status, total, created_at | 1 Order → N OrderItems |
-| **OrderItem** | id, order_id, item_id, qty, unit_price | — |
-| **Booking** | id, customer_id, store_id, slot_date, slot_time, status | — |
-| **Review** | id, customer_id, store_id, rating, comment, sentiment_score | — |
-| **Message** | id, sender_id, receiver_id, content, read_at | — |
-| **Reel** | id, store_id, video_url, likes_count, views_count | — |
-| **Promotion** | id, store_id, title, discount_pct, starts_at, ends_at | — |
+    class User {
+        +uuid id
+        +string email
+        +user_role role
+        +string full_name
+        +string phone
+        +string avatar_url
+        +decimal latitude
+        +decimal longitude
+        +string city
+        +string address
+        +timestamp created_at
+        +string status
+        +boolean two_factor_enabled
+    }
 
-*Tableau : Entités principales du diagramme de classes global*
+    class Store {
+        +bigint id
+        +uuid owner_id
+        +string name
+        +string slug
+        +string description
+        +string category
+        +string phone
+        +string email
+        +string website
+        +string address
+        +decimal latitude
+        +decimal longitude
+        +string city
+        +string logo_url
+        +string banner_url
+        +store_status status
+        +string business_registration
+        +string rne
+        +decimal rating_average
+        +integer total_reviews
+        +integer total_orders
+        +jsonb opening_hours
+        +jsonb gallery
+    }
+
+    class Item {
+        +bigint id
+        +item_type item_type
+        +string name
+        +string slug
+        +string description
+        +decimal price
+        +string price_unit
+        +integer stock_quantity
+        +integer duration_minutes
+        +boolean is_bookable
+        +jsonb available_days
+        +item_status status
+        +string main_image
+        +bigint store_id
+        +string category
+        +boolean is_active
+        +jsonb metadata
+    }
+
+    class Order {
+        +bigint id
+        +string order_number
+        +uuid customer_id
+        +bigint store_id
+        +bigint item_id
+        +integer quantity
+        +decimal unit_price
+        +decimal total_price
+        +string customer_name
+        +string customer_phone
+        +string customer_email
+        +string delivery_address
+        +order_status status
+        +string tracking_code
+        +jsonb cart
+        +jsonb items
+        +integer fraud_score
+        +string fraud_level
+        +boolean merchant_override_fraud
+        +timestamp created_at
+    }
+
+    class Booking {
+        +bigint id
+        +string booking_number
+        +bigint item_id
+        +uuid customer_id
+        +bigint store_id
+        +date booking_date
+        +time start_time
+        +time end_time
+        +integer duration_minutes
+        +string customer_name
+        +string customer_phone
+        +decimal price
+        +booking_status status
+        +integer fraud_score
+        +string fraud_level
+        +boolean merchant_override_fraud
+        +timestamp created_at
+    }
+
+    class Transaction {
+        +uuid id
+        +string transaction_code
+        +string order_number
+        +bigint booking_id
+        +uuid customer_id
+        +bigint merchant_id
+        +decimal amount
+        +decimal fee
+        +transaction_status status
+        +transaction_type type
+        +timestamp date
+    }
+
+    class Review {
+        +bigint id
+        +uuid author_id
+        +bigint item_id
+        +bigint store_id
+        +bigint order_id
+        +bigint booking_id
+        +integer rating
+        +string title
+        +string comment
+        +decimal sentiment_score
+        +sentiment_label sentiment_label
+        +string vendor_response
+        +timestamp created_at
+    }
+
+    class Promotion {
+        +bigint id
+        +bigint store_id
+        +bigint item_id
+        +string title
+        +string description
+        +decimal discount_percent
+        +date valid_from
+        +date valid_until
+        +boolean active
+        +boolean apply_to_all
+    }
+
+    class Reel {
+        +bigint id
+        +bigint store_id
+        +bigint item_id
+        +string media_path
+        +string media_type
+        +string title
+        +decimal price
+        +string cta_type
+        +string cta_value
+        +boolean is_sponsored
+    }
+
+    class Message {
+        +uuid id
+        +uuid sender_id
+        +uuid receiver_id
+        +string content
+        +boolean is_read
+        +message_type type
+        +bigint store_id
+        +timestamp created_at
+    }
+
+    class SupportTicket {
+        +uuid id
+        +integer ticket_number
+        +bigint store_id
+        +uuid customer_id
+        +string customer_name
+        +string subject
+        +support_ticket_priority priority
+        +support_ticket_status status
+        +support_ticket_channel channel
+        +timestamp created_at
+    }
+
+    User "1" --> "0..*" Store : "gère (owner_id)"
+    User "1" --> "0..*" Order : "passe (customer_id)"
+    User "1" --> "0..*" Booking : "réserve (customer_id)"
+    User "1" --> "0..*" Review : "rédige (author_id)"
+    User "1" --> "0..*" Message : "envoie/reçoit"
+    
+    Store "1" --> "0..*" Item : "contient (store_id)"
+    Store "1" --> "0..*" Order : "reçoit (store_id)"
+    Store "1" --> "0..*" Booking : "gère (store_id)"
+    Store "1" --> "0..*" Review : "évaluée par"
+    Store "1" --> "0..*" Promotion : "propose (store_id)"
+    Store "1" --> "0..*" Reel : "publie (store_id)"
+    Store "1" --> "0..*" Transaction : "encaisse (merchant_id)"
+    Store "1" --> "0..*" SupportTicket : "fait l'objet de (store_id)"
+
+    Item "1" --> "0..*" Booking : "concerne (item_id)"
+    Item "1" --> "0..*" Review : "reçoit (item_id)"
+    Item "1" --> "0..*" Promotion : "cible (item_id)"
+    Item "1" --> "0..1" Reel : "promouvoit (item_id)"
+
+    Order "1" --> "0..1" Transaction : "génère"
+    Booking "1" --> "0..1" Transaction : "génère"
+```
+
+*Figure : Diagramme de classes global de RO2YA*
 
 ---
 
