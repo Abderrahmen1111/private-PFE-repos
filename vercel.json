@@ -1,0 +1,10 @@
+{
+  "buildCommand": "cross-env NODE_OPTIONS='--max-old-space-size=4096' next build",
+  "framework": "nextjs",
+  "installCommand": "pnpm install",
+  "build": {
+    "env": {
+      "NODE_OPTIONS": "--max-old-space-size=4096"
+    }
+  }
+}

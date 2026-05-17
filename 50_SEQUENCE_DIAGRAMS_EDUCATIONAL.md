@@ -4,21 +4,36 @@
 
 ---
 
-## TABLE DES MATIÈRES
+---
 
-- [Partie 1: Authentification (4 diagrammes)](#partie-1-authentification)
+## 📅 PLAN DE DÉVELOPPEMENT PAR SPRINTS
+
+### 🏁 SPRINT 1: FONDATIONS & ACCÈS (9 diagrammes)
+- [Partie 1: Authentification (4)](#partie-1-authentification)
 - [Partie 2: Gestion Profil & Boutique (5)](#partie-2-profil--boutique)
+
+### 📦 SPRINT 2: CŒUR DU CATALOGUE (4 diagrammes)
 - [Partie 3: Catalogue Produits (4)](#partie-3-catalogue-produits)
+
+### 🛒 SPRINT 3: CIRCUIT D'ACHAT & PAIEMENT (6 diagrammes)
 - [Partie 4: Circuit Achat (6)](#partie-4-circuit-achat)
+
+### 🔍 SPRINT 4: RECHERCHE & DISCOVERS (4 diagrammes)
 - [Partie 5: Recherche Intelligente (4)](#partie-5-recherche-intelligente)
+
+### 📱 SPRINT 5: SOCIAL, PROMOS & COM (9 diagrammes)
 - [Partie 6: Contenu Social (4)](#partie-6-contenu-social)
 - [Partie 7: Communication (3)](#partie-7-communication)
 - [Partie 8: Promotions (2)](#partie-8-promotions)
+
+### 🧠 SPRINT 6: ANALYTICS & IA AVANCÉE (13 diagrammes)
 - [Partie 9: Dashboard Marchand (6)](#partie-9-dashboard-marchand)
 - [Partie 10: IA & Recommandations (5)](#partie-10-ia--recommandations)
 - [Partie 11: Sécurité & Fraude (2)](#partie-11-sécurité--fraude)
 
 ---
+
+# 🏁 SPRINT 1: FONDATIONS & ACCÈS (9 DIAGRAMMES)
 
 # PARTIE 1: AUTHENTIFICATION (4 DIAGRAMMES)
 
@@ -662,6 +677,10 @@ Client              API Follow         PostgreSQL           Redis
 
 ---
 
+---
+
+# 📦 SPRINT 2: CŒUR DU CATALOGUE (4 DIAGRAMMES)
+
 # PARTIE 3: CATALOGUE PRODUITS (4 DIAGRAMMES)
 
 ## Diagramme 10: Création d'un Produit
@@ -868,6 +887,10 @@ Merchant            API Update        Cloudinary    PostgreSQL
 - Index sur PostgreSQL pour recherche rapide
 
 ---
+
+---
+
+# 🛒 SPRINT 3: CIRCUIT D'ACHAT & PAIEMENT (6 DIAGRAMMES)
 
 # PARTIE 4: CIRCUIT ACHAT (6 DIAGRAMMES)
 
@@ -1279,6 +1302,10 @@ Client              API Status         PostgreSQL         WebSocket
 
 ---
 
+---
+
+# 🔍 SPRINT 4: RECHERCHE & DISCOVERS (4 DIAGRAMMES)
+
 # PARTIE 5: RECHERCHE INTELLIGENTE (4 DIAGRAMMES)
 
 ## Diagramme 20: Recherche Textuelle
@@ -1599,6 +1626,10 @@ FINAL_SCORE = (
 
 ---
 
+---
+
+# 📱 SPRINT 5: SOCIAL, PROMOS & COM (9 DIAGRAMMES)
+
 # PARTIE 6: CONTENU SOCIAL (4 DIAGRAMMES)
 
 ## Diagramme 24: Création et Publication de Reels
@@ -1913,6 +1944,10 @@ FINAL_SCORE = (
 ```
 
 ---
+
+---
+
+# 🧠 SPRINT 6: ANALYTICS & IA AVANCÉE (13 DIAGRAMMES)
 
 # PARTIE 9: DASHBOARD MARCHAND (6 DIAGRAMMES)
 
@@ -2641,22 +2676,17 @@ Chaque diagramme suit ce format équilibré:
 
 # RÉSUMÉ FINAL
 
-## ✅ 45 Diagrammes de Séquences Harmonisés
+## ✅ 45 Diagrammes de Séquences par Sprints
 
-| Partie | Sujet | Diagrammes | Total |
-|--------|-------|-----------|-------|
-| 1 | Authentification | 1-4 | 4 |
-| 2 | Profil & Boutique | 5-9 | 5 |
-| 3 | Catalogue | 10-13 | 4 |
-| 4 | Circuit Achat | 14-19 | 6 |
-| 5 | Recherche | 20-23 | 4 |
-| 6 | Social | 24-27 | 4 |
-| 7 | Communication | 28-30 | 3 |
-| 8 | Promotions | 31-32 | 2 |
-| 9 | Dashboard | 33-38 | 6 |
-| 10 | IA | 39-43 | 5 |
-| 11 | Fraude | 44-45 | 2 |
-| **TOTAL** | | | **45** |
+| Sprint | Phase | Sujet | Diagrammes | Total |
+|--------|-------|-------|------------|-------|
+| **1** | **Fondations** | Auth, Profil, Boutique | 1-9 | 9 |
+| **2** | **Catalogue** | Produits & Stock | 10-13 | 4 |
+| **3** | **Transactions** | Panier, Commande, Suivi | 14-19 | 6 |
+| **4** | **Découverte** | Recherche (Text, Géo, IA) | 20-23 | 4 |
+| **5** | **Engagement** | Social, Comms, Promos | 24-32 | 9 |
+| **6** | **Intelligence** | Dashboards, IA, Fraude | 33-45 | 13 |
+| **TOTAL** | | | | **45** |
 
 ---
 
