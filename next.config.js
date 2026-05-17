@@ -137,6 +137,16 @@ const nextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
+  experimental: {
+    webpackBuildWorker: false,
+  },
+  webpack: (config, { dev, isServer }) => {
+    if (!dev) {
+      config.devtool = false;
+      config.cache = false;
+    }
+    return config;
+  },
 }
 
 module.exports = nextConfig
