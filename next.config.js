@@ -139,7 +139,7 @@ const nextConfig = {
   },
   productionBrowserSourceMaps: false,
   experimental: {
-    webpackBuildWorker: true,
+    webpackBuildWorker: false,
     cpus: 1,
   },
   webpack: (config, { dev, isServer }) => {

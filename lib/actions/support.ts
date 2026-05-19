@@ -46,27 +46,55 @@ export async function createSupportTicket(payload: {
   channel?: 'chat' | 'phone';
 }): Promise<{ success: boolean; data?: SupportTicket; error?: string }> {
   const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { success: false, error: 'Non authentifié' };
 
-  const { data, error } = await supabase
+  // Fetch full name from profile if available
+  const { data: profile } = await supabase
+    .from('users')
+    .select('full_name')
+    .eq('id', user.id)
+    .maybeSingle();
+
+  const customerName = profile?.full_name || user.user_metadata?.full_name || 'Business Owner';
+
+  // 1. Insert the support ticket
+  const { data: ticketData, error: ticketError } = await supabase
     .from('support_tickets')
     .insert({
       store_id: payload.storeId,
       subject: payload.subject,
-      description: payload.description,
       priority: payload.priority || 'medium',
       channel: payload.channel || 'chat',
       status: 'open',
-      customer_name: 'Business Owner' // Default for owner-created tickets
+      customer_id: user.id,
+      customer_name: customerName
     } as any)
     .select()
     .single();
 
-  if (error) {
-    console.error('Error creating ticket:', error);
-    return { success: false, error: error.message };
+  if (ticketError) {
+    console.error('Error creating support ticket:', ticketError);
+    return { success: false, error: ticketError.message };
   }
 
-  return { success: true, data: data as any };
+  // 2. Insert the description as the first message in support_messages
+  const { error: msgError } = await supabase
+    .from('support_messages')
+    .insert({
+      ticket_id: ticketData.id,
+      sender_id: user.id,
+      sender_type: 'customer',
+      content: payload.description,
+      is_read: false
+    } as any);
+
+  if (msgError) {
+    console.error('Error creating first ticket message:', msgError);
+    // We don't fail the action if message insert fails, but it's good to log
+  }
+
+  return { success: true, data: ticketData as any };
 }
 
 export async function deleteTicket(

@@ -107,6 +107,12 @@ export async function trackReelInteraction(reelId: number, type: 'like' | 'save'
     const { data: { user }, error: authError } = await supabase.auth.getUser()
     if (authError || !user) return { success: false, error: 'Non authentifié.' }
 
+    // Ensure stats row exists for this reel
+    await (supabase as any)
+        .from('reel_stats')
+        .insert({ reel_id: reelId })
+        .select();
+
     // Check if interaction already exists for like/save (not for completion which can be multiple)
     if (type === 'like' || type === 'save') {
         const { data: existing } = await (supabase as any)
@@ -120,6 +126,14 @@ export async function trackReelInteraction(reelId: number, type: 'like' | 'save'
         if (existing) {
             // Un-like or Un-save
             await (supabase as any).from('user_interactions').delete().eq('id', existing.id);
+            
+            // Decrement the counter in the stats table
+            if (type === 'like') {
+                await (supabase as any).rpc('increment_reel_like', { reel_id_input: reelId, x: -1 });
+            } else if (type === 'save') {
+                await (supabase as any).rpc('increment_reel_save', { reel_id_input: reelId, x: -1 });
+            }
+            
             return { success: true, action: 'removed' };
         }
     }
