@@ -137,8 +137,10 @@ const nextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
+  productionBrowserSourceMaps: false,
   experimental: {
-    webpackBuildWorker: false,
+    webpackBuildWorker: true,
+    cpus: 1,
   },
   webpack: (config, { dev, isServer }) => {
     if (!dev) {
