@@ -7,6 +7,7 @@ import Navbar from '@/components/Navbar';
 import Footer from "@/components/Footer";
 import { searchItems, SearchResultItem } from '@/lib/actions/search';
 import { ProductCard } from '@/components/ProductCard';
+import SearchFilters from '@/components/search/SearchFilters';
 
 const SORT_OPTIONS = [
   { id: 'pertinence', label: 'Pertinence' },
@@ -31,14 +32,20 @@ function ProductSearchContent() {
   
   const [products, setProducts] = useState<SearchResultItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [activeFilters, setActiveFilters] = useState<string[]>([]);
   const [sortBy, setSortBy] = useState('pertinence');
   const [compared, setCompared] = useState<number[]>([]);
-  const [priceMin, setPriceMin] = useState('');
-  const [priceMax, setPriceMax] = useState('');
-  const [minRating, setMinRating] = useState(0);
   const [showSortMenu, setShowSortMenu] = useState(false);
-  const filterRef = useRef<HTMLDivElement>(null);
+  
+  // ✅ UPDATED: Use new filter structure
+  const [filters, setFilters] = useState<any>({
+    priceRange: [0, 10000],
+    condition: [],
+    deliveryAvailable: false,
+    rating: 0,
+    trending: false,
+    recentlyAdded: false,
+    sponsored: false,
+  });
 
   useEffect(() => {
     const fetch = async () => {
@@ -61,10 +68,25 @@ function ProductSearchContent() {
 
   const filtered = products
     .filter(p => {
-      const matchMin    = !priceMin  || (p.price ?? 0) >= Number(priceMin);
-      const matchMax    = !priceMax  || (p.price ?? 0) <= Number(priceMax);
-      const matchRating = !minRating || (p.rating_average ?? 0) >= minRating;
-      return matchMin && matchMax && matchRating;
+      // Price range
+      const price = p.price ?? 0;
+      if (price < filters.priceRange[0] || price > filters.priceRange[1]) return false;
+
+      // Condition
+      if (filters.condition.length > 0) {
+        const hasCondition = filters.condition.some((cond: string) =>
+          p.description?.toLowerCase().includes(cond) || p.name?.toLowerCase().includes(cond)
+        );
+        if (!hasCondition) return false;
+      }
+
+      // Delivery available
+      if (filters.deliveryAvailable) return false; // Simplified - would need actual data
+
+      // Rating
+      if (filters.rating > 0 && (p.rating_average ?? 0) < filters.rating) return false;
+
+      return true;
     })
     .sort((a, b) => {
       if (sortBy === 'price_asc')  return (a.price ?? 0) - (b.price ?? 0);
@@ -73,9 +95,6 @@ function ProductSearchContent() {
       if (sortBy === 'newest')     return new Date(b.created_at ?? 0).getTime() - new Date(a.created_at ?? 0).getTime();
       return 0;
     });
-
-  const toggleFilter = (f: string) =>
-    setActiveFilters(prev => prev.includes(f) ? prev.filter(x => x !== f) : [...prev, f]);
 
   const toggleCompare = (id: number) =>
     setCompared(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id].slice(-3));
@@ -126,27 +145,13 @@ function ProductSearchContent() {
         {/* ── 2. Sticky Filter Bar ── */}
         <div className="sticky top-24 z-40 bg-white/90 backdrop-blur-md border border-stone-100 rounded-2xl shadow-sm mb-8">
           <div className="px-6 py-3 flex items-center justify-between gap-4">
-            <div
-              ref={filterRef}
-              className="flex items-center gap-2 overflow-x-auto hide-scroll flex-1 pb-0.5"
-            >
-              {PRODUCT_FILTERS.map(f => {
-                const active = activeFilters.includes(f.label);
-                return (
-                  <button
-                    key={f.label}
-                    onClick={() => toggleFilter(f.label)}
-                    className={`flex-shrink-0 flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-sm font-medium border transition-all duration-200 shadow-sm
-                      ${active
-                        ? "bg-stone-900 text-white border-stone-900 shadow-md"
-                        : "bg-white text-stone-600 border-stone-200 hover:border-stone-400 hover:text-stone-900"
-                      }`}
-                  >
-                    {f.icon && <span>{f.icon}</span>}
-                    {f.label}
-                  </button>
-                );
-              })}
+            {/* ✅ UPDATED: Use new SearchFilters component */}
+            <div className="flex-1">
+              <SearchFilters
+                category="items"
+                activeFilters={filters}
+                onFilterChange={(newFilters) => setFilters((prev: any) => ({ ...prev, ...newFilters }))}
+              />
             </div>
 
             {/* Sort Menu */}
