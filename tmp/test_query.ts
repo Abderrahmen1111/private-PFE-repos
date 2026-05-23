@@ -9,16 +9,22 @@ const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
 const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
 async function testQuery() {
-  console.log('--- Testing Support Tickets Query (Service Role) ---')
-  const { data, error } = await supabase
+  console.log('--- Columns of support_tickets ---')
+  const { data: cols, error: err } = await supabase
     .from('support_tickets')
     .select('*')
-    .eq('store_id', 16)
+    .limit(0)
   
-  if (error) {
-    console.error('Error:', error)
+  // Let's also run a raw query to select column_name from information_schema.columns
+  const { data: rawCols, error: rawErr } = await supabase.rpc('inspect_table_columns_raw', { table_name_input: 'support_tickets' } as any)
+  if (rawErr) {
+    // Let's print the keys of a select all with a single record or select limit 1
+    const { data: record } = await supabase.from('support_tickets').select('*').limit(1)
+    if (record && record.length > 0) {
+      console.log('Columns from record keys:', Object.keys(record[0]))
+    }
   } else {
-    console.log('Tickets for Store 16:', data)
+    console.log('Raw columns:', rawCols)
   }
 }
 

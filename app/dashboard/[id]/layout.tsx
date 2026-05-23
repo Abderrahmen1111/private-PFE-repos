@@ -283,19 +283,17 @@ export default function DashboardLayout({
             {navItems.map((item) => {
               const navLocked = dashboardLocked && item.href !== overviewPath;
               const button = (
-                <motion.button
-                  type="button"
-                  disabled={navLocked}
+                <motion.div
                   whileHover={navLocked ? undefined : { scale: 1.05 }}
                   whileTap={navLocked ? undefined : { scale: 0.95 }}
                   title={navLocked ? `${item.label} — disponible après validation` : item.label}
                   className={cn(
-                    'relative flex items-center transition-all duration-300 group',
+                    'relative flex items-center transition-all duration-300 group cursor-pointer',
                     sidebarOpen ? 'justify-start w-full px-4 py-2' : 'justify-center w-14 h-14',
                     isActive(item.href)
                       ? 'bg-primary text-primary-foreground'
                       : 'text-white/40 hover:text-white hover:bg-white/5',
-                    navLocked && 'opacity-35 cursor-not-allowed hover:!text-white/40 hover:!bg-transparent'
+                    navLocked && 'opacity-35 cursor-not-allowed pointer-events-none hover:!text-white/40 hover:!bg-transparent'
                   )}
                 >
                   {item.icon}
@@ -310,7 +308,7 @@ export default function DashboardLayout({
                       {item.label}
                     </div>
                   )}
-                </motion.button>
+                </motion.div>
               );
               return navLocked ? (
                 <div key={item.href} className="w-full flex justify-center">
@@ -326,17 +324,17 @@ export default function DashboardLayout({
 
 <div className={cn('p-4 border-t', sidebarOpen ? 'border-border' : 'border-border')}>
   <Link href="/">
-    <motion.button
+    <motion.div
       whileHover={{ scale: 1.1, rotate: 0 }}
       title="Back to Marketplace"
       className={cn(
-        'flex items-center justify-center rounded-2xl transition-all',
+        'flex items-center justify-center rounded-2xl transition-all cursor-pointer',
         sidebarOpen ? 'w-full py-2 justify-start px-4' : 'w-14 h-14'
       )}
     >
       <Home className="w-6 h-6" />
       {sidebarOpen && <span className="ml-3">back to marketplace</span>}
-    </motion.button>
+    </motion.div>
   </Link>
 </div>
         </motion.div>

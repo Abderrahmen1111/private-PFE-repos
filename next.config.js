@@ -137,6 +137,28 @@ const nextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
+  productionBrowserSourceMaps: false,
+  experimental: {
+    webpackBuildWorker: true,
+    cpus: 1,
+  },
+  webpack: (config, { dev, isServer }) => {
+    if (!dev) {
+      config.devtool = false;
+      
+      // Optimize minifier to run sequentially and conserve memory
+      if (config.optimization && config.optimization.minimizer) {
+        config.optimization.minimizer.forEach((plugin) => {
+          if (plugin.constructor && plugin.constructor.name === 'TerserPlugin') {
+            if (plugin.options) {
+              plugin.options.parallel = false;
+            }
+          }
+        });
+      }
+    }
+    return config;
+  },
 }
 
 module.exports = nextConfig

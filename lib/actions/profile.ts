@@ -298,9 +298,31 @@ export async function getUserProfileData() {
         .select('*', { count: 'exact', head: true })
         .eq('user_id', user.id) as any);
 
-    // - Followers count (people following this user - optional feature)
-    // For now, let's just use 0 if not implemented elsewhere
-    const followersCount = 0;
+    // - Friends count (accepted friendships where user is either sender or receiver)
+    const { data: friendsData, error: friendsError } = await (supabase
+        .from('friendships' as any)
+        .select(`
+            *,
+            sender:user_id (id, full_name, avatar_url, city),
+            receiver:friend_id (id, full_name, avatar_url, city)
+        `)
+        .or(`user_id.eq.${user.id},friend_id.eq.${user.id}`)
+        .eq('status', 'ACCEPTED') as any);
+
+    if (friendsError) {
+        console.error("Error fetching friendships:", friendsError);
+    }
+
+    const friendsCount = (friendsData || []).length;
+    const friends = (friendsData || []).map((f: any) => {
+        const friend = f.user_id === user.id ? f.receiver : f.sender;
+        return {
+            id: friend.id,
+            full_name: friend.full_name,
+            avatar_url: friend.avatar_url,
+            city: friend.city
+        };
+    });
 
     // 4. Fetch User's Orders (with Store info) for the new Orders tab
     const { data: userOrders, error: ordersError } = await supabase
@@ -485,10 +507,11 @@ export async function getUserProfileData() {
             ordersCount: ordersCount || 0,
             savedCount: savedCount || 0,
             followingCount: followingCount || 0,
-            followersCount: followersCount || 0,
+            friendsCount: friendsCount || 0,
             citiesCount: 1,
             helpfulVotes: 0,
         },
+        friends: friends,
         followedStores: (userFollowedStores || []).map((s: any) => ({
             id: s.id.toString(),
             storeId: s.stores?.id,

@@ -26,20 +26,26 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({
         intent: 'unknown',
         message: "Je n'ai pas pu comprendre votre demande. Essayez de décrire un produit ou une promotion.",
-        raw: parsed.raw,
+        raw: (parsed as any).raw,
       }, { status: 422 })
+    }
+
+    // 1b. Chat intent — return conversational response immediately (no image)
+    if (parsed.intent === 'chat') {
+      console.log('[AI Darija] 💬 Chat response')
+      return NextResponse.json({ intent: 'chat', message: (parsed as any).message })
     }
 
     // 2. Générer l'image si demandé
     let image_url: string | null = null
-    if (generateImage && parsed.image_prompt) {
-      console.log('[AI Darija] 🟢 Étape 2: Génération de l\'image pour:', parsed.image_prompt.slice(0, 80))
+    if (generateImage && (parsed as any).image_prompt) {
+      console.log('[AI Darija] 🟢 Étape 2: Génération de l\'image pour:', (parsed as any).image_prompt.slice(0, 80))
       const slug = parsed.intent === 'create_product'
         ? (parsed as any).name?.toLowerCase().replace(/\s+/g, '-') ?? 'product'
         : 'promo'
       
       try {
-        image_url = await generateAndUploadImage(parsed.image_prompt, slug)
+        image_url = await generateAndUploadImage((parsed as any).image_prompt, slug)
         console.log('[AI Darija] 🟢 Image URL:', image_url ?? '❌ ÉCHEC (retourné null)')
       } catch (imgErr) {
         console.error('[AI Darija] ❌ Erreur critique lors de la génération d\'image:', imgErr)
