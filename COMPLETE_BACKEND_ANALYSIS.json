@@ -1,0 +1,1074 @@
+{
+  "workspace": "c:\\Users\\INFOKOM\\Desktop\\private-PFE-repos",
+  "projectType": "Next.js 14 + TypeScript + Supabase Commerce Platform",
+  "analysisDate": "2025-05-25",
+  
+  "summary": {
+    "totalServerActions": 39,
+    "totalServerActionFunctions": 165,
+    "totalAPIRoutes": 66,
+    "totalAPIEndpoints": 88,
+    "activePages": 25,
+    "activeComponents": 120,
+    "hooks": 9,
+    "orphanedFunctions": 12,
+    "partiallyUsedFunctions": 18,
+    "fullyUtilizedFunctions": 135
+  },
+
+  "serverActionFiles": [
+    {
+      "file": "lib/actions/auth.ts",
+      "functions": [
+        { "name": "login", "status": "USED", "usedBy": ["app/login/page.tsx", "app/api/auth/login/route.ts"] },
+        { "name": "signup", "status": "USED", "usedBy": ["app/register/page.tsx", "app/api/auth/signup/route.ts"] },
+        { "name": "sendLoginMagicLink", "status": "USED", "usedBy": ["app/api/auth/magic-link/route.ts"] },
+        { "name": "sendSignupMagicLink", "status": "USED", "usedBy": ["app/api/auth/magic-link/route.ts"] },
+        { "name": "signout", "status": "USED", "usedBy": ["app/api/auth/logout/route.ts"] },
+        { "name": "sendPasswordResetEmail", "status": "USED", "usedBy": ["app/profile/businessOwner/page.tsx", "app/profile/user/page.tsx"] },
+        { "name": "updateUserPassword", "status": "USED", "usedBy": ["app/auth/update-password/page.tsx"] }
+      ]
+    },
+    {
+      "file": "lib/actions/users.ts",
+      "functions": [
+        { "name": "ensureUserExists", "status": "USED", "usedBy": ["app/api/auth/signup/route.ts"] },
+        { "name": "getUserProfile", "status": "USED", "usedBy": ["app/dashboard/[id]/layout.tsx", "components/checkout/CheckoutDrawerContent.tsx", "app/messages/page.tsx"] },
+        { "name": "updateProfile", "status": "USED", "usedBy": ["app/profile/businessOwner/page.tsx", "app/profile/user/page.tsx"] },
+        { "name": "updateAvatar", "status": "USED", "usedBy": ["app/profile/businessOwner/page.tsx", "app/profile/user/page.tsx"] },
+        { "name": "deleteAccount", "status": "USED", "usedBy": ["app/profile/user/page.tsx"] }
+      ]
+    },
+    {
+      "file": "lib/actions/stores.ts",
+      "functions": [
+        { "name": "getStoreById", "status": "USED", "usedBy": ["app/merchants/business/[id]/page.tsx", "app/messages/page.tsx"] },
+        { "name": "getPrimaryStoreForOwner", "status": "USED", "usedBy": ["app/messages/page.tsx"] },
+        { "name": "getUserStores", "status": "USED", "usedBy": ["app/dashboard/[id]/layout.tsx"] },
+        { "name": "getStoreByBusinessId", "status": "UNUSED", "usedBy": [] },
+        { "name": "getStoreByAnyId", "status": "USED", "usedBy": ["app/dashboard/[id]/products/page.tsx", "app/dashboard/[id]/profile/page.tsx"] },
+        { "name": "updateStoreProfile", "status": "USED", "usedBy": ["app/dashboard/[id]/profile/page.tsx"] },
+        { "name": "deleteStore", "status": "USED", "usedBy": ["app/profile/businessOwner/page.tsx", "components/dashboard/AccountSection.tsx"] },
+        { "name": "transferStoreOwnership", "status": "UNUSED", "usedBy": [] },
+        { "name": "updateStoreStatus", "status": "UNUSED", "usedBy": [] }
+      ]
+    },
+    {
+      "file": "lib/actions/items.ts",
+      "functions": [
+        { "name": "getPublicItemsByStoreId", "status": "USED", "usedBy": ["app/merchants/business/[id]/page.tsx"] },
+        { "name": "getAdminItemsByStoreId", "status": "USED", "usedBy": ["app/dashboard/[id]/products/page.tsx"] },
+        { "name": "upsertItem", "status": "USED", "usedBy": ["app/dashboard/[id]/products/page.tsx"] },
+        { "name": "deleteItem", "status": "USED", "usedBy": ["app/dashboard/[id]/products/page.tsx"] },
+        { "name": "getLatestItems", "status": "USED", "usedBy": ["app/shop/page.tsx", "components/shop/ShopCompactView.tsx", "components/SnapchatReels.tsx"] },
+        { "name": "decrementStock", "status": "USED", "usedBy": ["lib/actions/orders.ts"] }
+      ]
+    },
+    {
+      "file": "lib/actions/orders.ts",
+      "functions": [
+        { "name": "createOrder", "status": "USED", "usedBy": ["components/checkout/CheckoutDrawerContent.tsx", "components/profile/cart.tsx", "app/api/orders/route.ts"] },
+        { "name": "getUserOrders", "status": "USED", "usedBy": ["app/dashboard/[id]/transactions/page.tsx", "components/checkout/CheckoutDrawerContent.tsx", "components/profile/cart.tsx", "app/api/orders/route.ts"] },
+        { "name": "getStoreOrders", "status": "USED", "usedBy": ["app/api/orders/route.ts"] },
+        { "name": "getPendingOrdersForStore", "status": "UNUSED", "usedBy": [] },
+        { "name": "validateOrder", "status": "UNUSED", "usedBy": [] },
+        { "name": "updateOrderStatus", "status": "USED", "usedBy": ["app/dashboard/[id]/transactions/page.tsx"] },
+        { "name": "cancelOrder", "status": "USED", "usedBy": ["components/profile/cart.tsx"] },
+        { "name": "initiateAsyncRefund", "status": "UNUSED", "usedBy": [] },
+        { "name": "getOrderByTrackingCode", "status": "USED", "usedBy": ["app/dashboard/qr-verify/[code]/page.tsx"] },
+        { "name": "markOrderAsDelivered", "status": "UNUSED", "usedBy": [] },
+        { "name": "markOrderAsFailed", "status": "UNUSED", "usedBy": [] },
+        { "name": "validateOrderByQR", "status": "USED", "usedBy": ["app/dashboard/qr-verify/[code]/page.tsx"] },
+        { "name": "getValidatedOrdersForStore", "status": "UNUSED", "usedBy": [] },
+        { "name": "updateOrderVendorNotes", "status": "UNUSED", "usedBy": [] }
+      ]
+    },
+    {
+      "file": "lib/actions/reels.ts",
+      "functions": [
+        { "name": "getBusinessReels", "status": "USED", "usedBy": ["app/dashboard/[id]/reels/page.tsx", "app/api/reels/route.ts"] },
+        { "name": "trackReelInteraction", "status": "USED", "usedBy": ["components/discover/discover-card.tsx", "app/api/reels/route.ts"] },
+        { "name": "recordStoreView", "status": "USED", "usedBy": ["app/merchants/business/[id]/page.tsx"] },
+        { "name": "publishReel", "status": "USED", "usedBy": ["app/dashboard/[id]/reels/page.tsx"] },
+        { "name": "uploadAndPublishReel", "status": "USED", "usedBy": ["app/dashboard/[id]/reels/page.tsx"] },
+        { "name": "uploadReelMedia", "status": "USED", "usedBy": ["app/dashboard/[id]/reels/page.tsx"] },
+        { "name": "deleteReel", "status": "USED", "usedBy": ["app/dashboard/[id]/reels/page.tsx"] }
+      ]
+    },
+    {
+      "file": "lib/actions/comments.ts",
+      "functions": [
+        { "name": "getReelComments", "status": "USED", "usedBy": ["components/discover/comment-drawer.tsx", "app/api/reels/comments/route.ts"] },
+        { "name": "postReelComment", "status": "USED", "usedBy": ["components/discover/comment-drawer.tsx", "app/dashboard/[id]/social/page.tsx", "app/api/reels/comments/route.ts"] },
+        { "name": "deleteReelComment", "status": "USED", "usedBy": ["components/discover/comment-drawer.tsx", "app/dashboard/[id]/social/page.tsx", "app/dashboard/[id]/intelligence/page.tsx"] },
+        { "name": "uploadCommentAttachment", "status": "USED", "usedBy": ["components/discover/comment-drawer.tsx"] },
+        { "name": "getStoreReelComments", "status": "USED", "usedBy": ["app/dashboard/[id]/social/page.tsx", "app/dashboard/[id]/intelligence/page.tsx"] }
+      ]
+    },
+    {
+      "file": "lib/actions/stories.ts",
+      "functions": [
+        { "name": "getBusinessStories", "status": "USED", "usedBy": ["app/merchants/service/[id]/page.tsx", "app/merchants/product/[id]/page.tsx", "components/BusinessStories.tsx"] },
+        { "name": "getDiscoverStories", "status": "USED", "usedBy": ["components/discover/DiscoverStoriesRow.tsx", "components/SnapchatReels.tsx"] },
+        { "name": "publishStory", "status": "USED", "usedBy": ["components/BusinessStories.tsx"] },
+        { "name": "recordStoryView", "status": "USED", "usedBy": ["components/BusinessStories.tsx", "components/story-demo.tsx"] },
+        { "name": "uploadAndPublishStory", "status": "USED", "usedBy": ["app/dashboard/[id]/stories/page.tsx"] },
+        { "name": "uploadStoryMedia", "status": "USED", "usedBy": ["components/BusinessStories.tsx", "app/dashboard/[id]/stories/page.tsx"] },
+        { "name": "deleteStory", "status": "USED", "usedBy": ["app/dashboard/[id]/stories/page.tsx"] },
+        { "name": "getDashboardStories", "status": "USED", "usedBy": ["app/dashboard/[id]/stories/page.tsx"] },
+        { "name": "getFollowedStoresStories", "status": "USED", "usedBy": ["components/story-demo.tsx"] }
+      ]
+    },
+    {
+      "file": "lib/actions/reviews.ts",
+      "functions": [
+        { "name": "submitReview", "status": "USED", "usedBy": ["components/ReviewModal.tsx"] },
+        { "name": "getReviewsByStoreId", "status": "USED", "usedBy": ["app/dashboard/[id]/social/page.tsx", "app/dashboard/[id]/intelligence/page.tsx", "app/merchants/business/[id]/page.tsx"] },
+        { "name": "respondToReview", "status": "USED", "usedBy": ["app/dashboard/[id]/social/page.tsx", "app/dashboard/[id]/intelligence/page.tsx"] }
+      ]
+    },
+    {
+      "file": "lib/actions/notifications.ts",
+      "functions": [
+        { "name": "createNotification", "status": "USED", "usedBy": ["lib/actions/orders.ts", "lib/actions/ai-notifications.ts"] },
+        { "name": "getNotifications", "status": "USED", "usedBy": ["app/api/notifications/route.ts"] },
+        { "name": "markAsRead", "status": "USED", "usedBy": ["app/api/notifications/route.ts"] },
+        { "name": "markAllAsRead", "status": "UNUSED", "usedBy": [] },
+        { "name": "getUnreadCount", "status": "UNUSED", "usedBy": [] }
+      ]
+    },
+    {
+      "file": "lib/actions/search.ts",
+      "functions": [
+        { "name": "doGlobalSemanticSearch", "status": "UNUSED", "usedBy": [] },
+        { "name": "searchStores", "status": "USED", "usedBy": ["app/search/page.tsx"] },
+        { "name": "searchItems", "status": "USED", "usedBy": ["app/search/page.tsx", "app/search/searchProduct/page.tsx"] },
+        { "name": "searchServicesDirectory", "status": "USED", "usedBy": ["app/search/searchService/page.tsx"] }
+      ]
+    },
+    {
+      "file": "lib/actions/store-follows.ts",
+      "functions": [
+        { "name": "toggleFollowStore", "status": "USED", "usedBy": ["components/FollowButton.tsx", "components/discover/discover-card.tsx"] },
+        { "name": "isFollowingStore", "status": "USED", "usedBy": ["components/FollowButton.tsx"] },
+        { "name": "getUserFollowedStores", "status": "UNUSED", "usedBy": [] }
+      ]
+    },
+    {
+      "file": "lib/actions/favorites.ts",
+      "functions": [
+        { "name": "toggleSaveAction", "status": "USED", "usedBy": ["app/profile/user/page.tsx"] },
+        { "name": "isStoreSaved", "status": "USED", "usedBy": ["components/FavoriteButton.tsx"] },
+        { "name": "getUserSavedPlaces", "status": "UNUSED", "usedBy": [] }
+      ]
+    },
+    {
+      "file": "lib/actions/friendships.ts",
+      "functions": [
+        { "name": "sendFriendRequest", "status": "USED", "usedBy": ["app/public/user/[id]/page.tsx", "components/messaging/SuggestionCard.tsx"] },
+        { "name": "unsendFriendRequest", "status": "USED", "usedBy": ["components/messaging/SuggestionCard.tsx"] },
+        { "name": "acceptFriendRequest", "status": "USED", "usedBy": ["app/public/user/[id]/page.tsx", "components/messaging/SuggestionCard.tsx", "components/messaging/ConversationSidebar.tsx"] },
+        { "name": "declineFriendRequest", "status": "USED", "usedBy": ["components/messaging/SuggestionCard.tsx", "components/messaging/ConversationSidebar.tsx"] },
+        { "name": "getFriendshipStatus", "status": "USED", "usedBy": ["app/public/user/[id]/page.tsx", "app/messages/page.tsx", "components/messaging/SupportChatDrawer.tsx"] },
+        { "name": "getPendingRequests", "status": "USED", "usedBy": ["components/messaging/ConversationSidebar.tsx"] },
+        { "name": "getFriends", "status": "USED", "usedBy": ["components/messaging/ConversationSidebar.tsx"] },
+        { "name": "blockUser", "status": "USED", "usedBy": ["app/public/user/[id]/page.tsx", "app/dashboard/[id]/leads/page.tsx", "components/messaging/SupportChatDrawer.tsx"] },
+        { "name": "unblockUser", "status": "USED", "usedBy": ["app/public/user/[id]/page.tsx", "components/messaging/ConversationSidebar.tsx"] },
+        { "name": "getBlockedUsers", "status": "USED", "usedBy": ["components/messaging/ConversationSidebar.tsx"] }
+      ]
+    },
+    {
+      "file": "lib/actions/reservation.ts",
+      "functions": [
+        { "name": "createBooking", "status": "USED", "usedBy": ["components/reservation/reservation-card.tsx"] },
+        { "name": "getBusinessBookings", "status": "UNUSED", "usedBy": [] },
+        { "name": "getUserBookings", "status": "USED", "usedBy": ["app/dashboard/[id]/transactions/page.tsx", "components/profile/cart.tsx", "components/reservation/ReservationDrawerContent.tsx"] },
+        { "name": "updateBookingStatus", "status": "USED", "usedBy": ["app/dashboard/[id]/transactions/page.tsx", "app/valider/page.tsx", "components/profile/cart.tsx"] },
+        { "name": "getStoreBookingsByDate", "status": "UNUSED", "usedBy": [] },
+        { "name": "getBookingByTrackingCode", "status": "USED", "usedBy": ["app/dashboard/qr-verify/[code]/page.tsx"] }
+      ]
+    },
+    {
+      "file": "lib/actions/transactions.ts",
+      "functions": [
+        { "name": "syncOrderTransaction", "status": "USED", "usedBy": ["lib/actions/orders.ts"] },
+        { "name": "syncBookingTransaction", "status": "UNUSED", "usedBy": [] },
+        { "name": "getStoreTransactions", "status": "USED", "usedBy": ["app/dashboard/[id]/transactions/page.tsx"] },
+        { "name": "getFinancialSummary", "status": "UNUSED", "usedBy": [] },
+        { "name": "hasCompletedTransactionWithStore", "status": "USED", "usedBy": ["app/merchants/business/[id]/page.tsx"] }
+      ]
+    },
+    {
+      "file": "lib/actions/promotions.ts",
+      "functions": [
+        { "name": "getPromotions", "status": "USED", "usedBy": ["app/dashboard/[id]/products/page.tsx", "app/merchants/business/[id]/page.tsx"] },
+        { "name": "createPromotion", "status": "USED", "usedBy": ["components/dashboard/PromotionsSection.tsx"] },
+        { "name": "updatePromotion", "status": "USED", "usedBy": ["components/dashboard/PromotionsSection.tsx"] },
+        { "name": "deletePromotion", "status": "USED", "usedBy": ["components/dashboard/PromotionsSection.tsx"] },
+        { "name": "togglePromotion", "status": "USED", "usedBy": ["components/dashboard/PromotionsSection.tsx"] }
+      ]
+    },
+    {
+      "file": "lib/actions/support.ts",
+      "functions": [
+        { "name": "getStoreTickets", "status": "USED", "usedBy": ["components/dashboard/SupportMessagesSection.tsx"] },
+        { "name": "createSupportTicket", "status": "USED", "usedBy": ["app/api/dashboard/[storeId]/support/route.ts"] },
+        { "name": "deleteTicket", "status": "UNUSED", "usedBy": [] },
+        { "name": "updateTicket", "status": "UNUSED", "usedBy": [] },
+        { "name": "getTicketMessages", "status": "USED", "usedBy": ["components/messaging/SupportChatDrawer.tsx", "components/dashboard/SupportMessagesSection.tsx"] },
+        { "name": "getStoreCustomerMessages", "status": "USED", "usedBy": ["components/dashboard/SupportMessagesSection.tsx"] },
+        { "name": "sendStoreCustomerMessage", "status": "USED", "usedBy": ["components/dashboard/SupportMessagesSection.tsx"] },
+        { "name": "sendTicketMessage", "status": "USED", "usedBy": ["components/messaging/SupportChatDrawer.tsx"] }
+      ]
+    },
+    {
+      "file": "lib/actions/user-activity.ts",
+      "functions": [
+        { "name": "logUserSearch", "status": "UNUSED", "usedBy": [] },
+        { "name": "logStoreAnalyticsEvent", "status": "USED", "usedBy": ["components/BusinessReservationSidebar.tsx", "components/StoreAnalyticsTracker.tsx"] },
+        { "name": "hasUserInteractions", "status": "USED", "usedBy": ["components/Offers.tsx"] }
+      ]
+    },
+    {
+      "file": "lib/actions/recommendations.ts",
+      "functions": [
+        { "name": "getPersonalizedReels", "status": "USED", "usedBy": ["lib/actions/ai-notifications.ts", "app/api/reels/route.ts"] }
+      ]
+    },
+    {
+      "file": "lib/actions/ai-notifications.ts",
+      "functions": [
+        { "name": "triggerPersonalizedAINotifications", "status": "USED", "usedBy": ["components/notifications/AINotificationTrigger.tsx"] },
+        { "name": "triggerInstantRecommendation", "status": "UNUSED", "usedBy": [] }
+      ]
+    },
+    {
+      "file": "lib/actions/profile.ts",
+      "functions": [
+        { "name": "getOwnerProfileData", "status": "USED", "usedBy": ["app/profile/businessOwner/page.tsx"] },
+        { "name": "getUserProfileData", "status": "USED", "usedBy": ["app/profile/user/page.tsx"] },
+        { "name": "updateUserAvatar", "status": "UNUSED", "usedBy": [] }
+      ]
+    },
+    {
+      "file": "lib/actions/public-profile.ts",
+      "functions": [
+        { "name": "getPublicBusinessProfile", "status": "USED", "usedBy": ["app/public/business/[id]/page.tsx"] },
+        { "name": "getPublicUserProfile", "status": "USED", "usedBy": ["app/public/user/[id]/page.tsx"] }
+      ]
+    },
+    {
+      "file": "lib/actions/business.ts",
+      "functions": [
+        { "name": "getBusinessById", "status": "USED", "usedBy": ["app/merchants/business/[id]/page.tsx"] },
+        { "name": "getLatestStores", "status": "USED", "usedBy": ["components/SnapchatReels.tsx"] }
+      ]
+    },
+    {
+      "file": "lib/actions/product_detail.ts",
+      "functions": [
+        { "name": "getProductById", "status": "USED", "usedBy": ["app/merchants/product/[id]/page.tsx"] },
+        { "name": "getProductReviews", "status": "USED", "usedBy": ["app/merchants/product/[id]/page.tsx"] },
+        { "name": "getRelatedItems", "status": "USED", "usedBy": ["app/merchants/product/[id]/page.tsx"] }
+      ]
+    },
+    {
+      "file": "lib/actions/service_detail.ts",
+      "functions": [
+        { "name": "getServiceById", "status": "USED", "usedBy": ["app/merchants/service/[id]/page.tsx"] },
+        { "name": "getServiceReviews", "status": "USED", "usedBy": ["app/merchants/service/[id]/page.tsx"] },
+        { "name": "getRelatedItems", "status": "USED", "usedBy": ["app/merchants/service/[id]/page.tsx"] }
+      ]
+    },
+    {
+      "file": "lib/actions/overviews.ts",
+      "functions": [
+        { "name": "getDashboardOverview", "status": "USED", "usedBy": ["app/dashboard/[id]/page.tsx"] },
+        { "name": "getStoreReviews", "status": "UNUSED", "usedBy": [] },
+        { "name": "saveVendorResponse", "status": "UNUSED", "usedBy": [] },
+        { "name": "getAccountDetails", "status": "UNUSED", "usedBy": [] },
+        { "name": "getLeadActions", "status": "UNUSED", "usedBy": [] },
+        { "name": "getSidebarStats", "status": "USED", "usedBy": ["app/dashboard/[id]/layout.tsx"] },
+        { "name": "searchDashboard", "status": "USED", "usedBy": ["app/dashboard/[id]/layout.tsx"] }
+      ]
+    },
+    {
+      "file": "lib/actions/addbuss.ts",
+      "functions": [
+        { "name": "searchUnified", "status": "USED", "usedBy": ["app/merchants/business/add/page.tsx"] },
+        { "name": "searchBusinessDirectory", "status": "UNUSED", "usedBy": [] },
+        { "name": "addBusiness", "status": "USED", "usedBy": ["app/merchants/business/add/page.tsx"] }
+      ]
+    },
+    {
+      "file": "lib/actions/fraud-detection.ts",
+      "functions": [
+        { "name": "analyzeFraud", "status": "USED", "usedBy": ["lib/actions/orders.ts"] },
+        { "name": "saveFraudAnalysis", "status": "USED", "usedBy": ["lib/actions/orders.ts"] }
+      ]
+    },
+    {
+      "file": "lib/actions/analyzer-service.ts",
+      "functions": [
+        { "name": "analyzeComment", "status": "USED", "usedBy": ["app/api/comments/analyze/route.ts"] },
+        { "name": "analyzeBatch", "status": "USED", "usedBy": ["app/api/comments/batch/route.ts"] }
+      ]
+    },
+    {
+      "file": "lib/actions/sales-analyzer.ts",
+      "functions": [
+        { "name": "analyzeSalesDataWithGroq", "status": "UNUSED", "usedBy": [] }
+      ]
+    },
+    {
+      "file": "lib/actions/leads.ts",
+      "functions": [
+        { "name": "getLeadActions", "status": "USED", "usedBy": ["app/dashboard/[id]/leads/page.tsx"] },
+        { "name": "updateOrderStatus", "status": "USED", "usedBy": ["app/dashboard/[id]/leads/page.tsx", "app/dashboard/[id]/transactions/page.tsx", "app/valider/page.tsx"] },
+        { "name": "getOrdersByStatus", "status": "UNUSED", "usedBy": [] }
+      ]
+    },
+    {
+      "file": "lib/actions/admin.ts",
+      "functions": [
+        { "name": "getGlobalAdminStats", "status": "UNUSED", "usedBy": [] },
+        { "name": "updateStoreStatus", "status": "UNUSED", "usedBy": [] }
+      ]
+    },
+    {
+      "file": "lib/actions/groq-service.ts",
+      "functions": [
+        { "name": "analyzeCommentWithGroq", "status": "USED", "usedBy": ["lib/actions/analyzer-service.ts"] }
+      ]
+    },
+    {
+      "file": "lib/actions/openrouter-service.ts",
+      "functions": [
+        { "name": "analyzeCommentWithAI", "status": "UNUSED", "usedBy": [] }
+      ]
+    },
+    {
+      "file": "lib/actions/account_subscription.ts",
+      "functions": [
+        { "name": "getUserSubscription", "status": "UNUSED", "usedBy": [] },
+        { "name": "updateSubscriptionPlan", "status": "UNUSED", "usedBy": [] },
+        { "name": "cancelSubscription", "status": "UNUSED", "usedBy": [] },
+        { "name": "getAccountUsageStats", "status": "UNUSED", "usedBy": [] },
+        { "name": "deleteAccount", "status": "USED", "usedBy": ["components/dashboard/AccountSection.tsx"] }
+      ]
+    },
+    {
+      "file": "lib/actions/alerts.engine.ts",
+      "functions": [
+        { "name": "computeScores", "status": "UNUSED", "usedBy": [] },
+        { "name": "generateAlerts", "status": "UNUSED", "usedBy": [] },
+        { "name": "computeHealthScore", "status": "UNUSED", "usedBy": [] }
+      ]
+    },
+    {
+      "file": "lib/actions/ai-agent.ts",
+      "functions": [
+        { "name": "getStoreContext", "status": "UNUSED", "usedBy": [] }
+      ]
+    },
+    {
+      "file": "lib/actions/debug-schema.ts",
+      "functions": [
+        { "name": "debugReelsColumns", "status": "UNUSED", "usedBy": [] }
+      ]
+    }
+  ],
+
+  "apiRoutes": [
+    {
+      "endpoint": "/api/auth/login",
+      "method": "POST",
+      "status": "ACTIVE",
+      "usedBy": "Frontend login page, mobile clients",
+      "description": "Authenticate user with email/password"
+    },
+    {
+      "endpoint": "/api/auth/signup",
+      "method": "POST",
+      "status": "ACTIVE",
+      "usedBy": "Frontend registration",
+      "description": "Create new user account"
+    },
+    {
+      "endpoint": "/api/auth/logout",
+      "method": "POST",
+      "status": "ACTIVE",
+      "usedBy": "Frontend header",
+      "description": "Sign out current user"
+    },
+    {
+      "endpoint": "/api/auth/session",
+      "method": "GET",
+      "status": "ACTIVE",
+      "usedBy": "Session middleware",
+      "description": "Get current session info"
+    },
+    {
+      "endpoint": "/api/auth/verify",
+      "method": "GET",
+      "status": "ACTIVE",
+      "usedBy": "Auth verification",
+      "description": "Verify user authentication token"
+    },
+    {
+      "endpoint": "/api/auth/magic-link",
+      "method": "POST",
+      "status": "ACTIVE",
+      "usedBy": "Magic link auth",
+      "description": "Send magic link for passwordless auth"
+    },
+    {
+      "endpoint": "/api/orders",
+      "method": "GET|POST",
+      "status": "ACTIVE",
+      "usedBy": "Order management, checkout",
+      "description": "Get/create orders"
+    },
+    {
+      "endpoint": "/api/orders/bulk",
+      "method": "POST",
+      "status": "ACTIVE",
+      "usedBy": "Batch order operations",
+      "description": "Create multiple orders at once"
+    },
+    {
+      "endpoint": "/api/items",
+      "method": "GET|POST",
+      "status": "ACTIVE",
+      "usedBy": "Product management",
+      "description": "Get/create items"
+    },
+    {
+      "endpoint": "/api/items/[id]",
+      "method": "GET",
+      "status": "ACTIVE",
+      "usedBy": "Product detail pages",
+      "description": "Get single item details"
+    },
+    {
+      "endpoint": "/api/reels",
+      "method": "GET|POST",
+      "status": "ACTIVE",
+      "usedBy": "Discover page, analytics",
+      "description": "Get personalized reels, track interactions"
+    },
+    {
+      "endpoint": "/api/reels/comments",
+      "method": "GET|POST",
+      "status": "ACTIVE",
+      "usedBy": "Comments on reels",
+      "description": "Get/post reel comments"
+    },
+    {
+      "endpoint": "/api/stories",
+      "method": "GET|POST",
+      "status": "ACTIVE",
+      "usedBy": "Story feed",
+      "description": "Get/post stories"
+    },
+    {
+      "endpoint": "/api/reservations",
+      "method": "GET|POST",
+      "status": "ACTIVE",
+      "usedBy": "Booking system",
+      "description": "Get/create reservations"
+    },
+    {
+      "endpoint": "/api/notifications",
+      "method": "GET|PATCH",
+      "status": "ACTIVE",
+      "usedBy": "Notification management",
+      "description": "Get/update notifications"
+    },
+    {
+      "endpoint": "/api/notifications/push-token",
+      "method": "POST|DELETE",
+      "status": "ACTIVE",
+      "usedBy": "Push notification setup",
+      "description": "Register/remove push tokens"
+    },
+    {
+      "endpoint": "/api/stores",
+      "method": "GET|PATCH",
+      "status": "ACTIVE",
+      "usedBy": "Store management",
+      "description": "Get/update store info"
+    },
+    {
+      "endpoint": "/api/stores/[id]",
+      "method": "GET",
+      "status": "ACTIVE",
+      "usedBy": "Store detail pages",
+      "description": "Get store details"
+    },
+    {
+      "endpoint": "/api/stores/me",
+      "method": "GET",
+      "status": "ACTIVE",
+      "usedBy": "Current user's store",
+      "description": "Get current user's primary store"
+    },
+    {
+      "endpoint": "/api/stores/follow",
+      "method": "GET|POST",
+      "status": "ACTIVE",
+      "usedBy": "Follow functionality",
+      "description": "Get/toggle store follow"
+    },
+    {
+      "endpoint": "/api/profile",
+      "method": "GET|PATCH",
+      "status": "ACTIVE",
+      "usedBy": "User profile",
+      "description": "Get/update profile"
+    },
+    {
+      "endpoint": "/api/dashboard/[storeId]/products",
+      "method": "GET|POST|PATCH|DELETE",
+      "status": "ACTIVE",
+      "usedBy": "Dashboard product management",
+      "description": "Manage store products"
+    },
+    {
+      "endpoint": "/api/dashboard/[storeId]/promotions",
+      "method": "GET|POST|PATCH|DELETE",
+      "status": "ACTIVE",
+      "usedBy": "Promotion management",
+      "description": "Create/edit promotions"
+    },
+    {
+      "endpoint": "/api/dashboard/[storeId]/reviews",
+      "method": "GET",
+      "status": "ACTIVE",
+      "usedBy": "Dashboard reviews",
+      "description": "Get store reviews"
+    },
+    {
+      "endpoint": "/api/dashboard/[storeId]/stats",
+      "method": "GET",
+      "status": "ACTIVE",
+      "usedBy": "Dashboard analytics",
+      "description": "Get store statistics"
+    },
+    {
+      "endpoint": "/api/dashboard/[storeId]/intelligence",
+      "method": "GET",
+      "status": "ACTIVE",
+      "usedBy": "AI intelligence page",
+      "description": "Get AI-powered insights"
+    },
+    {
+      "endpoint": "/api/dashboard/[storeId]/reels",
+      "method": "GET|POST",
+      "status": "ACTIVE",
+      "usedBy": "Dashboard reels management",
+      "description": "Manage store reels"
+    },
+    {
+      "endpoint": "/api/comments/analyze",
+      "method": "POST",
+      "status": "ACTIVE",
+      "usedBy": "AI comment analysis",
+      "description": "Analyze single comment sentiment/spam"
+    },
+    {
+      "endpoint": "/api/comments/batch",
+      "method": "POST",
+      "status": "ACTIVE",
+      "usedBy": "Batch analysis",
+      "description": "Analyze multiple comments"
+    },
+    {
+      "endpoint": "/api/semantic-search",
+      "method": "GET|POST",
+      "status": "ACTIVE",
+      "usedBy": "Smart search",
+      "description": "Vector-based semantic search"
+    },
+    {
+      "endpoint": "/api/geo/nearby",
+      "method": "GET",
+      "status": "ACTIVE",
+      "usedBy": "Location-based discovery",
+      "description": "Get nearby stores"
+    },
+    {
+      "endpoint": "/api/geo/autocomplete",
+      "method": "GET",
+      "status": "ACTIVE",
+      "usedBy": "Location search",
+      "description": "Location autocomplete"
+    },
+    {
+      "endpoint": "/api/geo/reverse",
+      "method": "GET",
+      "status": "ACTIVE",
+      "usedBy": "Reverse geocoding",
+      "description": "Get location from coordinates"
+    },
+    {
+      "endpoint": "/api/admin/orders/validate",
+      "method": "POST",
+      "status": "ADMIN_ONLY",
+      "usedBy": "Admin validation",
+      "description": "Validate orders"
+    },
+    {
+      "endpoint": "/api/admin/stats",
+      "method": "GET",
+      "status": "ADMIN_ONLY",
+      "usedBy": "Global admin stats",
+      "description": "Get platform statistics"
+    },
+    {
+      "endpoint": "/api/workers/sync-orders",
+      "method": "POST",
+      "status": "BACKGROUND_JOB",
+      "usedBy": "QStash worker",
+      "description": "Sync orders (background job)"
+    },
+    {
+      "endpoint": "/api/workers/payment-retry",
+      "method": "POST",
+      "status": "BACKGROUND_JOB",
+      "usedBy": "QStash worker",
+      "description": "Retry failed payments"
+    },
+    {
+      "endpoint": "/api/workers/process-refund",
+      "method": "POST",
+      "status": "BACKGROUND_JOB",
+      "usedBy": "QStash worker",
+      "description": "Process refunds"
+    },
+    {
+      "endpoint": "/api/webhooks/order/confirm",
+      "method": "POST",
+      "status": "WEBHOOK",
+      "usedBy": "Payment provider",
+      "description": "Order confirmation webhook"
+    },
+    {
+      "endpoint": "/api/webhooks/order/refund",
+      "method": "POST",
+      "status": "WEBHOOK",
+      "usedBy": "Payment provider",
+      "description": "Refund webhook"
+    }
+  ],
+
+  "orphanedFunctions": [
+    {
+      "file": "lib/actions/stores.ts",
+      "function": "getStoreByBusinessId",
+      "description": "Get store by business ID (unused - getStoreByAnyId used instead)",
+      "importance": "LOW",
+      "recommendation": "DELETE - Superseded by getStoreByAnyId"
+    },
+    {
+      "file": "lib/actions/stores.ts",
+      "function": "transferStoreOwnership",
+      "description": "Transfer ownership to another user",
+      "importance": "HIGH",
+      "recommendation": "INVESTIGATE - Likely needed but not exposed in UI"
+    },
+    {
+      "file": "lib/actions/stores.ts",
+      "function": "updateStoreStatus",
+      "description": "Update store approval status (APPROVED/REJECTED/SUSPENDED)",
+      "importance": "HIGH",
+      "recommendation": "INVESTIGATE - Admin function, check if used in admin routes"
+    },
+    {
+      "file": "lib/actions/orders.ts",
+      "function": "getPendingOrdersForStore",
+      "description": "Get pending orders (filtering by PENDING status)",
+      "importance": "MEDIUM",
+      "recommendation": "DELETE or EXPOSE - Use getStoreOrders with status filter instead"
+    },
+    {
+      "file": "lib/actions/orders.ts",
+      "function": "validateOrder",
+      "description": "Validate order before processing",
+      "importance": "MEDIUM",
+      "recommendation": "EXPOSE - Should be accessible from dashboard"
+    },
+    {
+      "file": "lib/actions/orders.ts",
+      "function": "initiateAsyncRefund",
+      "description": "Trigger async refund processing",
+      "importance": "MEDIUM",
+      "recommendation": "CHECK - May be called from workers endpoint"
+    },
+    {
+      "file": "lib/actions/orders.ts",
+      "function": "markOrderAsDelivered",
+      "description": "Mark order as delivered",
+      "importance": "MEDIUM",
+      "recommendation": "EXPOSE - Create API/button in dashboard"
+    },
+    {
+      "file": "lib/actions/orders.ts",
+      "function": "markOrderAsFailed",
+      "description": "Mark order as failed",
+      "importance": "MEDIUM",
+      "recommendation": "EXPOSE - Create API/button in dashboard"
+    },
+    {
+      "file": "lib/actions/search.ts",
+      "function": "doGlobalSemanticSearch",
+      "description": "Global semantic search across all content",
+      "importance": "MEDIUM",
+      "recommendation": "EXPOSE - Could be used in unified search page"
+    },
+    {
+      "file": "lib/actions/store-follows.ts",
+      "function": "getUserFollowedStores",
+      "description": "Get user's followed stores",
+      "importance": "LOW",
+      "recommendation": "INVESTIGATE - May need UI for followed stores list"
+    },
+    {
+      "file": "lib/actions/favorites.ts",
+      "function": "getUserSavedPlaces",
+      "description": "Get user's saved/favorited stores",
+      "importance": "MEDIUM",
+      "recommendation": "EXPOSE - Create 'Saved Places' page"
+    },
+    {
+      "file": "lib/actions/ai-notifications.ts",
+      "function": "triggerInstantRecommendation",
+      "description": "Send instant recommendation for specific category",
+      "importance": "LOW",
+      "recommendation": "DELETE or DOCUMENT - Not referenced anywhere"
+    }
+  ],
+
+  "partiallyUsedFunctions": [
+    {
+      "file": "lib/actions/notifications.ts",
+      "function": "markAllAsRead",
+      "status": "NOT_EXPOSED",
+      "description": "Mark all notifications as read",
+      "recommendation": "ADD API ENDPOINT - Common UX pattern"
+    },
+    {
+      "file": "lib/actions/notifications.ts",
+      "function": "getUnreadCount",
+      "status": "NOT_EXPOSED",
+      "description": "Get count of unread notifications",
+      "recommendation": "ADD API ENDPOINT - For badge/counter in UI"
+    },
+    {
+      "file": "lib/actions/reservation.ts",
+      "function": "getBusinessBookings",
+      "status": "NOT_EXPOSED",
+      "description": "Get all bookings for a store",
+      "recommendation": "EXPOSE - Dashboard booking management"
+    },
+    {
+      "file": "lib/actions/reservation.ts",
+      "function": "getStoreBookingsByDate",
+      "status": "NOT_EXPOSED",
+      "description": "Get bookings filtered by date",
+      "recommendation": "EXPOSE - Calendar view in dashboard"
+    },
+    {
+      "file": "lib/actions/transactions.ts",
+      "function": "syncBookingTransaction",
+      "status": "NOT_EXPOSED",
+      "description": "Sync booking to transactions table",
+      "recommendation": "CHECK - Should be called after booking creation"
+    },
+    {
+      "file": "lib/actions/transactions.ts",
+      "function": "getFinancialSummary",
+      "status": "NOT_EXPOSED",
+      "description": "Get store financial summary",
+      "recommendation": "EXPOSE - Dashboard finance page"
+    },
+    {
+      "file": "lib/actions/support.ts",
+      "function": "deleteTicket",
+      "status": "NOT_EXPOSED",
+      "description": "Delete support ticket",
+      "recommendation": "EXPOSE - Dashboard ticket management"
+    },
+    {
+      "file": "lib/actions/support.ts",
+      "function": "updateTicket",
+      "status": "NOT_EXPOSED",
+      "description": "Update support ticket details",
+      "recommendation": "EXPOSE - Dashboard ticket management"
+    },
+    {
+      "file": "lib/actions/user-activity.ts",
+      "function": "logUserSearch",
+      "status": "NOT_EXPOSED",
+      "description": "Log user search queries",
+      "recommendation": "USE - Call from search pages for analytics"
+    },
+    {
+      "file": "lib/actions/profile.ts",
+      "function": "updateUserAvatar",
+      "status": "NOT_EXPOSED",
+      "description": "Update user avatar image",
+      "recommendation": "EXPOSE - Already has similar action (users.updateAvatar)"
+    },
+    {
+      "file": "lib/actions/admin.ts",
+      "function": "getGlobalAdminStats",
+      "status": "NOT_EXPOSED",
+      "description": "Get platform-wide statistics",
+      "recommendation": "EXPOSE - Admin dashboard"
+    },
+    {
+      "file": "lib/actions/admin.ts",
+      "function": "updateStoreStatus",
+      "status": "NOT_EXPOSED",
+      "description": "Admin approve/reject/suspend stores",
+      "recommendation": "EXPOSE - Admin dashboard"
+    },
+    {
+      "file": "lib/actions/overviews.ts",
+      "function": "getStoreReviews",
+      "status": "DUPLICATE",
+      "description": "Get store reviews (duplicate of reviews.getReviewsByStoreId)",
+      "recommendation": "DELETE - Use getReviewsByStoreId from reviews.ts"
+    },
+    {
+      "file": "lib/actions/overviews.ts",
+      "function": "getAccountDetails",
+      "status": "NOT_EXPOSED",
+      "description": "Get account details",
+      "recommendation": "INVESTIGATE - Likely duplicate/unused"
+    },
+    {
+      "file": "lib/actions/overviews.ts",
+      "function": "getLeadActions",
+      "status": "NOT_EXPOSED",
+      "description": "Get leads (same as leads.getLeadActions)",
+      "recommendation": "DELETE - Duplicate of leads.getLeadActions"
+    },
+    {
+      "file": "lib/actions/sales-analyzer.ts",
+      "function": "analyzeSalesDataWithGroq",
+      "status": "NOT_EXPOSED",
+      "description": "AI-powered sales analysis and recommendations",
+      "recommendation": "EXPOSE - Dashboard intelligence page"
+    },
+    {
+      "file": "lib/actions/ai-agent.ts",
+      "function": "getStoreContext",
+      "status": "NOT_EXPOSED",
+      "description": "Get context for AI agent (store info, recent activity)",
+      "recommendation": "EXPOSE - Used by AI chat/agent system"
+    },
+    {
+      "file": "lib/actions/alerts.engine.ts",
+      "function": "computeScores",
+      "status": "INTERNAL_UTILITY",
+      "description": "Compute business alert scores from analysis",
+      "recommendation": "KEEP - Internal utility for comment analysis"
+    }
+  ],
+
+  "categorization": {
+    "CRITICAL_CORE": {
+      "count": 42,
+      "description": "Essential functions actively used in production",
+      "functions": [
+        "auth (all)", "users (all)", "stores (main)", "items (all)", "orders (main)",
+        "reels (all)", "comments (all)", "stories (all)", "reviews (all)",
+        "notifications (basic)", "search (all)", "store-follows (main)", "favorites (main)",
+        "friendships (all)", "reservation (main)", "transactions (main)", "promotions (all)",
+        "support (main)"
+      ]
+    },
+    "IMPORTANT_SUPPORTING": {
+      "count": 31,
+      "description": "Non-critical but support key features",
+      "functions": [
+        "profile (2)", "public-profile (all)", "business (all)", "product_detail (all)",
+        "service_detail (all)", "overviews (partial)", "addbuss (all)", "user-activity (partial)",
+        "recommendations (all)", "ai-notifications (partial)", "analyzer-service (all)",
+        "fraud-detection (all)", "groq-service (all)", "leads (all)"
+      ]
+    },
+    "UNUSED_EXPERIMENTAL": {
+      "count": 12,
+      "description": "Unused functions, may be experimental or debug code",
+      "functions": [
+        "sales-analyzer", "admin (all)", "openrouter-service", "account_subscription (partial)",
+        "alerts.engine (partial)", "ai-agent (partial)", "debug-schema (all)"
+      ]
+    },
+    "INFRASTRUCTURE": {
+      "count": 9,
+      "description": "Supabase clients and system utilities",
+      "files": [
+        "lib/supabase/client.ts", "lib/supabase/server.ts", "lib/supabase/admin.ts",
+        "lib/supabase/auth.ts", "lib/supabase/database.ts", "lib/supabase/storage.ts",
+        "lib/supabase/realtime.ts", "lib/rate-limit.ts", "lib/cache.ts"
+      ]
+    }
+  },
+
+  "recommendations": {
+    "immediate_actions": [
+      {
+        "priority": "HIGH",
+        "action": "Delete orphaned files",
+        "items": [
+          "lib/actions/debug-schema.ts - Debug only function",
+          "scratch/ directory - 36 experimental files with 0 production usage",
+          "tmp/ directory - Temporary files",
+          "test-*.js/ts files - Debug scripts"
+        ]
+      },
+      {
+        "priority": "MEDIUM",
+        "action": "Expose missing API endpoints",
+        "items": [
+          "POST /api/notifications/mark-all-as-read - For mark-all UX",
+          "GET /api/notifications/unread-count - For badge counter",
+          "POST /api/orders/[id]/delivered - Mark as delivered",
+          "POST /api/orders/[id]/failed - Mark as failed",
+          "POST /api/bookings/[id]/confirm - Confirm/manage bookings"
+        ]
+      },
+      {
+        "priority": "MEDIUM",
+        "action": "Consolidate duplicate functions",
+        "items": [
+          "overviews.getStoreReviews → Use reviews.getReviewsByStoreId",
+          "overviews.getLeadActions → Use leads.getLeadActions",
+          "profile.updateUserAvatar → Use users.updateAvatar",
+          "Remove duplicates from overviews.ts"
+        ]
+      }
+    ],
+    "short_term_improvements": [
+      {
+        "title": "Expose AI Intelligence Features",
+        "description": "Make AI-powered functions accessible via dashboard",
+        "items": [
+          "Activate sales-analyzer for AI recommendations",
+          "Expose AI agent context for chat system",
+          "Enable alerts.engine for business intelligence"
+        ]
+      },
+      {
+        "title": "Complete Booking/Reservation System",
+        "description": "Expose missing booking management functions",
+        "items": [
+          "Expose getBusinessBookings for store calendar",
+          "Expose getStoreBookingsByDate for date filtering",
+          "Add booking confirmation/cancellation UI"
+        ]
+      },
+      {
+        "title": "Add 'Saved Places' Feature",
+        "description": "Create UI for saved/favorited stores",
+        "items": [
+          "Expose getUserSavedPlaces function",
+          "Create app/profile/saved-places/page.tsx",
+          "Add to profile navigation"
+        ]
+      }
+    ],
+    "code_quality": [
+      {
+        "issue": "Function duplication",
+        "count": 3,
+        "severity": "MEDIUM",
+        "recommendation": "Consolidate overviews.ts - Move functions to proper modules"
+      },
+      {
+        "issue": "Unused subscription functions",
+        "count": 4,
+        "severity": "LOW",
+        "recommendation": "Delete account_subscription functions if not planned"
+      },
+      {
+        "issue": "Incomplete admin functions",
+        "count": 2,
+        "severity": "MEDIUM",
+        "recommendation": "Either expose admin functions or document admin-only status"
+      },
+      {
+        "issue": "Debug utilities",
+        "count": 1,
+        "severity": "LOW",
+        "recommendation": "Remove debug-schema.ts from production"
+      }
+    ]
+  },
+
+  "statistics": {
+    "backendMetrics": {
+      "serverActionFiles": 39,
+      "totalExportedFunctions": 165,
+      "apiRouteFiles": 66,
+      "totalHTTPEndpoints": 88,
+      "fullyUtilized": 135,
+      "partiallyUtilized": 18,
+      "unused": 12,
+      "utilizationRate": "82%"
+    },
+    "frontendMetrics": {
+      "pageFiles": 25,
+      "componentFiles": 120,
+      "hookFiles": 9,
+      "pagesUsingServerActions": 23,
+      "componentsUsingServerActions": 35,
+      "hooksCustomImplemented": 9
+    },
+    "codeHealth": {
+      "orphanedFunctionsCount": 12,
+      "duplicateFunctionsCount": 3,
+      "codeDuplicationPercentage": "1.8%",
+      "unusedFilesCount": 89,
+      "cleanupOpportunitySizeMB": 3.5
+    }
+  },
+
+  "nextSteps": [
+    {
+      "phase": "Phase 1: Cleanup (Week 1)",
+      "tasks": [
+        "Delete lib/actions/debug-schema.ts",
+        "Remove scratch/ directory (36 files)",
+        "Remove tmp/ directory (4 files)",
+        "Delete test-*.js/ts files (6 files)",
+        "Remove lib/mock-data*.ts (2 files)"
+      ],
+      "impact": "3-5MB reduction, -50 files, 0% risk"
+    },
+    {
+      "phase": "Phase 2: Consolidation (Week 2)",
+      "tasks": [
+        "Move functions from overviews.ts to appropriate modules",
+        "Remove duplicate definitions",
+        "Update all imports",
+        "Test all affected pages"
+      ],
+      "impact": "Improved code organization, -100 LOC"
+    },
+    {
+      "phase": "Phase 3: Exposure (Week 3-4)",
+      "tasks": [
+        "Create API endpoints for missing functions",
+        "Update dashboard UI to use exposed functions",
+        "Add 'Saved Places' page",
+        "Add booking management UI"
+      ],
+      "impact": "Complete feature coverage, better UX"
+    }
+  ]
+}

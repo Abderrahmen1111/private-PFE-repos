@@ -34,45 +34,54 @@ export async function generateImageFromPrompt(prompt: string): Promise<Buffer | 
   }
 
   const enhancedPrompt = enhancePrompt(prompt)
-  // Switching to a lighter model for more free generations (SDXL Base)
-  const model = '@cf/stabilityai/stable-diffusion-xl-base-1.0'
-  const apiUrl = `https://api.cloudflare.com/client/v4/accounts/${accountId}/ai/run/${model}`
-  
-  try {
-    console.log(`[ImageGen] 🎨 Génération via Cloudflare (${model})...`)
-    
-    const response = await fetch(apiUrl, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        prompt: enhancedPrompt,
-        num_steps: 20, // SDXL Base works well with 20-30 steps
-      }),
-      signal: AbortSignal.timeout(60000),
-    })
+  const models = [
+    '@cf/stabilityai/stable-diffusion-xl-base-1.0',
+    '@cf/bytedance/stable-diffusion-xl-lightning',
+    '@cf/lykon/dreamshaper-8-lcm'
+  ]
 
-    if (!response.ok) {
-      const errText = await response.text().catch(() => '')
-      console.error(`❌ [ImageGen] Cloudflare Error ${response.status}:`, errText)
-      return null
+  let lastErr = null
+  for (const model of models) {
+    const apiUrl = `https://api.cloudflare.com/client/v4/accounts/${accountId}/ai/run/${model}`
+    try {
+      console.log(`[ImageGen] 🎨 Génération via Cloudflare (${model})...`)
+      
+      const numSteps = model.includes('lightning') ? 4 : model.includes('lcm') ? 8 : 20;
+
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          prompt: enhancedPrompt,
+          num_steps: numSteps,
+        }),
+        signal: AbortSignal.timeout(60000),
+      })
+
+      if (!response.ok) {
+        const errText = await response.text().catch(() => '')
+        throw new Error(`Cloudflare Error ${response.status}: ${errText}`)
+      }
+
+      const contentType = response.headers.get('content-type') || ''
+      if (!contentType.includes('image')) {
+        const jsonText = await response.text().catch(() => '')
+        throw new Error(`Response is not an image: ${contentType} - ${jsonText}`)
+      }
+
+      const arrayBuffer = await response.arrayBuffer()
+      return Buffer.from(arrayBuffer)
+    } catch (err: any) {
+      console.warn(`[ImageGen] Model ${model} failed, trying next... Error:`, err.message || err)
+      lastErr = err
     }
-
-    const contentType = response.headers.get('content-type') || ''
-    if (!contentType.includes('image')) {
-      const jsonText = await response.text().catch(() => '')
-      console.error('❌ [ImageGen] Response is not an image:', contentType, jsonText)
-      return null
-    }
-
-    const arrayBuffer = await response.arrayBuffer()
-    return Buffer.from(arrayBuffer)
-  } catch (err) {
-    console.error('[ImageGen] Fetch error:', err instanceof Error ? err.message : err)
-    return null
   }
+
+  console.error('[ImageGen] All models failed in generateImageFromPrompt:', lastErr)
+  return null
 }
 
 /**
@@ -123,7 +132,50 @@ export async function uploadImageToSupabase(
 }
 
 /**
- * Pipeline complet: prompt → image générée → URL Supabase
+ * Upload un Buffer image vers Cloudinary
+ * @returns URL sécurisée de l'image ou null
+ */
+export async function uploadImageToCloudinary(
+  imageBuffer: Buffer,
+  fileName: string
+): Promise<string | null> {
+  const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME
+  const preset = 'ro2ya_reels'
+
+  if (!cloudName) {
+    console.error('[ImageGen] Cloudinary env vars missing (NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME)')
+    return null
+  }
+
+  const endpoint = `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`
+  
+  try {
+    const blob = new Blob([imageBuffer], { type: 'image/png' })
+    const formData = new FormData()
+    formData.append('file', blob, `${fileName}.png`)
+    formData.append('upload_preset', preset)
+    formData.append('public_id', `ai_${Date.now()}_${fileName.replace(/[^a-z0-9]/gi, '_').toLowerCase()}`)
+
+    const res = await fetch(endpoint, {
+      method: 'POST',
+      body: formData,
+    })
+
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({ message: 'Unknown error' }))
+      throw new Error(`Cloudinary Error ${res.status}: ${errData.error?.message || JSON.stringify(errData)}`)
+    }
+
+    const data = await res.json()
+    return data.secure_url
+  } catch (err: any) {
+    console.error('[ImageGen] Cloudinary upload error:', err.message || err)
+    return null
+  }
+}
+
+/**
+ * Pipeline complet: prompt → image générée → URL (Cloudinary ou Supabase en fallback)
  */
 export async function generateAndUploadImage(
   imagePrompt: string,
@@ -133,10 +185,16 @@ export async function generateAndUploadImage(
     const imageBuffer = await generateImageFromPrompt(imagePrompt)
     if (!imageBuffer) return null
 
-    const url = await uploadImageToSupabase(imageBuffer, fileName)
+    // Essayer Cloudinary d'abord, puis Supabase
+    let url = await uploadImageToCloudinary(imageBuffer, fileName)
+    if (!url) {
+      console.warn('[ImageGen] Cloudinary upload failed, falling back to Supabase...')
+      url = await uploadImageToSupabase(imageBuffer, fileName)
+    }
     return url
   } catch (err) {
     console.error('[ImageGen] Pipeline error:', err)
     return null
   }
 }
+

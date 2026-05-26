@@ -18,8 +18,12 @@ export async function analyzeComment(text: string): Promise<CommentAnalysis | nu
     return null
   }
 
-  const model = 'llama-3.3-70b-versatile'
-  
+  const modelChain = [
+    'llama-3.3-70b-versatile',
+    'llama3-70b-8192',
+    'llama-3.1-8b-instant'
+  ]
+
   const systemPrompt = `Tu es un expert en modération de commentaires pour une marketplace tunisienne (Ro2ya).
 Le commentaire peut être en Darija tunisien, Français ou Arabe.
 Analyse le texte et réponds UNIQUEMENT avec un objet JSON valide:
@@ -29,36 +33,49 @@ Analyse le texte et réponds UNIQUEMENT avec un objet JSON valide:
   "is_toxic": boolean,
   "language": "fr" | "darija" | "ar",
   "suggested_reply_fr": "une suggestion de réponse courte et polie en français"
-}`
+}
 
-  try {
-    const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model,
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: text },
-        ],
-        response_format: { type: 'json_object' },
-        temperature: 0.2,
-      }),
-    })
+Consignes pour le Darija tunisien phonétique :
+- "yaatikom el saha" (ou "ya3tikom el sa7a") signifie "merci beaucoup / bravo" (sentiment positif).
+- "bnina barcha" signifie "très délicieuse" (sentiment positif).
+- "yhebel" (ou "yhabal") signifie "incroyable/magnifique/extraordinaire" (sentiment positif, ce n'est PAS toxique).
+- Les insultes graves comme "khra", "kléb" sont toxiques et négatives.`
 
-    if (!res.ok) {
-      console.error(`[CommentAI] Groq error: ${res.status}`)
-      return null
+  let lastErr = null
+  for (const model of modelChain) {
+    try {
+      const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model,
+          messages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: text },
+          ],
+          response_format: { type: 'json_object' },
+          temperature: 0.2,
+        }),
+      })
+
+      if (!res.ok) {
+        throw new Error(`Groq API error (${model}): ${res.status} - ${await res.text()}`)
+      }
+
+      const data = await res.json()
+      const content = data.choices?.[0]?.message?.content
+      if (content) {
+        return JSON.parse(content) as CommentAnalysis
+      }
+    } catch (err: any) {
+      console.warn(`[CommentAI] Model ${model} failed, trying next... Error:`, err.message || err)
+      lastErr = err
     }
-
-    const data = await res.json()
-    const content = data.choices?.[0]?.message?.content
-    return JSON.parse(content) as CommentAnalysis
-  } catch (err) {
-    console.error('[CommentAI] Exception:', err)
-    return null
   }
+
+  console.error('[CommentAI] All models failed in analyzeComment:', lastErr)
+  return null
 }

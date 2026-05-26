@@ -142,24 +142,27 @@ async function collectHeuristicSignals(
     .eq("status", "COMPLETED")
     .limit(50);
 
+  let avg = 500; // Baseline fallback average price in TND
+  let hasEnoughHistory = false;
   if (avgActivity && avgActivity.length > 5) {
-    const avg =
-      avgActivity.reduce((sum: number, o: any) => sum + (o[priceColumn] ?? 0), 0) / avgActivity.length;
-    if (ctx.total > avg * 4) {
-      signals.push({
-        type: "abnormal_amount",
-        severity: "high",
-        description: `Montant ${ctx.total} TND — ${Math.round(ctx.total / avg)}x la moyenne (${Math.round(avg)} TND)`,
-        weight: 25,
-      });
-    } else if (ctx.total > avg * 2.5) {
-      signals.push({
-        type: "high_amount",
-        severity: "low",
-        description: `Montant élevé vs moyenne boutique`,
-        weight: 10,
-      });
-    }
+    avg = avgActivity.reduce((sum: number, o: any) => sum + (o[priceColumn] ?? 0), 0) / avgActivity.length;
+    hasEnoughHistory = true;
+  }
+
+  if (ctx.total > avg * 4) {
+    signals.push({
+      type: "abnormal_amount",
+      severity: "high",
+      description: `Montant ${ctx.total} TND — ${Math.round(ctx.total / avg)}x la moyenne ${hasEnoughHistory ? '' : 'estimée '}(${Math.round(avg)} TND)`,
+      weight: 25,
+    });
+  } else if (ctx.total > avg * 2.5) {
+    signals.push({
+      type: "high_amount",
+      severity: "low",
+      description: `Montant élevé vs moyenne boutique`,
+      weight: 10,
+    });
   }
 
   // ── Signal 5: Quantité suspecte (Seulement pour les commandes) ──────────────
@@ -242,35 +245,60 @@ ${signalsSummary}
 
 Donne uniquement ton analyse du risque et si le merchant doit approuver, vérifier manuellement ou rejeter. Sois direct et concis.`;
 
-  try {
-    const response = await fetch(
-      "https://openrouter.ai/api/v1/chat/completions",
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
-          "HTTP-Referer": process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000",
-          "X-Title": "Ro2ya Fraud Detection",
-        },
-        body: JSON.stringify({
-          model: "meta-llama/llama-3.1-8b-instruct:free",
-          max_tokens: 200,
-          temperature: 0.2, // déterministe pour la sécurité
-          messages: [{ role: "user", content: prompt }],
-        }),
-      }
-    );
-
-    if (!response.ok) throw new Error(`OpenRouter error: ${response.status}`);
-    const data = await response.json();
-    return data.choices?.[0]?.message?.content?.trim() ?? "Analyse IA indisponible.";
-  } catch (err) {
-    console.error('[AI Fraud Analysis] Error:', err);
+  const apiKey = process.env.OPENROUTER_API_KEY;
+  if (!apiKey) {
     if (heuristicScore >= 75) return "Score de risque très élevé. Vérification manuelle fortement recommandée avant validation.";
     if (heuristicScore >= 55) return "Plusieurs signaux suspects détectés. Contacter le client pour vérification.";
     return "Signaux mineurs détectés. Peut être approuvé avec vigilance.";
   }
+
+  const modelChain = [
+    process.env.OPENROUTER_MODEL,
+    "meta-llama/llama-3.2-3b-instruct",
+    "meta-llama/llama-3.3-70b-instruct",
+    "meta-llama/llama-3.2-3b-instruct:free",
+    "meta-llama/llama-3.3-70b-instruct:free",
+  ].filter(Boolean) as string[];
+  const uniqueModels = [...new Set(modelChain)];
+
+  let lastErr: any = null;
+  for (const model of uniqueModels) {
+    try {
+      const response = await fetch(
+        "https://openrouter.ai/api/v1/chat/completions",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${apiKey}`,
+            "HTTP-Referer": process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000",
+            "X-Title": "Ro2ya Fraud Detection",
+          },
+          body: JSON.stringify({
+            model,
+            max_tokens: 200,
+            temperature: 0.2, // déterministe pour la sécurité
+            messages: [{ role: "user", content: prompt }],
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(`OpenRouter error (${model}): ${response.status} - ${await response.text()}`);
+      }
+      const data = await response.json();
+      const content = data.choices?.[0]?.message?.content?.trim();
+      if (content) return content;
+    } catch (err: any) {
+      console.warn(`[AI Fraud Analysis] Model ${model} failed, trying next... Error:`, err.message || err);
+      lastErr = err;
+    }
+  }
+
+  console.error('[AI Fraud Analysis] All models failed. Fallback to heuristics.', lastErr);
+  if (heuristicScore >= 75) return "Score de risque très élevé. Vérification manuelle fortement recommandée avant validation.";
+  if (heuristicScore >= 55) return "Plusieurs signaux suspects détectés. Contacter le client pour vérification.";
+  return "Signaux mineurs détectés. Peut être approuvé avec vigilance.";
 }
 
 // ─── Step 4: Niveau et recommandation finale ──────────────────────────────────

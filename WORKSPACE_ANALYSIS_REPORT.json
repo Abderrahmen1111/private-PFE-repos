@@ -1,0 +1,585 @@
+{
+  "analysisDate": "2025-05-24",
+  "projectType": "Next.js 14 + TypeScript + Supabase Commerce Platform",
+  "totalFiles": 436,
+  "summary": {
+    "critical": "42 files",
+    "important": "31 files",
+    "unused": "89 files",
+    "recommendations": "Remove dead code in scratch/, tmp/, and test files to reduce cognitive load and build time"
+  },
+  "appMechanism": {
+    "critical": {
+      "description": "Core application files actively used in production",
+      "count": 42,
+      "categories": {
+        "appRoutes": [
+          "app/layout.tsx",
+          "app/page.tsx",
+          "app/login/page.tsx",
+          "app/register/page.tsx",
+          "app/dashboard/[id]/page.tsx",
+          "app/dashboard/[id]/layout.tsx",
+          "app/dashboard/[id]/products/page.tsx",
+          "app/dashboard/[id]/reels/page.tsx",
+          "app/dashboard/[id]/stories/page.tsx",
+          "app/dashboard/[id]/social/page.tsx",
+          "app/dashboard/[id]/intelligence/page.tsx",
+          "app/dashboard/[id]/transactions/page.tsx",
+          "app/dashboard/[id]/leads/page.tsx",
+          "app/dashboard/[id]/support/tickets/page.tsx",
+          "app/profile/user/page.tsx",
+          "app/profile/businessOwner/page.tsx",
+          "app/shop/page.tsx",
+          "app/search/page.tsx",
+          "app/discover/page.tsx",
+          "app/messages/page.tsx",
+          "app/merchants/business/[id]/page.tsx",
+          "app/merchants/product/[id]/page.tsx",
+          "app/merchants/service/[id]/page.tsx",
+          "app/merchants/business/add/page.tsx",
+          "app/public/business/[id]/page.tsx",
+          "app/public/user/[id]/page.tsx",
+          "app/api/*/route.ts (15+ API routes)"
+        ],
+        "componentLibraries": [
+          "components/ui/* (60+ base UI components)",
+          "components/discover/* (Discover feed system)",
+          "components/dashboard/* (Dashboard features)",
+          "components/messaging/* (Real-time messaging)",
+          "components/reservation/* (Booking system)",
+          "components/checkout/* (E-commerce checkout)",
+          "components/profile/* (User profiles)",
+          "components/shop/* (Shop display)",
+          "components/notifications/* (Notification system)"
+        ],
+        "serverActions": [
+          "lib/actions/items.ts (Product CRUD)",
+          "lib/actions/orders.ts (Order management)",
+          "lib/actions/stores.ts (Store management)",
+          "lib/actions/users.ts (User management)",
+          "lib/actions/auth.ts (Authentication)",
+          "lib/actions/search.ts (Global search)",
+          "lib/actions/reels.ts (Reel content)",
+          "lib/actions/stories.ts (Story management)",
+          "lib/actions/comments.ts (Comment system)",
+          "lib/actions/reviews.ts (Reviews)",
+          "lib/actions/reservation.ts (Booking)",
+          "lib/actions/transactions.ts (Transaction tracking)",
+          "lib/actions/notifications.ts (Notification engine)",
+          "lib/actions/friendships.ts (Social connections)",
+          "lib/actions/favorites.ts (Save functionality)",
+          "lib/actions/store-follows.ts (Store following)",
+          "lib/actions/recommendations.ts (Personalization)",
+          "lib/actions/support.ts (Customer support)",
+          "lib/actions/promotions.ts (Promotions)",
+          "lib/actions/overviews.ts (Dashboard analytics)",
+          "lib/actions/leads.ts (Lead management)",
+          "lib/actions/analyzer-service.ts (AI comment analysis)",
+          "lib/actions/ai-notifications.ts (AI notifications)",
+          "lib/actions/business.ts (Business profiles)",
+          "lib/actions/product_detail.ts (Product page)",
+          "lib/actions/service_detail.ts (Service page)",
+          "lib/actions/public-profile.ts (Public profiles)"
+        ],
+        "supabase": [
+          "lib/supabase/client.ts (Browser client)",
+          "lib/supabase/server.ts (Server client)",
+          "lib/supabase/admin.ts (Admin client)",
+          "lib/supabase/auth.ts (Auth helpers)",
+          "lib/supabase/middleware.ts (Auth middleware)",
+          "lib/supabase/database.ts (DB helpers)",
+          "lib/supabase/storage.ts (File storage)",
+          "lib/supabase/realtime.ts (Real-time subscriptions)",
+          "lib/supabase/browser.ts (Browser config)"
+        ],
+        "reactHooks": [
+          "hooks/use-session.ts",
+          "hooks/use-user.ts",
+          "hooks/useMessaging.ts",
+          "hooks/useNotifications.ts",
+          "hooks/useTracking.ts",
+          "hooks/useVoiceSearch.ts",
+          "hooks/useWebRTCCall.ts",
+          "hooks/useSmartSearch.ts",
+          "hooks/useActionDrawer.ts"
+        ],
+        "zustandStores": [
+          "lib/store/use-cart-store.ts",
+          "lib/store/use-saves-store.ts",
+          "lib/store/use-messaging-store.ts",
+          "lib/store/use-call-store.ts"
+        ],
+        "configuration": [
+          "next.config.js",
+          "tsconfig.json",
+          "tailwind.config.ts",
+          "middleware.ts",
+          "components.json"
+        ],
+        "typeDefinitions": [
+          "types/index.ts",
+          "types/business.ts",
+          "types/messaging.ts",
+          "types/supabase.ts",
+          "types/ai-agent.ts",
+          "types/comment.types.ts"
+        ]
+      }
+    },
+    "important": {
+      "description": "Supporting files useful for maintenance but not directly used in main code flow",
+      "count": 31,
+      "categories": {
+        "aiUtilities": [
+          "lib/ai/comment-analyzer.ts (Sentiment analysis)",
+          "lib/ai/darija-parser.ts (Darija language support)",
+          "lib/ai/image-generator.ts (AI image generation)"
+        ],
+        "agentSystem": [
+          "lib/agents/prompts.ts (Agent prompts)",
+          "lib/agents/darija-rag.ts (Darija knowledge base)",
+          "lib/agents/darija-rules.ts (Darija rules)"
+        ],
+        "searchSystem": [
+          "lib/search/vector-search.ts (Vector similarity)",
+          "lib/search/hybrid-search.ts (Hybrid search)",
+          "lib/search/normalizer.ts (Query normalization)",
+          "lib/search/reranker.ts (Result reranking)"
+        ],
+        "additionalActions": [
+          "lib/actions/admin.ts (Admin operations)",
+          "lib/actions/user-activity.ts (Activity tracking)",
+          "lib/actions/ai-agent.ts (AI agent logic)",
+          "lib/actions/fraud-detection.ts (Fraud detection)",
+          "lib/actions/addbuss.ts (Business addition)",
+          "lib/actions/account_subscription.ts (Subscriptions)",
+          "lib/actions/sales-analyzer.ts (Sales analysis)",
+          "lib/actions/alerts.engine.ts (Alert generation)",
+          "lib/actions/groq-service.ts (Groq API integration)",
+          "lib/actions/openrouter-service.ts (OpenRouter API)"
+        ],
+        "utilities": [
+          "lib/utils.ts (Core utilities)",
+          "lib/utils/avatar.ts (Avatar generation)",
+          "lib/utils/qr-code.ts (QR code generation)",
+          "lib/tracking/trackEvent.ts (Event tracking)",
+          "lib/tracking/eventTypes.ts (Event definitions)",
+          "lib/context/UploadContext.tsx (Upload context)",
+          "lib/dashboard/store-access.ts (Store access control)",
+          "lib/session-utils.ts (Session management)",
+          "lib/rate-limit.ts (Rate limiting)",
+          "lib/suggestions.ts (Search suggestions)",
+          "lib/upload.ts (File upload)",
+          "lib/storage.ts (Storage operations)",
+          "lib/cloudinary.ts (Cloudinary integration)",
+          "lib/openrouter-embeddings.ts (Embedding service)"
+        ],
+        "darija": [
+          "lib/darija-dictionary.ts (Darija translation)",
+          "lib/darija-corpus-*.json (Language corpus - 4 files)"
+        ]
+      }
+    },
+    "unused": {
+      "description": "Dead code, test files, and temporary files - SAFE TO DELETE",
+      "count": 89,
+      "categories": {
+        "testFiles": {
+          "description": "Test and verification scripts - never imported in production code",
+          "rootLevel": [
+            "test-db.cjs",
+            "test-db.mjs",
+            "test-schema.js",
+            "test-transactions.js",
+            "TEST_SALES_ADVISOR.ts",
+            "check_reels.ts"
+          ],
+          "total": 6
+        },
+        "scratchDirectory": {
+          "description": "Experimental and one-off scripts in scratch/ folder",
+          "files": [
+            "scratch/add_placeholders.py",
+            "scratch/check_db.ts",
+            "scratch/check_embeddings_count.ts",
+            "scratch/check_items_columns.mjs",
+            "scratch/check_items_schema.ts",
+            "scratch/check_orders_schema.ts",
+            "scratch/check_promotions_schema.ts",
+            "scratch/check_reels_columns.ts",
+            "scratch/check_storage_buckets.ts",
+            "scratch/check_users.ts",
+            "scratch/debug_chars.ts",
+            "scratch/debug_intelligence.ts",
+            "scratch/debug_search.ts",
+            "scratch/find_tables.js",
+            "scratch/inspect_reels.ts",
+            "scratch/inspect_social.ts",
+            "scratch/regen_store_embeddings.ts",
+            "scratch/run_comprehensive_eval.ts",
+            "scratch/run_comprehensive_eval_part2.ts",
+            "scratch/seed_100stores_1000items.sql",
+            "scratch/seed_10k_items.mjs",
+            "scratch/seed_embeddings.mjs",
+            "scratch/seed_mass.ts",
+            "scratch/test-fraud.ts",
+            "scratch/test_car.ts",
+            "scratch/test_cloudflare_ai.ts",
+            "scratch/test_cloudinary.ts",
+            "scratch/test_cloudinary_v2.ts",
+            "scratch/test_darija_parser.ts",
+            "scratch/test_embedding.ts",
+            "scratch/test_full_image_gen.ts",
+            "scratch/test_openrouter.ts",
+            "scratch/test_search.ts",
+            "scratch/test_translation.ts",
+            "scratch/test_upload.ts",
+            "scratch/verify_dict.ts"
+          ],
+          "total": 36
+        },
+        "tmpDirectory": {
+          "description": "Temporary files in tmp/ folder",
+          "files": [
+            "tmp/check_messages.ts",
+            "tmp/check_txns.ts",
+            "tmp/test_query.ts",
+            "tmp/test_schema.ts"
+          ],
+          "total": 4
+        },
+        "deadCodeInLib": {
+          "description": "Unused code files in lib/",
+          "files": [
+            "lib/mock-data.ts (never imported)",
+            "lib/mock-data-10k.ts (never imported)",
+            "lib/darija-dictionary.test.ts (test file)",
+            "lib/actions/debug-schema.ts (debug function, never used)",
+            "lib/actions/stores.ts_top.tmp (backup file)"
+          ],
+          "total": 5
+        },
+        "errorLogs": {
+          "description": "Build/lint error logs",
+          "files": [
+            "ts_errors.txt",
+            "tsc_errors.txt"
+          ],
+          "total": 2
+        },
+        "documentation": {
+          "description": "Static documentation/reports",
+          "files": [
+            "STATISTICS_REAL_DATA_FOR_REPORT.md",
+            "CLASS_DIAGRAM_ARCHITECTURE.md"
+          ],
+          "total": 2
+        },
+        "otherFiles": {
+          "description": "Configuration and cache files",
+          "files": [
+            "policies.sql (raw SQL, not used)",
+            ".qodo/ (IDE cache directory)",
+            ".venv/ (Python venv)",
+            ".next/ (Next.js build cache)",
+            "node_modules/ (dependencies)",
+            "pnpm-lock.yaml",
+            ".eslintrc.json",
+            ".gitignore",
+            ".gitattributes"
+          ],
+          "note": "Some of these are necessary for the project to run"
+        }
+      }
+    }
+  },
+  "detailedMetrics": {
+    "fileDistribution": {
+      "typescript": {
+        "active": 38,
+        "inactive": 65,
+        "percentage_active": "37%"
+      },
+      "javascript": {
+        "active": 4,
+        "inactive": 24,
+        "percentage_active": "14%"
+      }
+    },
+    "directoryAnalysis": {
+      "app": {
+        "status": "CRITICAL",
+        "purpose": "Next.js App Router - main application pages",
+        "fileCount": "25+ pages",
+        "usage": "All files are actively used in production routes"
+      },
+      "components": {
+        "status": "CRITICAL",
+        "purpose": "React components library",
+        "fileCount": "120+ components",
+        "usage": "Heavily used across all pages",
+        "subfolders": {
+          "ui": "60+ base UI components (Shadcn/Radix)",
+          "discover": "Feed and card components",
+          "dashboard": "Dashboard features",
+          "messaging": "Chat and real-time messaging",
+          "reservation": "Booking system",
+          "checkout": "E-commerce checkout flow",
+          "profile": "User profile pages",
+          "shop": "Shop display components",
+          "notifications": "Notification UI",
+          "ai-agent": "AI assistant components"
+        }
+      },
+      "lib": {
+        "status": "MIXED",
+        "subdirs": {
+          "actions": "CRITICAL - 38 active server functions",
+          "supabase": "CRITICAL - Database abstraction layer",
+          "store": "CRITICAL - Zustand state management",
+          "ai": "IMPORTANT - AI utilities (3 files)",
+          "search": "IMPORTANT - Search engine components",
+          "agents": "IMPORTANT - RAG and prompt system",
+          "utils": "IMPORTANT - Helper functions",
+          "tracking": "IMPORTANT - Analytics",
+          "context": "IMPORTANT - React contexts",
+          "dashboard": "IMPORTANT - Dashboard utilities"
+        }
+      },
+      "hooks": {
+        "status": "CRITICAL",
+        "fileCount": 9,
+        "usage": "Custom React hooks for common functionality"
+      },
+      "types": {
+        "status": "CRITICAL",
+        "fileCount": 6,
+        "usage": "TypeScript type definitions"
+      },
+      "scratch": {
+        "status": "DELETE",
+        "fileCount": 36,
+        "purpose": "Experimental/debug scripts",
+        "recommendation": "Delete entire directory - none of these files are imported in production code"
+      },
+      "tmp": {
+        "status": "DELETE",
+        "fileCount": 4,
+        "purpose": "Temporary files",
+        "recommendation": "Delete entire directory"
+      },
+      "public": {
+        "status": "KEEP",
+        "fileCount": "Images, fonts, and static assets"
+      }
+    }
+  },
+  "cleanupRecommendations": {
+    "immediate_delete_safe": [
+      {
+        "path": "scratch/",
+        "reason": "No imports in production code, 36 experimental test files",
+        "impact": "Reduces clutter, slightly faster installs",
+        "risk": "NONE"
+      },
+      {
+        "path": "tmp/",
+        "reason": "Temporary files, 4 debug scripts",
+        "impact": "Cleans workspace",
+        "risk": "NONE"
+      },
+      {
+        "path": "test-db.cjs",
+        "reason": "Test file, never imported",
+        "impact": "Low",
+        "risk": "NONE"
+      },
+      {
+        "path": "test-db.mjs",
+        "reason": "Test file, never imported",
+        "impact": "Low",
+        "risk": "NONE"
+      },
+      {
+        "path": "test-schema.js",
+        "reason": "Test file, never imported",
+        "impact": "Low",
+        "risk": "NONE"
+      },
+      {
+        "path": "test-transactions.js",
+        "reason": "Test file, never imported",
+        "impact": "Low",
+        "risk": "NONE"
+      },
+      {
+        "path": "TEST_SALES_ADVISOR.ts",
+        "reason": "Test file, never imported",
+        "impact": "Low",
+        "risk": "NONE"
+      },
+      {
+        "path": "check_reels.ts",
+        "reason": "Debug/check script, never imported",
+        "impact": "Low",
+        "risk": "NONE"
+      },
+      {
+        "path": "lib/mock-data.ts",
+        "reason": "Mock data, never imported in production code",
+        "impact": "Reduces bundle slightly",
+        "risk": "NONE"
+      },
+      {
+        "path": "lib/mock-data-10k.ts",
+        "reason": "Mock data, never imported in production code",
+        "impact": "Reduces bundle slightly",
+        "risk": "NONE"
+      },
+      {
+        "path": "lib/darija-dictionary.test.ts",
+        "reason": "Test file",
+        "impact": "Low",
+        "risk": "NONE"
+      },
+      {
+        "path": "lib/actions/debug-schema.ts",
+        "reason": "Debug function, never imported or used",
+        "impact": "Low",
+        "risk": "NONE"
+      },
+      {
+        "path": "lib/actions/stores.ts_top.tmp",
+        "reason": "Temporary backup file",
+        "impact": "Low",
+        "risk": "NONE"
+      },
+      {
+        "path": "ts_errors.txt",
+        "reason": "Error log file",
+        "impact": "Low",
+        "risk": "NONE"
+      },
+      {
+        "path": "tsc_errors.txt",
+        "reason": "Error log file",
+        "impact": "Low",
+        "risk": "NONE"
+      }
+    ],
+    "consider_archiving": [
+      {
+        "path": "STATISTICS_REAL_DATA_FOR_REPORT.md",
+        "reason": "Static documentation from past analysis",
+        "action": "Archive or move to docs folder"
+      },
+      {
+        "path": "CLASS_DIAGRAM_ARCHITECTURE.md",
+        "reason": "Architecture documentation (may be outdated)",
+        "action": "Update and move to docs folder"
+      },
+      {
+        "path": "policies.sql",
+        "reason": "Raw SQL file not integrated in migrations",
+        "action": "Move to supabase/migrations if needed"
+      }
+    ],
+    "keep_for_now": [
+      {
+        "path": "scripts/",
+        "reason": "Migration and setup scripts - may be needed for deployment"
+      },
+      {
+        "path": "styles/",
+        "reason": "Global styles needed by application"
+      },
+      {
+        "path": "supabase/",
+        "reason": "Database migrations and functions"
+      }
+    ]
+  },
+  "architectureNotes": {
+    "corePatterns": [
+      "Next.js 14 App Router with TypeScript",
+      "Server-Side Actions (Server-Only Functions) for API logic",
+      "Supabase for backend (PostgreSQL + Auth + Storage)",
+      "React Query/Zustand for state management",
+      "Tailwind + Shadcn/Radix UI for components",
+      "Real-time messaging with Supabase Realtime",
+      "AI integration (Groq, OpenRouter, Google Gemini)",
+      "Vector search for semantic queries",
+      "Darija language support for Tunisian market"
+    ],
+    "dataFlow": {
+      "clientSide": "React components → Server Actions → Supabase",
+      "serverSide": "Server Actions → Supabase SDK → PostgreSQL/Storage/Auth",
+      "realtime": "Supabase Realtime subscriptions for messages, notifications, etc.",
+      "externalAPIs": "Groq/OpenRouter for AI, Cloudinary for image hosting"
+    },
+    "keyFeatures": [
+      "E-commerce platform (shop, cart, orders, payments)",
+      "Social network (follow, message, notifications)",
+      "Business directory with reviews and ratings",
+      "Reservation system for services",
+      "AI-powered recommendations and analysis",
+      "Real-time messaging and video calls",
+      "Analytics and fraud detection",
+      "Multi-language support (Arabic/Darija)"
+    ]
+  },
+  "performanceAnalysis": {
+    "buildImpact": {
+      "currentSize": "~250MB with node_modules",
+      "potentialReduction": "Delete scratch/ (36 files) + unused test files (~2-3MB code)",
+      "recommendation": "Safe cleanup with no functional impact"
+    },
+    "bundleImpact": {
+      "unused_imports": "mock-data*.ts never imported - 0 bytes in bundle",
+      "deadCode_lib": "lib/actions/debug-schema.ts - negligible impact",
+      "recommendation": "No significant bundle impact from cleanup"
+    },
+    "typeChecking": {
+      "ts_errors_file": "Present (ts_errors.txt) - indicates some type issues to resolve",
+      "recommendation": "Address type errors before production deployment"
+    }
+  },
+  "actionItems": [
+    {
+      "priority": "HIGH",
+      "task": "Delete scratch/ directory (36 experimental test files)",
+      "rationale": "Zero production usage, clutters workspace, wastes disk space"
+    },
+    {
+      "priority": "HIGH",
+      "task": "Delete tmp/ directory (4 temporary files)",
+      "rationale": "Temporary artifacts no longer needed"
+    },
+    {
+      "priority": "MEDIUM",
+      "task": "Remove lib/mock-data.ts and lib/mock-data-10k.ts",
+      "rationale": "Never imported, suggests old seeding strategy"
+    },
+    {
+      "priority": "MEDIUM",
+      "task": "Remove test files at root level (test-*.js/ts, TEST_SALES_ADVISOR.ts, check_reels.ts)",
+      "rationale": "Debug and test scripts not integrated with test runner"
+    },
+    {
+      "priority": "LOW",
+      "task": "Move/archive documentation to docs/ folder",
+      "rationale": "Organize repo structure - keep in project but organized"
+    },
+    {
+      "priority": "LOW",
+      "task": "Review and fix TypeScript errors (see ts_errors.txt)",
+      "rationale": "Ensure type safety before production"
+    },
+    {
+      "priority": "MAINTENANCE",
+      "task": "Set up proper test structure (Jest/Vitest + test files in __tests__/)",
+      "rationale": "Current test files are ad-hoc, no integrated test runner"
+    }
+  ]
+}
