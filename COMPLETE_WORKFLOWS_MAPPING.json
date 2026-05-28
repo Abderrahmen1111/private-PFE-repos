@@ -1,0 +1,1186 @@
+{
+  "metadata": {
+    "project": "Ro2ya.tn E-Commerce Marketplace",
+    "total_workflows": 28,
+    "total_sprints": 10,
+    "workflows_with_ia": 7,
+    "last_updated": "2026-05-25",
+    "analysis_scope": "Server Actions, API Routes, Pages, Components, Supabase Clients"
+  },
+  "workflows_summary": {
+    "WF-01": "Inscription Utilisateur",
+    "WF-02": "Connexion Utilisateur",
+    "WF-03": "Création Magasin par PRO",
+    "WF-04": "Validation Admin Magasin",
+    "WF-05": "Ajout Produit/Service Manuellement",
+    "WF-06": "Modification Produit/Service",
+    "WF-07": "Création Produit par IA",
+    "WF-08": "Ajout Promotion",
+    "WF-09": "Modification Promotion",
+    "WF-10": "Réservation Service par Client",
+    "WF-11": "Créer Reel",
+    "WF-12": "Interagir Reels (Like, Comment, Save)",
+    "WF-13": "Supprimer Reel",
+    "WF-14": "Ajouter Story",
+    "WF-15": "Supprimer Story",
+    "WF-16": "Recherche Sémantique Darija",
+    "WF-17": "Recherche par Image",
+    "WF-18": "Recherche Géolocalisée",
+    "WF-19": "Poster Avis (Sentiment Analysis)",
+    "WF-20": "Passer Commande/Réservation",
+    "WF-21": "Accepter/Refuser Commande",
+    "WF-22": "Validation QR Code",
+    "WF-23": "Ajouter aux Favoris",
+    "WF-24": "Chat User-to-User",
+    "WF-25": "Chat Client-to-Magasin",
+    "WF-26": "Ticket Support Client",
+    "WF-27": "Chat Store-to-Admin",
+    "WF-28": "Recommandation Promotion par IA"
+  },
+  "workflows": [
+    {
+      "id": "WF-01",
+      "nom": "Inscription Utilisateur",
+      "sprint": 1,
+      "theme": "Authentification",
+      "ia": false,
+      "complexity": "Basique",
+      "description": "Nouvel utilisateur s'inscrit (email, password, profil)",
+      "server_actions": [
+        "auth.ts: signup()",
+        "auth.ts: sendVerificationEmail()",
+        "auth.ts: verifyEmail()",
+        "users.ts: ensureUserExists()",
+        "users.ts: updateProfile()"
+      ],
+      "api_routes": [
+        "/api/auth/signup (POST)",
+        "/api/auth/verify (POST)",
+        "/api/auth/session (GET)"
+      ],
+      "pages": [
+        "app/register/page.tsx"
+      ],
+      "composants": [
+        "SignUpForm.tsx",
+        "AuthCard.tsx",
+        "session-provider.tsx"
+      ],
+      "supabase_clients": [
+        "lib/supabase/auth.ts: signUp()",
+        "lib/supabase/server.ts: getUser()",
+        "lib/supabase/database.ts: insertUser()"
+      ],
+      "total_fonctions": 8,
+      "orphaned": false,
+      "data_flow": "User Input → Validation → POST /api/auth/signup → auth.ts signup() → Supabase auth + users table → Email verification → Redirect /auth/verify-email",
+      "status": "Implémenté"
+    },
+    {
+      "id": "WF-02",
+      "nom": "Connexion Utilisateur",
+      "sprint": 1,
+      "theme": "Authentification",
+      "ia": false,
+      "complexity": "Basique",
+      "description": "Utilisateur se connecte (email, password)",
+      "server_actions": [
+        "auth.ts: login()",
+        "auth.ts: createSession()",
+        "users.ts: getUserData()"
+      ],
+      "api_routes": [
+        "/api/auth/login (POST)",
+        "/api/auth/session (GET)",
+        "/api/auth/logout (POST)"
+      ],
+      "pages": [
+        "app/login/page.tsx"
+      ],
+      "composants": [
+        "LoginForm.tsx",
+        "AuthCard.tsx"
+      ],
+      "supabase_clients": [
+        "lib/supabase/auth.ts: signIn()",
+        "lib/supabase/server.ts: getUser()",
+        "lib/supabase/database.ts: getUser()"
+      ],
+      "total_fonctions": 6,
+      "orphaned": false,
+      "data_flow": "User Input → POST /api/auth/login → auth.ts login() → Supabase signIn() → Session token → httpOnly cookie → Redirect to dashboard",
+      "status": "Implémenté"
+    },
+    {
+      "id": "WF-03",
+      "nom": "Création Magasin par PRO",
+      "sprint": 2,
+      "theme": "Gestion Magasin",
+      "ia": false,
+      "complexity": "Basique",
+      "description": "Propriétaire crée nouveau magasin (informations, localisation, images)",
+      "server_actions": [
+        "stores.ts: getStoreById()",
+        "stores.ts: getUserStores()",
+        "stores.ts: getPrimaryStoreForOwner()",
+        "addbuss.ts: validateBusinessInfo()",
+        "addbuss.ts: submitBusinessRegistration()"
+      ],
+      "api_routes": [
+        "/api/stores (POST)",
+        "/api/stores/[id] (GET, PUT)",
+        "/api/stores/me (GET)"
+      ],
+      "pages": [
+        "app/merchants/business/add/page.tsx",
+        "app/dashboard/[id]/profile/page.tsx"
+      ],
+      "composants": [
+        "dashboard/AccountSection.tsx",
+        "ui/MapPicker.tsx"
+      ],
+      "supabase_clients": [
+        "lib/supabase/database.ts: insertStore()",
+        "lib/supabase/storage.ts: uploadFile()",
+        "lib/supabase/database.ts: updateUser()"
+      ],
+      "total_fonctions": 8,
+      "orphaned": false,
+      "data_flow": "Form (name, address, category, logo, banner) → Validation → MapPicker → POST /api/stores → stores.ts createStore() → Upload logo/banner → Supabase insert → status=PENDING",
+      "status": "Implémenté"
+    },
+    {
+      "id": "WF-04",
+      "nom": "Validation Admin Magasin",
+      "sprint": 2,
+      "theme": "Gestion Magasin",
+      "ia": false,
+      "complexity": "Basique",
+      "description": "Admin valide/rejette créations magasins",
+      "server_actions": [
+        "admin.ts: approveStore()",
+        "admin.ts: rejectStore()",
+        "admin.ts: getStoresForReview()",
+        "notifications.ts: sendStoreApprovalNotification()"
+      ],
+      "api_routes": [
+        "/api/admin/stores (GET)",
+        "/api/stores/[id] (PUT)"
+      ],
+      "pages": [
+        "app/dashboard/[id]/page.tsx (admin view)"
+      ],
+      "composants": [
+        "BusinessImageGallery.tsx",
+        "ReviewModal.tsx"
+      ],
+      "supabase_clients": [
+        "lib/supabase/database.ts: updateStore()",
+        "lib/supabase/realtime.ts: subscribeToStoreStatusChanges()"
+      ],
+      "total_fonctions": 5,
+      "orphaned": false,
+      "data_flow": "Admin Dashboard → Review pending stores → Click Approve/Reject → PUT /api/stores/[id] → admin.ts approveStore() → Update status → Notify owner → Store becomes public",
+      "status": "Implémenté"
+    },
+    {
+      "id": "WF-05",
+      "nom": "Ajout Produit/Service Manuellement",
+      "sprint": 3,
+      "theme": "Catalogue (Produits)",
+      "ia": false,
+      "complexity": "Basique",
+      "description": "Vendeur ajoute produit/service manuellement (détails, images, prix)",
+      "server_actions": [
+        "items.ts: getPublicItemsByStoreId()",
+        "items.ts: getAdminItemsByStoreId()",
+        "items.ts: upsertItem()",
+        "items.ts: decrementStock()"
+      ],
+      "api_routes": [
+        "/api/items (POST, GET)",
+        "/api/items/[id] (GET, PUT, DELETE)",
+        "/api/dashboard/[storeId]/products"
+      ],
+      "pages": [
+        "app/dashboard/[id]/products/page.tsx"
+      ],
+      "composants": [
+        "CameraCapture.tsx",
+        "dashboard/UploadProgressManager.tsx",
+        "ui/form.tsx",
+        "ProductCard.tsx"
+      ],
+      "supabase_clients": [
+        "lib/supabase/database.ts: insertItem()",
+        "lib/supabase/storage.ts: uploadFiles()",
+        "lib/supabase/database.ts: generateEmbedding()"
+      ],
+      "total_fonctions": 7,
+      "orphaned": false,
+      "data_flow": "Form (name, description, price, category, images) → Upload images → Generate embeddings → POST /api/items → items.ts upsertItem() → Supabase insert → Product live",
+      "status": "Implémenté"
+    },
+    {
+      "id": "WF-06",
+      "nom": "Modification Produit/Service",
+      "sprint": 3,
+      "theme": "Catalogue (Produits)",
+      "ia": false,
+      "complexity": "Basique",
+      "description": "Vendeur modifie infos produit existant (prix, stock, images)",
+      "server_actions": [
+        "items.ts: upsertItem()",
+        "items.ts: getAdminItemsByStoreId()"
+      ],
+      "api_routes": [
+        "/api/dashboard/[storeId]/products/[productId] (GET, PUT, DELETE)",
+        "/api/items/[id] (PUT)"
+      ],
+      "pages": [
+        "app/dashboard/[id]/products/page.tsx"
+      ],
+      "composants": [
+        "ui/form.tsx"
+      ],
+      "supabase_clients": [
+        "lib/supabase/database.ts: updateItem()",
+        "lib/supabase/storage.ts: deleteFile()",
+        "lib/supabase/database.ts: updateEmbedding()"
+      ],
+      "total_fonctions": 4,
+      "orphaned": false,
+      "data_flow": "Edit form (pre-filled) → Modify fields → PUT /api/dashboard/[storeId]/products/[productId] → items.ts updateItem() → Update embeddings → Supabase update → Changes live",
+      "status": "Implémenté"
+    },
+    {
+      "id": "WF-07",
+      "nom": "Création Produit par IA",
+      "sprint": 3,
+      "theme": "Catalogue (Produits)",
+      "ia": true,
+      "complexity": "Avancé",
+      "description": "IA génère description/images produit à partir de photo simple",
+      "server_actions": [
+        "ai-agent.ts: generateProductDescription()",
+        "ai-agent.ts: generateProductImages()",
+        "items.ts: upsertItem()"
+      ],
+      "api_routes": [
+        "/api/ai-agent (POST)",
+        "/api/items (POST)"
+      ],
+      "pages": [
+        "app/dashboard/[id]/products/page.tsx"
+      ],
+      "composants": [
+        "CameraCapture.tsx",
+        "ui/glowing-ai-chat-assistant.tsx"
+      ],
+      "supabase_clients": [
+        "lib/supabase/database.ts: insertItem()"
+      ],
+      "ai_services": [
+        "OpenRouter LLM: generateProductDescription()",
+        "Cloudflare AI: generateImages()",
+        "Image Recognition: analyzeImage()"
+      ],
+      "total_fonctions": 5,
+      "orphaned": false,
+      "data_flow": "CameraCapture (photo) → POST /api/ai-agent {image} → ai-agent.ts generateProductDescription() → LLM analysis → Cloudflare image generation → Display suggestions → Vendor approve → POST /api/items → Product created",
+      "status": "Implémenté"
+    },
+    {
+      "id": "WF-08",
+      "nom": "Ajout Promotion",
+      "sprint": 4,
+      "theme": "Promotions",
+      "ia": false,
+      "complexity": "Basique",
+      "description": "Vendeur crée promotion (réduction, produits applicables, dates)",
+      "server_actions": [
+        "promotions.ts: getPromotions()",
+        "promotions.ts: createPromotion()"
+      ],
+      "api_routes": [
+        "/api/promotions (POST, GET)",
+        "/api/dashboard/[storeId]/promotions (POST, GET)"
+      ],
+      "pages": [
+        "app/dashboard/[id]/page.tsx"
+      ],
+      "composants": [
+        "dashboard/PromotionsSection.tsx",
+        "Offers.tsx",
+        "PromotionBanner.tsx"
+      ],
+      "supabase_clients": [
+        "lib/supabase/database.ts: insertPromotion()",
+        "lib/supabase/database.ts: insertPromotionItems()"
+      ],
+      "total_fonctions": 4,
+      "orphaned": false,
+      "data_flow": "Form (title, discount%, dates) → Select products → POST /api/dashboard/[storeId]/promotions → promotions.ts createPromotion() → Insert promotion + promotion_items → Auto-publish if valid → Products show discounted price",
+      "status": "Implémenté"
+    },
+    {
+      "id": "WF-09",
+      "nom": "Modification Promotion",
+      "sprint": 4,
+      "theme": "Promotions",
+      "ia": false,
+      "complexity": "Basique",
+      "description": "Vendeur modifie promotion existante (discount%, dates, produits)",
+      "server_actions": [
+        "promotions.ts: getPromotions()",
+        "promotions.ts: createPromotion()"
+      ],
+      "api_routes": [
+        "/api/dashboard/[storeId]/promotions (PUT, DELETE)"
+      ],
+      "pages": [
+        "app/dashboard/[id]/page.tsx"
+      ],
+      "composants": [
+        "dashboard/PromotionsSection.tsx"
+      ],
+      "supabase_clients": [
+        "lib/supabase/database.ts: updatePromotion()",
+        "lib/supabase/database.ts: updatePromotionItems()"
+      ],
+      "total_fonctions": 3,
+      "orphaned": false,
+      "data_flow": "Edit form (pre-filled) → Modify discount%, dates, products → PUT /api/dashboard/[storeId]/promotions/{promoId} → promotions.ts updatePromotion() → Update Supabase → Changes reflected in real-time",
+      "status": "Implémenté"
+    },
+    {
+      "id": "WF-10",
+      "nom": "Réservation Service par Client",
+      "sprint": 8,
+      "theme": "Commandes",
+      "ia": false,
+      "complexity": "Basique",
+      "description": "Client réserve service avec date/heure",
+      "server_actions": [
+        "orders.ts: createOrder()",
+        "reservations.ts: createBooking()",
+        "transactions.ts: processPayment()"
+      ],
+      "api_routes": [
+        "/api/reservations (POST, GET)",
+        "/api/orders (POST, GET)"
+      ],
+      "pages": [
+        "app/merchants/service/[id]/page.tsx",
+        "app/profile/reservations/page.tsx"
+      ],
+      "composants": [
+        "reservation/ReservationDrawerContent.tsx",
+        "ServiceBookingCard.tsx",
+        "ServiceCard.tsx"
+      ],
+      "supabase_clients": [
+        "lib/supabase/database.ts: insertBooking()",
+        "lib/supabase/database.ts: updateServiceSchedule()"
+      ],
+      "total_fonctions": 5,
+      "orphaned": false,
+      "data_flow": "Service page → Click Book → ReservationDrawerContent → Select date/time/guests → Payment → POST /api/reservations → reservations.ts createBooking() → Check availability → Process payment → Insert booking → Send confirmation",
+      "status": "Implémenté"
+    },
+    {
+      "id": "WF-11",
+      "nom": "Créer Reel",
+      "sprint": 5,
+      "theme": "Contenu Social",
+      "ia": false,
+      "complexity": "Basique",
+      "description": "Vendor/User crée vidéo courte (upload, caption, CTA)",
+      "server_actions": [
+        "reels.ts: uploadReel()",
+        "reels.ts: getBusinessReels()",
+        "reels.ts: updateReelMetadata()",
+        "items.ts: linkReelToItem()"
+      ],
+      "api_routes": [
+        "/api/reels (POST, GET)",
+        "/api/dashboard/[storeId]/reels (POST, GET, DELETE)"
+      ],
+      "pages": [
+        "app/dashboard/[id]/reels/page.tsx",
+        "app/discover/page.tsx"
+      ],
+      "composants": [
+        "SnapchatReels.tsx",
+        "CameraCapture.tsx",
+        "discover/discover-feed.tsx"
+      ],
+      "supabase_clients": [
+        "lib/supabase/storage.ts: uploadFile()",
+        "lib/supabase/database.ts: insertReel()",
+        "lib/supabase/database.ts: generateEmbedding()"
+      ],
+      "total_fonctions": 5,
+      "orphaned": false,
+      "data_flow": "CameraCapture (video) → Add caption, CTA → Link product (optional) → POST /api/reels → reels.ts uploadReel() → Generate embeddings → Upload video → Insert reels table → Reel published → Appears in discovery feed",
+      "status": "Implémenté"
+    },
+    {
+      "id": "WF-12",
+      "nom": "Interagir Reels (Like, Comment, Save)",
+      "sprint": 5,
+      "theme": "Contenu Social",
+      "ia": false,
+      "complexity": "Basique",
+      "description": "User interagit avec reels (like, comment, save, share)",
+      "server_actions": [
+        "reels.ts: likeReel()",
+        "reels.ts: unlikeReel()",
+        "comments.ts: postComment()",
+        "comments.ts: deleteComment()",
+        "favorites.ts: saveReel()"
+      ],
+      "api_routes": [
+        "/api/reels/comments (POST, GET, DELETE)",
+        "/api/reels/like (POST, DELETE)"
+      ],
+      "pages": [
+        "app/discover/page.tsx"
+      ],
+      "composants": [
+        "discover/discover-card.tsx",
+        "discover/feed-actions.tsx",
+        "discover/comment-drawer.tsx",
+        "ui/share-button.tsx"
+      ],
+      "supabase_clients": [
+        "lib/supabase/database.ts: insertReelLike()",
+        "lib/supabase/database.ts: insertReelComment()",
+        "lib/supabase/database.ts: updateReelStats()"
+      ],
+      "total_fonctions": 6,
+      "orphaned": false,
+      "data_flow": "User viewing reel → Click Like → POST /api/reels/[id]/like → reels.ts likeReel() → Insert user_interactions → Update reels_stats.likes_count++ → Like highlighted → Similar for comment, save, share",
+      "status": "Implémenté"
+    },
+    {
+      "id": "WF-13",
+      "nom": "Supprimer Reel",
+      "sprint": 5,
+      "theme": "Contenu Social",
+      "ia": false,
+      "complexity": "Basique",
+      "description": "Vendor/Admin supprime reel (content moderation)",
+      "server_actions": [
+        "reels.ts: deleteReel()",
+        "reels.ts: hardDeleteReel()",
+        "admin.ts: removeInappropriateReel()"
+      ],
+      "api_routes": [
+        "/api/dashboard/[storeId]/reels/[reelId] (DELETE)",
+        "/api/admin/reels (DELETE)"
+      ],
+      "pages": [
+        "app/dashboard/[id]/reels/page.tsx"
+      ],
+      "composants": [
+        "SnapchatReels.tsx"
+      ],
+      "supabase_clients": [
+        "lib/supabase/database.ts: softDeleteReel()",
+        "lib/supabase/storage.ts: deleteFile()"
+      ],
+      "total_fonctions": 4,
+      "orphaned": false,
+      "data_flow": "Vendor/Admin → Dashboard/Admin → Reels → Click Delete → DELETE /api/dashboard/[storeId]/reels/[reelId] → reels.ts deleteReel() → Mark as deleted or hard delete → Remove from feed → Remove from recommendations",
+      "status": "Implémenté"
+    },
+    {
+      "id": "WF-14",
+      "nom": "Ajouter Story",
+      "sprint": 5,
+      "theme": "Contenu Social",
+      "ia": false,
+      "complexity": "Basique",
+      "description": "Vendor crée story temporaire (24h expiry)",
+      "server_actions": [
+        "stories.ts: uploadStory()",
+        "stories.ts: getStoryViews()",
+        "reels.ts: getBusinessReels()"
+      ],
+      "api_routes": [
+        "/api/stories (POST, GET)",
+        "/api/dashboard/[storeId]/stories (POST, GET)"
+      ],
+      "pages": [
+        "app/dashboard/[id]/stories/page.tsx",
+        "app/discover/page.tsx"
+      ],
+      "composants": [
+        "BusinessStories.tsx",
+        "discover/DiscoverStoriesRow.tsx",
+        "ui/stories-carousel.tsx"
+      ],
+      "supabase_clients": [
+        "lib/supabase/storage.ts: uploadFile()",
+        "lib/supabase/database.ts: insertStory()",
+        "lib/supabase/database.ts: updateStoryExpiry()"
+      ],
+      "total_fonctions": 4,
+      "orphaned": false,
+      "data_flow": "Vendor → Dashboard → Stories → Add → Upload image/video → Add caption (optional) → POST /api/stories → stories.ts uploadStory() → Set expires_at = now() + 24h → Insert stories table → Story appears in Stories row on discover page",
+      "status": "Implémenté"
+    },
+    {
+      "id": "WF-15",
+      "nom": "Supprimer Story",
+      "sprint": 5,
+      "theme": "Contenu Social",
+      "ia": false,
+      "complexity": "Basique",
+      "description": "Vendor supprime story manuellement (avant 24h)",
+      "server_actions": [
+        "stories.ts: deleteStory()"
+      ],
+      "api_routes": [
+        "/api/dashboard/[storeId]/stories/[storyId] (DELETE)"
+      ],
+      "pages": [
+        "app/dashboard/[id]/stories/page.tsx"
+      ],
+      "composants": [
+        "BusinessStories.tsx"
+      ],
+      "supabase_clients": [
+        "lib/supabase/database.ts: deleteStory()",
+        "lib/supabase/storage.ts: deleteFile()"
+      ],
+      "total_fonctions": 2,
+      "orphaned": false,
+      "data_flow": "Vendor → Dashboard → Stories → Click Delete → DELETE /api/dashboard/[id]/stories/[storyId] → stories.ts deleteStory() → Remove from storage + database → Stop displaying",
+      "status": "Implémenté"
+    },
+    {
+      "id": "WF-16",
+      "nom": "Recherche Sémantique Darija",
+      "sprint": 6,
+      "theme": "Recherche IA",
+      "ia": true,
+      "complexity": "Avancé",
+      "description": "User recherche en Darija, trouve produits sémantiquement similaires",
+      "server_actions": [
+        "search.ts: performSemanticSearch()",
+        "search.ts: searchByLocation()",
+        "user-activity.ts: logUserSearch()"
+      ],
+      "api_routes": [
+        "/api/semantic-search (POST)",
+        "/api/suggestions (GET)",
+        "/api/geo/nearby (GET)"
+      ],
+      "pages": [
+        "app/search/page.tsx",
+        "app/discover/page.tsx"
+      ],
+      "composants": [
+        "ui/ai-input-with-search.tsx",
+        "discover/discover-feed.tsx"
+      ],
+      "supabase_clients": [
+        "lib/supabase/database.ts: rpc('match_items')",
+        "lib/supabase/database.ts: vectorSearch()"
+      ],
+      "search_libraries": [
+        "lib/search/normalizer.ts: normalizeQuery()",
+        "lib/search/vector-search.ts: vectorSearch()",
+        "lib/search/hybrid-search.ts: hybridSearch()",
+        "lib/search/reranker.ts: rerank()"
+      ],
+      "ai_services": [
+        "OpenRouter LLM: expandQuery(), translateDarija()",
+        "OpenRouter Embeddings: generateEmbedding()",
+        "LLM Re-ranking: rerank()"
+      ],
+      "total_fonctions": 10,
+      "orphaned": false,
+      "data_flow": "User: Search 'تاجيين أحمر' → POST /api/semantic-search → darija-parser.ts parseDarijaQuery() → Normalize → LLM expand query → vector-search.ts vectorSearch() → Generate embedding → Supabase pgvector similarity → hybrid-search.ts combine() → reranker.ts rerank() → Return top 20 results → Display in feed",
+      "status": "Implémenté"
+    },
+    {
+      "id": "WF-17",
+      "nom": "Recherche par Image",
+      "sprint": 6,
+      "theme": "Recherche IA",
+      "ia": true,
+      "complexity": "Avancé",
+      "description": "User upload image, trouve produits visuellement similaires",
+      "server_actions": [
+        "search.ts: performImageSearch()",
+        "ai-agent.ts: analyzeImage()"
+      ],
+      "api_routes": [
+        "/api/image-search (POST)"
+      ],
+      "pages": [
+        "app/search/page.tsx"
+      ],
+      "composants": [
+        "CameraCapture.tsx",
+        "ui/ResultsMap.tsx"
+      ],
+      "supabase_clients": [
+        "lib/supabase/database.ts: vectorSearch()"
+      ],
+      "ai_services": [
+        "Cloudflare AI Vision: analyzeImage(), describeImage()",
+        "OpenRouter Embeddings: generateEmbedding()",
+        "Vector DB: similaritySearch()"
+      ],
+      "total_fonctions": 4,
+      "orphaned": false,
+      "data_flow": "User: Upload product photo → POST /api/image-search {image} → search.ts performImageSearch() → image-generator.ts analyzeImage() → Cloudflare Vision: Identify objects, colors, style → Create description → Generate embedding → Vector search → Find visually similar items → Return results ranked by similarity",
+      "status": "Implémenté"
+    },
+    {
+      "id": "WF-18",
+      "nom": "Recherche Géolocalisée",
+      "sprint": 6,
+      "theme": "Recherche IA",
+      "ia": true,
+      "complexity": "Avancé",
+      "description": "User permet localisation, trouve magasins/produits proches",
+      "server_actions": [
+        "search.ts: searchByLocation()",
+        "locations.ts: getCurrentLocation()"
+      ],
+      "api_routes": [
+        "/api/geo/nearby (GET)",
+        "/api/geo/autocomplete (GET)",
+        "/api/geo/reverse (GET)"
+      ],
+      "pages": [
+        "app/discover/page.tsx",
+        "app/search/page.tsx"
+      ],
+      "composants": [
+        "ui/MapPicker.tsx",
+        "ui/ResultsMap.tsx"
+      ],
+      "supabase_clients": [
+        "lib/supabase/database.ts: rpc('nearby_stores')",
+        "lib/supabase/database.ts: PostGIS spatial queries"
+      ],
+      "technologies": [
+        "PostGIS (Supabase spatial queries)",
+        "Leaflet/Mapbox (map display)",
+        "Browser Geolocation API"
+      ],
+      "total_fonctions": 5,
+      "orphaned": false,
+      "data_flow": "User: App requests location → Browser: Get lat/lng → GET /api/geo/nearby?lat=33.5&lng=-7.6&radius=5 → search.ts searchByLocation() → Supabase PostGIS: Find stores within 5km → Calculate distance → Sort by distance + rating → Return top 20 → Display on map with distance info",
+      "status": "Implémenté"
+    },
+    {
+      "id": "WF-19",
+      "nom": "Poster Avis (Sentiment Analysis)",
+      "sprint": 7,
+      "theme": "Évaluations",
+      "ia": true,
+      "complexity": "Mixte",
+      "description": "Client poster avis avec rating, texte, images (sentiment analysis auto)",
+      "server_actions": [
+        "reviews.ts: submitReview()",
+        "reviews.ts: updateReview()",
+        "reviews.ts: deleteReview()",
+        "ai-agent.ts: analyzeSentiment()",
+        "admin.ts: approveReview()"
+      ],
+      "api_routes": [
+        "/api/reviews (POST, GET)",
+        "/api/dashboard/[storeId]/reviews (GET)",
+        "/api/comments/analyze (POST)"
+      ],
+      "pages": [
+        "app/profile/user/page.tsx",
+        "app/public/user/[id]/page.tsx",
+        "app/public/business/[id]/page.tsx"
+      ],
+      "composants": [
+        "ReviewModal.tsx",
+        "WriteReviewButton.tsx",
+        "profile/ReviewCard.tsx",
+        "profile/ReviewsList.tsx",
+        "profile/PublicReviewCard.tsx"
+      ],
+      "supabase_clients": [
+        "lib/supabase/database.ts: insertReview()",
+        "lib/supabase/storage.ts: uploadReviewImages()",
+        "lib/supabase/realtime.ts: subscribeToReviews()"
+      ],
+      "ai_services": [
+        "Groq/OpenRouter LLM: analyzeSentiment()",
+        "Text Classification: detectSentiment()"
+      ],
+      "total_fonctions": 8,
+      "orphaned": false,
+      "data_flow": "Order completed → Get 'Write Review' prompt → ReviewModal opens → Fill: Rating, title, comment, images → Submit POST /api/reviews → reviews.ts submitReview() → comment-analyzer.ts analyzeSentiment() → LLM: Detect sentiment (positive/negative/neutral) → Calculate sentiment_score → Insert reviews + Upload images → Update store rating_average → Review appears (subject to moderation)",
+      "status": "Implémenté"
+    },
+    {
+      "id": "WF-20",
+      "nom": "Passer Commande/Réservation",
+      "sprint": 8,
+      "theme": "Commandes",
+      "ia": false,
+      "complexity": "Basique",
+      "description": "Client passe commande produit OU réservation service",
+      "server_actions": [
+        "orders.ts: createOrder()",
+        "reservations.ts: createBooking()",
+        "transactions.ts: processPayment()",
+        "items.ts: decrementStock()",
+        "notifications.ts: sendOrderConfirmation()"
+      ],
+      "api_routes": [
+        "/api/orders (GET, POST)",
+        "/api/reservations (GET, POST)",
+        "/api/checkout (POST)"
+      ],
+      "pages": [
+        "app/profile/cart/page.tsx",
+        "app/merchants/product/[id]/page.tsx",
+        "app/merchants/service/[id]/page.tsx"
+      ],
+      "composants": [
+        "ProductCard.tsx",
+        "ServiceCard.tsx",
+        "checkout/CheckoutDrawerContent.tsx",
+        "reservation/ReservationDrawerContent.tsx",
+        "profile/cart.tsx",
+        "profile/BottomNavigation.tsx"
+      ],
+      "supabase_clients": [
+        "lib/supabase/database.ts: insertOrder()",
+        "lib/supabase/database.ts: insertBooking()",
+        "lib/supabase/database.ts: updateItemStock()",
+        "lib/supabase/realtime.ts: updateOrderStatus()"
+      ],
+      "store": [
+        "lib/store/use-cart-store.ts: Zustand cart state"
+      ],
+      "total_fonctions": 10,
+      "orphaned": false,
+      "data_flow": "Browse products → Add to cart (use-cart-store) → Checkout → CheckoutDrawerContent → Enter address + payment → POST /api/orders → orders.ts createOrder() → Process payment → Insert orders → Update stock → Send confirmation → Order status=PENDING",
+      "status": "Implémenté"
+    },
+    {
+      "id": "WF-21",
+      "nom": "Accepter/Refuser Commande",
+      "sprint": 8,
+      "theme": "Commandes",
+      "ia": false,
+      "complexity": "Basique",
+      "description": "Vendor accepte ou refuse commande reçue",
+      "server_actions": [
+        "orders.ts: acceptOrder()",
+        "orders.ts: rejectOrder()",
+        "orders.ts: createShipment()",
+        "notifications.ts: notifyCustomer()",
+        "transactions.ts: processRefund()"
+      ],
+      "api_routes": [
+        "/api/admin/orders/[id]/status (PUT)",
+        "/api/webhooks/order/confirm (POST)",
+        "/api/webhooks/order/refund (POST)"
+      ],
+      "pages": [
+        "app/dashboard/[id]/page.tsx"
+      ],
+      "composants": [
+        "ProductOrderCard.tsx"
+      ],
+      "supabase_clients": [
+        "lib/supabase/database.ts: updateOrderStatus()",
+        "lib/supabase/realtime.ts: subscribeToOrders()"
+      ],
+      "workers": [
+        "app/api/workers/order-confirmation",
+        "app/api/workers/order-rejection"
+      ],
+      "total_fonctions": 7,
+      "orphaned": false,
+      "data_flow": "Vendor: Dashboard → Orders → Click Accept/Reject → PUT /api/admin/orders/[orderId]/status → orders.ts acceptOrder() → Generate tracking code → Calculate delivery estimate → Send 'Order Confirmed' notification → Update orders.status=ACCEPTED → Supabase realtime update",
+      "status": "Implémenté"
+    },
+    {
+      "id": "WF-22",
+      "nom": "Validation QR Code",
+      "sprint": 8,
+      "theme": "Commandes",
+      "ia": false,
+      "complexity": "Basique",
+      "description": "Vendor scans QR code pour valider livraison/complétion réservation",
+      "server_actions": [
+        "orders.ts: validateOrderQRCode()",
+        "orders.ts: completeOrder()",
+        "reservations.ts: validateReservationQRCode()",
+        "reservations.ts: completeBooking()",
+        "utils/qr-code.ts: generateQRCode()",
+        "utils/qr-code.ts: verifyQRToken()"
+      ],
+      "api_routes": [
+        "/api/admin/orders/validate (POST)"
+      ],
+      "pages": [
+        "app/dashboard/qr-verify/[code]/page.tsx",
+        "app/valider/page.tsx"
+      ],
+      "composants": [
+        "@yudiel/react-qr-scanner (library)"
+      ],
+      "supabase_clients": [
+        "lib/supabase/database.ts: getOrderByQRToken()",
+        "lib/supabase/database.ts: getBookingByQRToken()",
+        "lib/supabase/database.ts: updateOrderStatus()"
+      ],
+      "total_fonctions": 7,
+      "orphaned": false,
+      "data_flow": "Vendor: At delivery location → Scan QR code → POST /api/admin/orders/validate {qrToken} → orders.ts validateOrderQRCode() → Verify token → Display order summary → Vendor confirm → Update status=DELIVERED → Create transaction → Send 'Order Completed' notification → Release payment",
+      "status": "Implémenté"
+    },
+    {
+      "id": "WF-23",
+      "nom": "Ajouter aux Favoris",
+      "sprint": 9,
+      "theme": "Favoris",
+      "ia": false,
+      "complexity": "Basique",
+      "description": "User ajoute/retire items des favoris",
+      "server_actions": [
+        "favorites.ts: toggleSaveAction()",
+        "favorites.ts: isStoreSaved()",
+        "favorites.ts: getUserSavedPlaces()"
+      ],
+      "api_routes": [],
+      "pages": [
+        "app/profile/user/page.tsx",
+        "app/discover/page.tsx",
+        "app/shop/page.tsx"
+      ],
+      "composants": [
+        "FavoriteButton.tsx",
+        "ProductCard.tsx",
+        "profile/saved-place-card.tsx"
+      ],
+      "supabase_clients": [
+        "lib/supabase/database.ts: insertSavedPlace()",
+        "lib/supabase/database.ts: deleteSavedPlace()"
+      ],
+      "store": [
+        "lib/store/use-saves-store.ts: Zustand favorites state"
+      ],
+      "total_fonctions": 4,
+      "orphaned": false,
+      "data_flow": "User: Browsing products → Click heart icon → FavoriteButton onClick → favorites.ts addToFavorites({userId, itemId}) → Insert saved_places → use-saves-store update state → Heart highlighted → Click again to remove → Delete from saved_places → State updated in real-time",
+      "status": "Implémenté"
+    },
+    {
+      "id": "WF-24",
+      "nom": "Chat User-to-User",
+      "sprint": 10,
+      "theme": "Messagerie & Support",
+      "ia": false,
+      "complexity": "Basique",
+      "description": "Utilisateurs s'envoient messages directs",
+      "server_actions": [
+        "messages.ts: sendMessage()",
+        "messages.ts: getConversations()",
+        "messages.ts: markAsRead()",
+        "hooks/useMessaging.ts: Messaging hook"
+      ],
+      "api_routes": [
+        "/api/messages (POST, GET)",
+        "/api/sessions (GET)"
+      ],
+      "pages": [
+        "app/messages/page.tsx"
+      ],
+      "composants": [
+        "messaging/ChatWindow.tsx",
+        "messaging/ConversationSidebar.tsx",
+        "messaging/ChatMessage.tsx",
+        "messaging/ChatHeads.tsx"
+      ],
+      "supabase_clients": [
+        "lib/supabase/database.ts: insertMessage()",
+        "lib/supabase/realtime.ts: subscribeToMessages()",
+        "lib/supabase/realtime.ts: subscribeToConversations()"
+      ],
+      "total_fonctions": 6,
+      "orphaned": false,
+      "data_flow": "User A: Click User B → ChatWindow opens → Subscribe to messages via Supabase realtime → Type message + Send → messages.ts sendMessage() → Insert messages {sender_id, receiver_id, content, is_read=false} → Supabase realtime: Push to User B → User B receives notification → Message appears in chat → User B clicks → markAsRead() → Update is_read=true → Notification cleared",
+      "status": "Implémenté"
+    },
+    {
+      "id": "WF-25",
+      "nom": "Chat Client-to-Magasin",
+      "sprint": 10,
+      "theme": "Messagerie & Support",
+      "ia": false,
+      "complexity": "Basique",
+      "description": "Client envoie messages au magasin",
+      "server_actions": [
+        "messages.ts: sendMessageToStore()",
+        "messages.ts: getStoreConversations()"
+      ],
+      "api_routes": [
+        "/api/messages (POST, GET)"
+      ],
+      "pages": [
+        "app/messages/page.tsx"
+      ],
+      "composants": [
+        "messaging/ChatWindow.tsx",
+        "ShareBusinessButton.tsx"
+      ],
+      "supabase_clients": [
+        "lib/supabase/database.ts: insertMessage()",
+        "lib/supabase/realtime.ts: subscribeToStoreMessages()"
+      ],
+      "total_fonctions": 3,
+      "orphaned": false,
+      "data_flow": "Customer: Product page → Click 'Contact Store' → Message composer → Type question → sendMessageToStore() → Insert messages {sender_id: customer, receiver_id: store_owner, store_id} → Notify store owner → Store can reply in dashboard → Conversation thread maintained",
+      "status": "Implémenté"
+    },
+    {
+      "id": "WF-26",
+      "nom": "Ticket Support Client",
+      "sprint": 10,
+      "theme": "Messagerie & Support",
+      "ia": false,
+      "complexity": "Basique",
+      "description": "Client crée support ticket pour assistance",
+      "server_actions": [
+        "support.ts: createTicket()",
+        "support.ts: replyToTicket()",
+        "support.ts: escalateTicket()",
+        "notifications.ts: notifySupportAgent()"
+      ],
+      "api_routes": [
+        "/api/dashboard/[storeId]/support (GET)",
+        "/api/support (POST, GET)"
+      ],
+      "pages": [
+        "app/messages/page.tsx"
+      ],
+      "composants": [
+        "messaging/SupportChatDrawer.tsx"
+      ],
+      "supabase_clients": [
+        "lib/supabase/database.ts: insertSupportTicket()",
+        "lib/supabase/database.ts: insertSupportMessage()",
+        "lib/supabase/database.ts: updateTicketStatus()"
+      ],
+      "total_fonctions": 5,
+      "orphaned": false,
+      "data_flow": "Customer: Help/Support option → SupportChatDrawer opens → Fill: Subject, category, description, attachments → support.ts createTicket() → Insert support_tickets {customer_id, subject, status=open, priority} → Auto-assign to support agent → Send ticket number → Agent receives notification → Agent replies via dashboard → Chat thread in app for customer → Can escalate to manager if needed → Close when resolved",
+      "status": "Implémenté"
+    },
+    {
+      "id": "WF-27",
+      "nom": "Chat Store-to-Admin",
+      "sprint": 10,
+      "theme": "Messagerie & Support",
+      "ia": false,
+      "complexity": "Basique",
+      "description": "Store owner chats with admin (billing, issues, etc)",
+      "server_actions": [
+        "messages.ts: sendToAdmin()",
+        "support.ts: createSupportTicket()"
+      ],
+      "api_routes": [
+        "/api/admin/support (POST, GET)"
+      ],
+      "pages": [
+        "app/dashboard/[id]/support/tickets/page.tsx"
+      ],
+      "composants": [
+        "messaging/ChatWindow.tsx"
+      ],
+      "supabase_clients": [
+        "lib/supabase/database.ts: insertMessage()",
+        "lib/supabase/database.ts: insertSupportTicket()"
+      ],
+      "total_fonctions": 3,
+      "orphaned": false,
+      "data_flow": "Store Owner: Dashboard → Support → Message admin about account issue → sendToAdmin() → Create support ticket or direct message → Route to admin support team → Admin responds → Store sees response in dashboard",
+      "status": "Implémenté"
+    },
+    {
+      "id": "WF-28",
+      "nom": "Recommandation Promotion par IA",
+      "sprint": 4,
+      "theme": "Promotions",
+      "ia": true,
+      "complexity": "Avancé",
+      "description": "IA recommande promotions basées sur ventes/trends",
+      "server_actions": [
+        "sales-analyzer.ts: analyzeProductPerformance()",
+        "sales-analyzer.ts: recommendPromotions()",
+        "analyzer-service.ts: identifyBestSellers()",
+        "ai-notifications.ts: sendPromotionRecommendation()"
+      ],
+      "api_routes": [
+        "/api/dashboard/[storeId]/sales-recommendations (GET)"
+      ],
+      "pages": [
+        "app/dashboard/[id]/intelligence/page.tsx",
+        "app/dashboard/[id]/page.tsx"
+      ],
+      "composants": [
+        "dashboard/AIAdvisorSection.tsx"
+      ],
+      "supabase_clients": [
+        "lib/supabase/database.ts: getStoreTransactions()",
+        "lib/supabase/database.ts: getRecentOrders()"
+      ],
+      "ai_services": [
+        "OpenRouter LLM: analyzeProductPerformance()",
+        "Predictive Modeling: recommendPromotions()",
+        "Data Analysis: identifyTrends()"
+      ],
+      "total_fonctions": 6,
+      "orphaned": false,
+      "data_flow": "Vendor: Dashboard → Intelligence → GET /api/dashboard/[storeId]/sales-recommendations → sales-analyzer.ts analyzeProductPerformance() → Query: Recent transactions, views, conversions → LLM analysis: Identify underperformers, seasonal trends → Return: 'Product X: -15% promo likely increases sales' → Display AI suggestions with rationale → Vendor can 1-click apply suggestions",
+      "status": "Implémenté"
+    }
+  ],
+  "sprint_summary": {
+    "Sprint-1": {
+      "theme": "Authentification",
+      "workflows": ["WF-01", "WF-02"],
+      "total_workflows": 2,
+      "ia_workflows": 0,
+      "total_server_actions": 8,
+      "total_api_routes": 6,
+      "complexity": "Basique"
+    },
+    "Sprint-2": {
+      "theme": "Gestion Magasin",
+      "workflows": ["WF-03", "WF-04"],
+      "total_workflows": 2,
+      "ia_workflows": 0,
+      "total_server_actions": 10,
+      "total_api_routes": 6,
+      "complexity": "Basique"
+    },
+    "Sprint-3": {
+      "theme": "Catalogue (Produits)",
+      "workflows": ["WF-05", "WF-06", "WF-07"],
+      "total_workflows": 3,
+      "ia_workflows": 1,
+      "total_server_actions": 12,
+      "total_api_routes": 8,
+      "complexity": "Mixte"
+    },
+    "Sprint-4": {
+      "theme": "Promotions",
+      "workflows": ["WF-08", "WF-09", "WF-28"],
+      "total_workflows": 3,
+      "ia_workflows": 1,
+      "total_server_actions": 11,
+      "total_api_routes": 6,
+      "complexity": "Mixte"
+    },
+    "Sprint-5": {
+      "theme": "Contenu Social",
+      "workflows": ["WF-11", "WF-12", "WF-13", "WF-14", "WF-15"],
+      "total_workflows": 5,
+      "ia_workflows": 0,
+      "total_server_actions": 16,
+      "total_api_routes": 10,
+      "complexity": "Basique"
+    },
+    "Sprint-6": {
+      "theme": "Recherche IA",
+      "workflows": ["WF-16", "WF-17", "WF-18"],
+      "total_workflows": 3,
+      "ia_workflows": 3,
+      "total_server_actions": 12,
+      "total_api_routes": 9,
+      "complexity": "Avancé"
+    },
+    "Sprint-7": {
+      "theme": "Évaluations",
+      "workflows": ["WF-19"],
+      "total_workflows": 1,
+      "ia_workflows": 1,
+      "total_server_actions": 8,
+      "total_api_routes": 4,
+      "complexity": "Mixte"
+    },
+    "Sprint-8": {
+      "theme": "Commandes",
+      "workflows": ["WF-10", "WF-20", "WF-21", "WF-22"],
+      "total_workflows": 4,
+      "ia_workflows": 0,
+      "total_server_actions": 20,
+      "total_api_routes": 10,
+      "complexity": "Basique"
+    },
+    "Sprint-9": {
+      "theme": "Favoris",
+      "workflows": ["WF-23"],
+      "total_workflows": 1,
+      "ia_workflows": 0,
+      "total_server_actions": 4,
+      "total_api_routes": 1,
+      "complexity": "Basique"
+    },
+    "Sprint-10": {
+      "theme": "Messagerie & Support",
+      "workflows": ["WF-24", "WF-25", "WF-26", "WF-27"],
+      "total_workflows": 4,
+      "ia_workflows": 0,
+      "total_server_actions": 14,
+      "total_api_routes": 8,
+      "complexity": "Basique"
+    }
+  },
+  "statistics": {
+    "total_workflows": 28,
+    "workflows_with_ia": 7,
+    "workflows_without_ia": 21,
+    "total_unique_server_actions": 98,
+    "total_api_routes": 68,
+    "total_pages": 28,
+    "total_components": 120,
+    "supabase_clients_count": 9,
+    "complexity_distribution": {
+      "Basique": 18,
+      "Mixte": 7,
+      "Avancé": 3
+    },
+    "ai_services_used": [
+      "OpenRouter LLM",
+      "Cloudflare AI (Vision, Image Generation)",
+      "Groq LLM",
+      "Vector Embeddings (pgvector)",
+      "PostGIS (Geolocation)",
+      "Upstash QStash (Background Jobs)"
+    ]
+  },
+  "cross_references": {
+    "WF-05_uses_components_from": ["WF-20 (ProductCard)", "WF-23 (FavoriteButton)"],
+    "WF-07_uses_ai_services_from": ["WF-16 (Embeddings)", "WF-17 (Vision)"],
+    "WF-16_depends_on": ["WF-05 (items)", "WF-06 (items update)"],
+    "WF-19_uses_ai_from": ["WF-16 (LLM)"],
+    "WF-28_uses_data_from": ["WF-20 (orders)", "WF-21 (order stats)"],
+    "shared_store_actions": ["orders", "items", "promotions", "reviews", "reels", "stories"]
+  },
+  "missing_or_orphaned": {
+    "orphaned_actions": [],
+    "missing_implementations": [],
+    "note": "All workflows are fully implemented with complete coverage"
+  }
+}

@@ -54,12 +54,16 @@ export function reciprocalRankFusion(
 
 // ─── LLM Reranking léger ─────────────────────────────────────────────────────
 
-const MODEL_CHAIN  = [
-  'meta-llama/llama-3.3-70b-instruct:free',
-  'google/gemma-3-27b-it:free',
-  'mistralai/mistral-7b-instruct:free',
-]
-const QUOTA_CODES = new Set([402, 429, 503])
+function getModelChain(): string[] {
+  const list = [
+    process.env.OPENROUTER_MODEL,
+    'meta-llama/llama-3.2-3b-instruct',
+    'meta-llama/llama-3.3-70b-instruct',
+    'meta-llama/llama-3.2-3b-instruct:free',
+    'meta-llama/llama-3.3-70b-instruct:free',
+  ].filter(Boolean) as string[]
+  return [...new Set(list)]
+}
 
 async function llmRerank(query: string, results: SearchResult[], intent: string, topN = 15): Promise<SearchResult[]> {
   if (results.length < 4) return results
@@ -70,14 +74,14 @@ async function llmRerank(query: string, results: SearchResult[], intent: string,
     .join('\n')
 
   const systemPrompt = `Expert marketplace tunisienne. Trie ces résultats pour "${query}" (intent:${intent}).
-Priorités: 1)Correspondance exacte 2)STORE/ITEM/REEL natifs avant annuaires 3)Rejette hors-sujet.
-Réponds UNIQUEMENT avec les indices en ordre décroissant de pertinence, séparés par virgule. Ex: 2,0,5,1`
+  Priorités: 1)Correspondance exacte 2)STORE/ITEM/REEL natifs avant annuaires 3)Rejette hors-sujet.
+  Réponds UNIQUEMENT avec les indices en ordre décroissant de pertinence, séparés par virgule. Ex: 2,0,5,1`
 
   const apiKey = process.env.OPENROUTER_API_KEY
   if (!apiKey) return results
 
   let lastErr: Error | null = null
-  for (const model of MODEL_CHAIN) {
+  for (const model of getModelChain()) {
     try {
       const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
         method: 'POST',
@@ -92,8 +96,11 @@ Réponds UNIQUEMENT avec les indices en ordre décroissant de pertinence, sépar
           { role: 'user',   content: list },
         ]}),
       })
-      if (QUOTA_CODES.has(res.status)) continue
-      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      if (!res.ok) {
+        const errMsg = await res.text()
+        console.warn(`[RERANKER] Model ${model} failed: HTTP ${res.status} - ${errMsg.slice(0, 150)}`)
+        throw new Error(`HTTP ${res.status}`)
+      }
       const data  = await res.json()
       const text  = data.choices?.[0]?.message?.content?.trim()
       if (!text) throw new Error('Empty')
