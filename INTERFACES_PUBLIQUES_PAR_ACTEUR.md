@@ -537,6 +537,56 @@ Ces pages sont accessibles uniquement par les clients connectés (non-vendeurs).
 
 ---
 
+### 8️⃣bis **Formulaire de Commande (Drawer)** `/shop/product/[id]/checkout`
+
+**À quoi ça sert?** Quand vous cliquez sur "Acheter" ou "Ajouter au Panier" depuis la fiche produit, un **drawer slide-in (panneau coulissant)** s'ouvre sur le côté droit. C'est ici que vous complétez votre commande: quantité, options (couleur, taille, etc.), adresse de livraison, mode de paiement. Vous voyez un récapitulatif en temps réel (prix total, frais de port). C'est l'étape finale avant validation.
+
+- **URL**: Intégré comme drawer sur `/shop/product/[id]`
+- **Acteurs**: Client connecté (redirection login si nécessaire)
+- **Composants Principaux**:
+  - **Header du drawer**: Titre "Passer la Commande", bouton fermer ✕
+  - **Récapitulatif produit**: Image petit format, nom, prix unitaire
+  - **Quantité**: Sélecteur (boutons +/-, ou input numérique)
+  - **Options produit**: Couleur, taille, ou autres variants (si disponible)
+  - **Adresse de livraison**: 
+    - Adresses sauvegardées (dropdown)
+    - Ou ajouter nouvelle adresse (formulaire inline)
+    - Saisie: Rue, Code Postal, Gouvernorat, Ville
+  - **Résumé des coûts**:
+    - Prix produit
+    - Frais de port (calculé en temps réel selon adresse)
+    - Réduction appliquée (le cas échéant)
+    - **Total TTC**
+  - **Bouton**: "Confirmer la Commande" (CTA principal)
+  - **Lien alternatif**: "Continuer le shopping" → ferme drawer
+  
+- **Fonctionnalités**:
+  - Ajuster quantité (mise à jour prix total instantanément)
+  - Sélectionner variantes (couleur, taille)
+  - Choisir ou ajouter adresse de livraison
+  - Choisir mode de livraison
+  - Choisir mode de paiement
+  - Voir total calculé en direct
+  - Appliquer code promo (champ "Code de réduction")
+  - Voir estimation livraison (J+1, J+2, etc.)
+  - Confirmer commande → redirection vers paiement ou succès
+  
+- **Flux Post-Commande**:
+  - **Si paiement ligne**: Redirection vers page paiement (Stripe)
+  - **Si cash on delivery**: Commande confirmée immédiatement
+  - Email de confirmation envoyé
+  - Commande visible dans `/profile/orders`
+
+- **Gestion des Erreurs**:
+  - Stock insuffisant: Bloquer l'achat, proposer "Ajouter à la liste d'attente"
+  - Adresse invalide: Message d'erreur, correction requise
+  - Produit indisponible: Afficher message, proposer produits similaires
+
+> **📱 Version Mobile (App Ro2ya)**  
+> Le drawer s'ouvre en bas de l'écran (bottom sheet) plutôt que sur le côté. Le formulaire est optimisé avec inputs tactiles, une barre de défilement fluide, et un bouton CTA "Confirmer" fixé en bas. La validation en temps réel des données (adresse, téléphone) améliore l'expérience utilisateur.
+
+---
+
 ### 9️⃣ **Détail Service** `/merchants/service/[id]`
 
 **À quoi ça sert?** Vous voyez la page complète d'un service. Grande image, nom, description, prix (à l'heure ou par intervention), durée estimée, avis clients, note moyenne. Vous voyez aussi les **stories récentes** de la boutique (petites vidéos/photos du jour). Il y a un bouton pour réserver et un formulaire à côté où vous pouvez sélectionner la date et l'heure.
@@ -721,351 +771,495 @@ Ces pages sont accessibles uniquement par les vendeurs connectés qui ont créé
 
 ### 2️⃣ **Dashboard Vendeur** `/dashboard/[id]`
 
-**À quoi ça sert?** C'est le "command center" de votre boutique. Vous voyez d'un coup d'œil: combien vous avez vendu, combien de commandes en attente, quels produits sont les plus aimés. C'est aussi d'ici que vous accédez à tous les outils pour gérer votre boutique (produits, promotions, messages, etc.).
+**À quoi ça sert?** C'est le "command center" de votre boutique. Vous voyez d'un coup d'œil: combien de clients ont vu votre profil, combien vous avez reçu d'appels, vos réservations, vos ventes totales et votre revenu. C'est aussi d'ici que vous accédez à tous les outils pour gérer votre boutique (produits, promotions, stories, reels, etc.). Le tout dans une interface dark-mode élégante avec statistiques en temps réel.
 
 - **URL**: `https://ro2ya.tn/dashboard/123`
 - **Acteurs**: Propriétaire de la boutique
 - **Composants Principaux**:
-  - Menu latéral (Sidebar):
-    - 📊 Aperçu
-    - 📦 Produits
-    - 🎁 Promotions
-    - 📹 Reels
-    - 📖 Stories
-    - 💼 Leads (Commandes)
-    - 💰 Transactions
-    - 💬 Messages
-    - ❓ Support
-    - 🧠 Intelligence (Analytics IA)
-    - ⚙️ Paramètres
-  - Contenu principal: Aperçu statistiques
-  - Cards: Ventes totales, Commandes, Produits, Favoris
+
+  **Header (Top Bar)**:
+  - Logo Ro2ya (coin haut-gauche)
+  - Titre "Overview" avec dropdown sélecteur boutique "Restaurant El Bacha"
+  - Barre de recherche: "Rechercher réservations, avis, clients..."
+  - Icônes: Support, Notifications, Messages
+  - Avatar vendeur (RE)
+
+  **Sidebar Gauche (Navigation Menu)**:
+  - 📊 **Overview** (actif - fond blanc)
+  - 🏢 **Business Profile** - Gérer profil boutique
+  - 📦 **Products & Promo** - Produits et promotions
+  - 📹 **Discovery & Stories** - Reels et Stories
+  - 👥 **Customer Actions** - Interactions clients (Leads, Réservations)
+  - 💰 **Transactions** - Historique de paiements
+  - 🧠 **Social Intelligence & Re...** - Analytics IA + Avis
+  - 💬 **Support & Messages** - Support clients + Chat
+  - 🔙 **back to marketplace** - Retour boutique publique
+
+  **Contenu Principal (Dashboard Stats)**:
+  - **Tabs de période**: Today | This Week | This Month
+  - **6 Cards de Statistiques** (grille 3x2):
+    1. 👁️ **Profile Views** - Nombre de fois où le profil a été vu (0)
+    2. 📞 **Phone Clicks** - Clics sur le numéro de téléphone (0)
+    3. 📍 **Direction Requests** - Demandes de directions (0)
+    4. 🛒 **Reservations** - Nombre de réservations (0)
+    5. 🛍️ **Purchases** - Nombre de commandes/achats (5)
+    6. 💵 **Revenue Total** - Revenu total avec % croissance (35 with ↑ 12%)
+  
+  - **Graphiques**:
+    - 📈 **Activity Trend** (left chart) - Tendance d'activité (courbe)
+    - ⭐ **Rating Distribution** (right chart) - Distribution des notes (pie/bar chart)
+
+  **Design**:
+  - Mode sombre (dark navy background #1a1f3a approx)
+  - Cards colorées avec icônes distinctives (cyan, teal, pink, purple)
+  - Texte blanc/gris clair
+  - Accent bleu sur "Customer Actions"
+  - Spacing généreux, layout responsive
+
 - **Fonctionnalités**:
-  - Naviguer vers toutes les sections
-  - Voir statistiques rapides
-  - Voir notifications
-  - Profil vendeur
+  - Voir aperçu stats en temps réel
+  - Filtrer par période (Today/Week/Month)
+  - Naviguer vers sections spécialisées (sidebar)
+  - Rechercher clients/réservations/avis
+  - Voir tendances et distributions
+  - Accéder à support/messages
+  - Basculer vers boutique publique
 
 > **📱 Version Mobile (App Ro2ya)**  
-> Le Dashboard remplace l'accueil pour les vendeurs, offrant une vue claire sur les revenus et des raccourcis clés. Un menu complet donne accès à tous les modules, assisté en permanence par un chatbot IA flottant.
+> Le Dashboard est optimisé avec un menu hamburger (≡) remplaçant la sidebar. Les 6 cartes se disposent en grille responsive (2 colonnes). Les graphiques se mettent à l'échelle. La barre de recherche reste accessible en haut. Navigation par tabs horizontals pour les périodes.
+
+---
+
+### 🏢 **Business Profile** `/dashboard/[id]/business-profile`
+
+**À quoi ça sert?** Gérez toutes les informations de votre boutique: logo, nom, description, catégorie, téléphone, adresse, horaires d'ouverture, et galerie photos/vidéos. C'est la vitrine publique de votre entreprise.
+
+- **URL**: `https://ro2ya.tn/dashboard/123/business-profile`
+- **Acteurs**: Propriétaire de la boutique
+- **Composants Principaux**:
+
+  **Section 1: Basic Information**
+  - Business Logo (upload zone)
+  - Business Name (champ texte)
+  - Description (textarea large)
+  - Category (dropdown)
+  - Phone Number (champ texte)
+  - Address (champ texte)
+
+  **Section 2: Working Hours**
+  - Tableau 7 jours (Monday-Sunday)
+  - Checkbox "Closed" par jour
+  - Time inputs: OPENS (heure) | CLOSES (heure)
+  - Design: Chaque jour avec toggle fermé/ouvert
+
+  **Section 3: Business Gallery**
+  - Titre: "Business Gallery"
+  - Sous-titre: "Upload images to showcase your establishment"
+  - Zone glisser-déposer pour images
+  - Bouton "+ Add Media"
+
+- **Fonctionnalités**:
+  - Modifier infos basiques
+  - Gérer horaires (7 jours)
+  - Toggle jour fermé/ouvert
+  - Upload/gérer galerie photos
+  - Voir aperçu
+  - Sauvegarder changes
+
+> **📱 Version Mobile (App Ro2ya)**  
+> Formulaire optimisé avec sections scrollables. Horaires en card séparées. Upload photos avec préview.
 
 ---
 
 ### 3️⃣ **Mes Produits** `/dashboard/[id]/products`
 
-**À quoi ça sert?** C'est ici que vous gérez votre inventaire. Vous voyez tous les produits que vous vendez (avec les images, prix, stock). Vous pouvez en ajouter des nouveaux, en modifier, les supprimer, ou même les créer automatiquement avec l'IA en uploadant juste une photo!
+**À quoi ça sert?** C'est ici que vous gérez votre inventaire. Vous voyez tous les produits que vous vendez avec images, prix et stock. Vous pouvez ajouter, modifier, supprimer ou créer avec l'IA en uploadant une photo!
 
 - **URL**: `https://ro2ya.tn/dashboard/123/products`
 - **Acteurs**: Propriétaire de la boutique
 - **Composants Principaux**:
-  - Bouton "+ Ajouter Produit"
-  - Bouton "🤖 Créer avec IA"
-  - Tableau/Grille de tous les produits
-  - Colonnes: Image, Nom, Prix, Stock, Statut, Actions
-  - Boutons par ligne: "✏️ Éditer", "🗑️ Supprimer", "👁️ Voir"
+
+  **Header**:
+  - Titre: "Inventaire & Marketing"
+  - Sous-titre: "Gérez vos annonces et optimisez vos ventes avec des promotions ciblées."
+  - Bouton "🤖 AI Darija" (violet)
+  - Bouton "+ Ajouter" (blanc/outline)
+
+  **Grille de Produits**:
+  - Chaque produit: Image (miniature bird jaune), Nom (Darija), Description (Darija), Prix "35 unit", Stock "Stock: 2 unités"
+  - Oeil icon (voir)
+  - Bouton "Modifier" (outline)
+  - Bouton "Supprimer" (red text)
+
 - **Fonctionnalités**:
-  - Créer nouveau produit
-  - Créer produit avec IA (upload photo)
-  - Éditer produit existant
+  - Voir tous les produits en grille
+  - Modifier produit
   - Supprimer produit
-  - Voir produit comme client
-  - Filtrer par statut, stock
-  - Rechercher produit
-  - Bulk actions (éditer plusieurs)
+  - Voir produit public
+  - Créer produit avec IA Darija
+  - Ajouter nouveau produit (modal)
 
 > **📱 Version Mobile (App Ro2ya)**  
-> Le catalogue des produits est affiché sous forme de liste éditable. Les vendeurs peuvent ajouter manuellement de nouveaux articles ou utiliser l'Assistant IA intégré pour générer instantanément les fiches produits.
+> Grille responsive (2 colonnes). Modal pour ajouter produit avec upload image, nom, description, prix, stock.
 
 ---
 
-### 4️⃣ **Ajouter/Éditer Produit** `/dashboard/[id]/products/add` ou `/products/[id]/edit`
+---
 
-**À quoi ça sert?** C'est le formulaire complet d'un produit. Vous remplissez: nom, prix, stock, description détaillée, marque, et vous uploadez entre 1 et 5 photos de bonne qualité. Vous voyez un aperçu en temps réel de comment ça va apparaître pour les clients.
+### 4️⃣ **Ajouter/Éditer Produit** (Modal) `/dashboard/[id]/products/add`
 
-- **URL**: `https://ro2ya.tn/dashboard/123/products/add`
+**À quoi ça sert?** Formulaire modal pour créer ou modifier un produit. Remplissez nom, description, prix, stock, catégorie, et uploadez images/vidéos.
+
+- **URL**: Modal sur `/dashboard/[id]/products`
 - **Acteurs**: Propriétaire de la boutique
 - **Composants Principaux**:
-  - Sections de formulaire:
-    - Infos basiques: Nom, Description, Prix, Stock
-    - Détails: Marque, Code, Garantie, Poids
-    - Images: Upload zone glisser-déposer
-    - Catégorie, Tags, SKU
-  - Aperçu du produit en temps réel
-  - Bouton "Sauvegarder", "Annuler", "Supprimer"
+  - **Header**: "Ajouter une annonce" | "Modifier l'annonce"
+  - **Tabs**: Produit (sélectionné) | Service
+  - **Form Fields**:
+    - Image principale (upload zone)
+    - Galerie photos (+ button pour ajouter)
+    - Vidéos / Reels (upload zone)
+    - Nom * (input)
+    - Description (textarea)
+    - Prix (DT) * (input)
+    - Stock (input)
+    - Catégorie * (dropdown)
+    - Checkbox: "Disponible à la vente" (coché)
+  - **Boutons**: "Annuler" (outline) | "Créer" (white)
+
 - **Fonctionnalités**:
-  - Remplir tous les détails
-  - Upload/organiser images (max 5)
-  - Aperçu produit
+  - Upload/organiser images
+  - Remplir tous détails
+  - Toggle disponibilité
   - Sauvegarder
-  - Modifier après création
-  - Supprimer si nécessaire
+  - Annuler
 
 ---
 
-### 5️⃣ **Créer Produit avec IA** `/dashboard/[id]/products/ai`
+### 5️⃣ **Assistant IA Darija** (Modal) `/dashboard/[id]/products/ai-darija`
 
-**À quoi ça sert?** Vous êtes pressé? Au lieu de remplir un long formulaire, vous prenez juste une photo du produit. L'IA anal yse l'image, devine automatiquement le nom, la catégorie, écrit une bonne description, et même propose un prix. Vous pouvez tout corriger si besoin.
+**À quoi ça sert?** Assistant IA dédié pour décrire votre produit en Darija (texte ou voix). L'IA génère descriptions attractives pour vos annonces.
 
-- **URL**: `https://ro2ya.tn/dashboard/123/products/ai`
+- **URL**: Modal sur `/dashboard/[id]/products`
 - **Acteurs**: Propriétaire de la boutique
 - **Composants Principaux**:
-  - Zone upload photo du produit
-  - Bouton "📷 Prendre Photo" ou "📤 Importer"
-  - Barre progression "Analyse..."
-  - Résultats générés: Nom, Catégorie, Description, Prix suggéré
-  - Champs éditables pour chaque résultat
-  - Bouton "Créer Produit"
+  - **Header**: "Assistant IA — Darija" (icon violet)
+  - **Subtitle**: "Décris ton produit en Darija — par texte ou par voix ✨"
+  - **Mode Tabs**: "Texte" (sélectionné) | "Voix Darija"
+  - **Input Section**: "TON PROMPT EN DARIJA"
+    - Placeholder: "Exemple: zid produit jdid kasket noire b 25 DT..."
+    - Exemple suggestions (tags): "zid produit jdid kasket noire b 25 DT", "n7eb nnd sabat nike blanc taille 42 b 1...", "3mel item jdid t-shirt rayé b 35 dinars"
+  - **Bouton**: "Générer avec l'IA" (purple)
+  - **Bouton**: "Fermer" (close X)
+
 - **Fonctionnalités**:
-  - Prendre/importer photo
-  - IA analyse image
-  - IA génère suggestions
-  - Éditer suggestions
-  - Créer produit finalisé
+  - Saisir prompt Darija (texte ou voix)
+  - IA génère description
+  - Suggestions contextuelles
+
+---
+
+### 6️⃣ **Marketing & Offres** `/dashboard/[id]/products/promotions`
+
+**À quoi ça sert?** Gérez vos promotions pour booster vos ventes. Créez des offres spéciales avec réductions et dates.
+
+- **URL**: `https://ro2ya.tn/dashboard/123/products/promotions`
+- **Acteurs**: Propriétaire de la boutique
+- **Composants Principaux**:
+  - **Header**: "Marketing & Offres" (avec | orange)
+  - **Subtitle**: "Boostez votre visibilité et fidélisez vos clients avec des campagnes percutantes."
+  - **Boutons**: "🤖 AI Darija" | "+ Nouvelle Offre" (red)
+  - **Onglets**: 🔴 "Actives (0)" | 📦 "À venir (1)" | ❄️ "Inactives (0)"
+  - **Empty State** (si aucune): Icon gift, "Prêt à booster vos ventes?", "Créez votre première offre spéciale et attirez de nouveaux clients dès aujourd'hui.", Bouton "+ Lancer une campagne" (red)
+
+- **Fonctionnalités**:
+  - Créer nouvelle promotion
+  - Voir promos actives/à venir/inactives
+  - Générer avec IA
 
 > **📱 Version Mobile (App Ro2ya)**  
-> Accessible via l'onglet "AI Bot", le chatbot génère une fiche produit complète à partir d'une simple description ou photo. Un bouton "Publier" permet ensuite la mise en ligne instantanée du produit.
+> Onglets pour filtrer promotions. Modal pour créer offre.
 
 ---
 
-### 6️⃣ **Mes Promotions** `/dashboard/[id]/promotions`
+### 7️⃣ **Nouvelle Offre Spéciale** (Modal) `/dashboard/[id]/promotions/new`
 
-**À quoi ça sert?** C'est ici que vous faites des soldes et des promos. Vous voyez toutes vos promotions en cours (les remises, les dates), et vous pouvez en créer de nouvelles. Le système vous montre aussi comment ça marche (combien de clics, combien de ventes augmentées).
+**À quoi ça sert?** Modal pour créer une nouvelle promotion avec titre, description, réduction%, dates et articles.
 
-- **URL**: `https://ro2ya.tn/dashboard/123/promotions`
+- **URL**: Modal sur `/dashboard/[id]/products/promotions`
 - **Acteurs**: Propriétaire de la boutique
 - **Composants Principaux**:
-  - Bouton "+ Créer Promotion"
-  - Tableau de promotions actives/passées
-  - Colonnes: Titre, Produits, Réduction, Dates, Statut, Actions
-  - Boutons: "✏️ Éditer", "🗑️ Supprimer", "📊 Voir Stats"
-- **Fonctionnalités**:
-  - Créer nouvelle promo
-  - Éditer promo existante
-  - Supprimer promo
-  - Voir statistiques (clics, conversions, ROI)
-  - Voir reductions appliquées
-  - Ajouter/retirer produits
+  - **Header**: "Nouvelle Offre Spéciale" (red text)
+  - **Premium Badge**: "APERÇU PREMIUM" (avec icon spark)
+    - Card preview: "VOTRE OFFRE ICI", "Une description qui donne envie...", Bouton "PROMO" (orange)
+  - **Form Fields**:
+    - Titre de l'offre * (input)
+    - Description (textarea)
+    - RÉDUCTION (%) (input)
+    - TEXTE (EX: 1+1) (input)
+    - Début (date picker)
+    - Fin (date picker)
+    - "Appliquer à tous les articles" (button)
+    - Table: Articles applicables (liste produits avec prix)
+  - **Boutons**: "Annuler" | "Lancer" (red)
 
-> **📱 Version Mobile (App Ro2ya)**  
-> Les offres promotionnelles sont listées dans un tableau détaillé de suivi. Les vendeurs peuvent configurer leurs promotions manuellement ou demander au chatbot IA de les créer via une requête textuelle.
+- **Fonctionnalités**:
+  - Créer offre avec titre, description, réduction
+  - Définir dates début/fin
+  - Appliquer à produits
+  - Aperçu premium
+  - Lancer campagne
 
 ---
 
-### 7️⃣ **Ajouter/Éditer Promotion** `/dashboard/[id]/promotions/add` ou `/promotions/[id]/edit`
+---
 
-**À quoi ça sert?** Vous créez une promotion ici: vous choisissez quels produits promouvoir, vous décidez de la réduction (10%, 20%, 50%, etc.), vous fixez les dates de début et fin. Le système vous montre le prix avant/après en temps réel.
+### 1️⃣1️⃣ **Mes Reels** `/dashboard/[id]/reels`
 
-- **URL**: `https://ro2ya.tn/dashboard/123/promotions/add`
+**À quoi ça sert?** Créez et gérez vos vidéos courtes pour promouvoir votre boutique. Enregistrez ou importez des vidéos, publiez-les pour votre audience.
+
+- **URL**: `https://ro2ya.tn/dashboard/123/reels`
 - **Acteurs**: Propriétaire de la boutique
 - **Composants Principaux**:
-  - Sélection produits (grille avec checkbox)
-  - Réduction %: Slider ou input (10%, 20%, ..., 50%+)
-  - Aperçu prix: "Avant: 800 DT | Après: 600 DT (-25%)"
-  - Date début/fin (calendrier)
-  - Titre promotion: "Soldes de Fin d'Été!"
-  - Description (optionnel)
-  - Bouton "Créer", "Annuler"
+  - **Header**: "PUBLIER UN REEL" | "CONTENU LIVE"
+  - **Subtitle**: "Partagez votre contenu avec votre audience."
+  - **Bouton**: "+ Nouveau Contenu" (red)
+  - **Tabs**: "Reels Discover" | "Stories Boutique" (cyan active)
+  - **Stories Section**:
+    - Vidéo miniature avec badge "Expiré"
+    - Item shows status and expiry
+
 - **Fonctionnalités**:
-  - Sélectionner 1+ produits
-  - Définir réduction
-  - Définir durée
-  - Voir aperçu en temps réel
-  - Créer/modifier promotion
+  - Enregistrer vidéo live (caméra)
+  - Importer vidéo fichier
+  - Remplir titre, description, prix, catégorie
+  - Publier
+  - Voir analytics
 
 ---
 
-### 8️⃣ **Dashboard Intelligence** `/dashboard/[id]/intelligence`
+### 🔟 **Ajouter Reel** (Modal) `/dashboard/[id]/reels/add`
 
-**À quoi ça sert?** C'est votre "conseiller en affaires" personnel. L'IA analyse ce qui se vend bien cette semaine, voit vos produits similaires, et vous propose d'en promouvoir certains. Elle vous dit: "Ce produit a beaucoup de demande cette semaine, baissez le prix de 30% et vous allez vendre 45% plus!" Vous pouvez accepter ou refuser ses idées.
+**À quoi ça sert?** Modal pour créer et publier un nouveau reel avec vidéo, titre, description.
 
-- **URL**: `https://ro2ya.tn/dashboard/123/intelligence`
+- **URL**: Modal sur `/dashboard/[id]/reels`
 - **Acteurs**: Propriétaire de la boutique
 - **Composants Principaux**:
-  - Cartes de recommandations:
-    - 📊 Tendances cette semaine
-    - 🤖 Produits à Promouvoir
-    - 📈 Opportunités d'Upsell
-    - 💡 Conseils Vendeur
-  - Chat "Conseiller IA" (coin bas-droit)
-  - Chaque recommandation affiche: Image, Description, Action suggérée
-- **Fonctionnalités**:
-  - Voir recommandations IA
-  - Détail d'une recommandation
-  - Accepter/modifier/refuser une recommandation
-  - Chat interactif avec IA
-  - Générer promo suggérée depuis recommandation
+  - **Header**: "PUBLIER UN REEL"
+  - **Subtitle**: "Partagez votre contenu avec votre audience."
+  - **Video Upload**:
+    - Zone avec icon upload
+    - "Importer un fichier" (red button)
+    - "MP4, JPG, PNG (MAX 50MB)"
+    - OU "Caméra Live" (button avec camera icon)
+  - **Form Fields**:
+    - TITRE / LÉGENDE (textarea)
+    - PRIX (DT) (input)
+    - CATÉGORIE (dropdown)
+  - **Bouton**: "Mettre en ligne" (red)
 
-> **📱 Version Mobile (App Ro2ya)**  
-> Cet espace regroupe les recommandations IA : tendances, conseils en upsell et opportunités de vente. Le chatbot conseiller est disponible pour aider les marchands à interpréter les données et optimiser leurs résultats.
+- **Fonctionnalités**:
+  - Enregistrer ou importer vidéo
+  - Ajouter titre et description
+  - Définir prix
+  - Sélectionner catégorie
+  - Publier
+
+---
 
 ---
 
 ### 9️⃣ **Mes Leads/Commandes** `/dashboard/[id]/leads`
 
-**À quoi ça sert?** À chaque fois qu'un client vous commande quelque chose, c'est inscrit ici. Vous voyez: qui a commandé, quoi, combien, et l'état (En Attente, Acceptée, Refusée). Vous pouvez accepter une commande, la refuser (avec raison), ou contacter le client directement.
+**À quoi ça sert?** Toutes les demandes des clients (commandes et réservations). Voyez qui a commandé quoi, acceptez/refusez les demandes, et discutez avec les clients.
 
 - **URL**: `https://ro2ya.tn/dashboard/123/leads`
 - **Acteurs**: Propriétaire de la boutique
 - **Composants Principaux**:
-  - Tableau de tous les leads (commandes + réservations)
-  - Colonnes: Client, Produits, Montant, Statut, Date, Actions
-  - Filtres: Type (Tous, Commandes, Réservations), Statut (En Attente, Acceptée, Rejetée)
-  - Boutons par ligne: "Voir", "✓ Accepter", "❌ Refuser"
-- **Fonctionnalités**:
-  - Voir tous les leads reçus
-  - Filtrer par type et statut
-  - Accepter/refuser un lead
-  - Voir détails complets
-  - Chat avec client
-  - Raison de rejet
+  - **Header**: "Actions clients & Leads"
+  - **Subtitle**: "Suivez vos commandes et réservations en temps réel"
+  - **3 Stats Cards**:
+    - 🔗 "Total interactions" (3)
+    - 🛒 "Commandes" (3)
+    - 📅 "Réservations" (0)
+  - **Filtres**:
+    - Dropdown "Tout" (filtrer tous/commandes/réservations)
+    - Buttons: "Plus récent" | "Plus ancien"
+  - **Leads List**:
+    - Icon (🛒 pour commande)
+    - "Commande #15" | Client Name (ABDERRAHMEN EBDELLI)
+    - Phone: "58730950"
+    - "Montant: 35 DT"
+    - Date "25 mai", Timestamp "21:23"
+    - Badge "PENDING" (orange)
+    - Buttons: "✓ ACCEPTER" (green) | "✕ REFUSER" (red) | "🚫 BLOQUER CLIENT"
 
-> **📱 Version Mobile (App Ro2ya)**  
-> L'écran liste toutes les commandes et réservations, filtrables par statut. Le vendeur peut accepter ou refuser chaque demande (avec motif) et ouvrir directement une discussion avec le client depuis la fiche.
+- **Fonctionnalités**:
+  - Voir tous les leads
+  - Filtrer par type et date
+  - Accepter/refuser demande
+  - Bloquer client
+  - Chatter avec client
 
 ---
 
-### 🔟 **Transactions/Livraisons** `/dashboard/[id]/transactions`
+### 🔟 **Transactions & Suivi** `/dashboard/[id]/transactions`
 
-**À quoi ça sert?** Une fois que vous avez accepté une commande et que vous l'avez livrée, vous le marquez ici avec un code QR. Le client scanne le code avec son téléphone, et Ro2ya sait que la commande est bien livrée. C'est pratique et sécurisé pour éviter les accés sans consentement.
+**À quoi ça sert?** Gestion complète des paiements et validations. Voyez revenu, commandes en attente, validations avec QR code.
 
 - **URL**: `https://ro2ya.tn/dashboard/123/transactions`
 - **Acteurs**: Propriétaire de la boutique
 - **Composants Principaux**:
-  - Bouton "📱 Scanner QR Code"
-  - Tableau des transactions:
-    - Colonnes: Client, Commande, Montant, Statut, Date, Actions
-    - Statuts: En Attente, Prête, En Livraison, Livrée, Annulée
-  - Caméra QR scanner (si clic sur scanner)
-  - Historique validation complète
+  - **Header**: "Transactions & Suivi"
+  - **Subtitle**: "Gérez vos paiements et vos actions directes"
+  - **Tabs**: "Liste Détaillée" (active) | "Mes Transactions"
+  - **4 Stats Cards**:
+    - 📊 "Transactions" (5 au total)
+    - 💚 "Revenu Réel" (35 DT, 1 validées)
+    - ⏳ "En attente" (280 DT, 3 à traiter)
+    - 💰 "Commissions" (3,5 DT, Frais Ro2ya 10%)
+  - **Filters** (row):
+    - Type: "Tous les types" (dropdown)
+    - Statut: "Tous les statuts" (dropdown)
+    - Date: "jj/mm/aaaa" to "jj/mm/aaaa"
+  - **Search**: "Rechercher par référence ou client..."
+  - **Table Columns**: DATE | RÉFÉRENCE | TYPE | CLIENT | DÉTAILS | MONTANT | FRAUDE | STATUT
+  - **Table Rows**: Exemple "ORD-726272-I0SP", Client "abderrahmen ebdelli", Montant "35 DT", Status "PENDING"
+  - **Pagination**: "Affichage de 1-5 sur 5"
+
 - **Fonctionnalités**:
   - Voir toutes transactions
-  - Scanner code QR de livraison
-  - Marquer comme livré
-  - Voir historique complet
-  - Annuler si nécessaire
+  - Filtrer par type, statut, date
+  - Rechercher par référence
+  - Scanner QR client (validation)
+  - Valider manuellement
+  - Déclarer no-show
+  - Voir statut fraude
 
-> **📱 Version Mobile (App Ro2ya)**  
-> L'historique des validations est centralisé pour un suivi optimal. L'interface intègre un scanner de QR code permettant au vendeur de flasher le code du client à la livraison, garantissant une validation instantanée.
+> **Mise à jour de Transaction (Modal)**:
+- Modal: "Mise à jour de la transaction"
+- Section: "Confirmer la prestation"
+- Message: "Demandez au client de vous montrer son code QR pour valider la prestation et garantir votre paiement."
+- Buttons:
+  - "Scanner le QR du Client" (white)
+  - ✓ "Valider manuellement (Sans QR)" (avec OR)
+- Section: "Déclarer un No-Show" (red)
+  - Message: "Si le client ne s'est pas présenté, marquez la réservation comme échouée."
+  - Button: "Déclarer comme échouée" (red)
 
 ---
 
-### 1️⃣1️⃣ **Mes Reels** `/dashboard/[id]/reels`
-**À quoi ça sert?** Vous pouvez faire des petites vidéos (max 60 sec) pour promouvoir votre boutique ou vos produits. C'est comme TikTok. Vous voyez tous vos reels ici, combien de gens les ont aimés, combien les ont partagés. Vous pouvez aussi supprimer un reel si vous changez d'avis.
-- **URL**: `https://ro2ya.tn/dashboard/123/reels`
+### 1️⃣1️⃣ **Dashboard Intelligence & Analytics** `/dashboard/[id]/intelligence`
+
+**À quoi ça sert?** Vos données analytics avec sentiment analysis Darija, recommandations IA, et insights clients.
+
+- **URL**: `https://ro2ya.tn/dashboard/123/intelligence`
 - **Acteurs**: Propriétaire de la boutique
-- **Composants Principaux**:
-  - Bouton "+ Créer Reel"
-  - Grille de tous les reels du vendeur
-  - Chaque carte: Miniature vidéo, Titre, ❤️ Likes, 💬 Commentaires, Actions
-  - Boutons: "✏️ Éditer", "🗑️ Supprimer", "📊 Stats"
+- **Sections**:
+  - 📊 **Sales Analytics** - Tendances revenue
+  - 👥 **Customer Insights** - Top customers, CLV
+  - 📈 **Product Performance** - Best sellers
+  - 💬 **Sentiment Analysis** (Darija) - Comments analysis
+  - 🤖 **AI Recommendations** - Pricing, best times to post
+
 - **Fonctionnalités**:
-  - Créer nouveau reel
-  - Éditer reel (titre, description)
-  - Supprimer reel
-  - Voir statistiques (vues, likes, partages)
-  - Voir commentaires
+  - Voir stats by period (Today/Week/Month)
+  - Analyser sentiments Darija
+  - Voir recommendations IA
 
 > **📱 Version Mobile (App Ro2ya)**  
-> La galerie vidéo permet aux créateurs de gérer leurs vidéos courtes et d'analyser leurs performances. Ces contenus peuvent être importés ou filmés directement avant d'être diffusés sur la plateforme.
+> Dashboard optimisé avec charts responsifs, analytics Darija intégrée.
 
 ---
 
-### 1️⃣2️⃣ **Mes Stories** `/dashboard/[id]/stories`
-**À quoi ça sert?** Les stories sont comme les reels, mais plus éphémérales: elles disparaissent au bout de 24h. C'est idéal pour annoncer une promo du jour, ou partager une nouvelle en direct. Vous voyez combien de gens les ont regardées.
-- **URL**: `https://ro2ya.tn/dashboard/123/stories`
-- **Acteurs**: Propriétaire de la boutique
-- **Composants Principaux**:
-  - Bouton "+ Ajouter Story"
-  - Grille de stories actives
-  - Chaque carte: Miniature, Titre, 👁️ Vues, Compte à rebours "18h restantes"
-  - Boutons: "✏️ Éditer", "🗑️ Supprimer", "👁️ Voir Vues"
-- **Fonctionnalités**:
-  - Créer story
-  - Éditer story
-  - Supprimer story
-  - Voir qui a regardé
-  - Voir compte à rebours
-
-> **📱 Version Mobile (App Ro2ya)**  
-> Gérées depuis le même espace que les Reels, les stories s'affichent sous forme de bulles sur la page de la boutique. Elles restent visibles 24 heures, avec un compte à rebours soulignant leur nature éphémère.
-
 ---
 
-### 1️⃣3️⃣ **Messages/Chat Vendeur** `/dashboard/[id]/messages`
-**À quoi ça sert?** Les clients vous posent des questions avant d'acheter. Vous recevez tous leurs messages ici et vous pouvez répondre directement. C'est pratique pour clarifier un doute, donner plus de détails, ou vendre plus en étant aimable et réactif.
+### 1️⃣2️⃣ **Messages/Chat Vendeur** `/dashboard/[id]/messages`
+
+**À quoi ça sert?** Les clients vous posent des questions avant d'acheter. Recevez tous leurs messages et répondez directement. Clarifiez les doutes, donnez plus de détails, et vendez en étant aimable!
+
 - **URL**: `https://ro2ya.tn/dashboard/123/messages`
 - **Acteurs**: Propriétaire de la boutique
 - **Composants Principaux**:
-  - Sidebar: Conversations avec clients
-  - Zone principale: Chat actif
-  - Historique messages
-  - Champ réponse
-  - Boutons: Lien vers produit, Archiver, Bloquer
+  - Sidebar: Listes conversations avec clients
+  - Zone principale: Chat actif (conversation)
+  - Historique messages avec timestamps
+  - Champ de saisie pour répondre
+  - Boutons: Partager lien produit, Archiver, Bloquer
+
 - **Fonctionnalités**:
   - Voir toutes conversations
-  - Répondre aux clients
+  - Répondre en temps réel
   - Partager lien produit
   - Archiver conversation
-  - Assister client pré-achat
+  - Bloquer client si besoin
 
 ---
 
-### 1️⃣4️⃣ **Support Vendeur** `/dashboard/[id]/support`
-**À quoi ça sert?** Si vous avez un problème technique avec votre boutique ou votre compte, vous créez un ticket ici. L'admin de Ro2ya le voit et vous aide en direct. C'est un chat en temps réel pour résoudre vos soucis rapidement.
+### 1️⃣3️⃣ **Support Vendeur** `/dashboard/[id]/support`
+
+**À quoi ça sert?** Problème technique avec votre boutique ou compte? Créez un ticket ici. L'admin Ro2ya vous aide en direct avec chat temps réel.
+
 - **URL**: `https://ro2ya.tn/dashboard/123/support`
 - **Acteurs**: Propriétaire de la boutique
 - **Composants Principaux**:
   - Bouton "❓ Contacter Support"
   - Tableau des tickets ouverts
   - Colonnes: Titre, Catégorie, Statut, Date
-  - Chaque ligne: "Voir", "Ajouter Commentaire", "Marquer Résolu"
+  - Actions: "Voir", "Ajouter Commentaire", "Marquer Résolu"
+
 - **Fonctionnalités**:
-  - Créer ticket auprès de l'admin
-  - Voir tous les tickets ouverts
-  - Chat en temps réel avec admin
-  - Voir progression résolution
+  - Créer ticket support
+  - Voir tickets ouverts
+  - Chat temps réel avec admin
+  - Suivre progression
 
 ---
 
-### 1️⃣5️⃣ **Social Vendeur** `/dashboard/[id]/social`
-**À quoi ça sert?** Vous voyez tous les avis que vos clients ont laissés. Vous pouvez leur répondre publiquement pour les remercier ou clarifier quelque chose. Le système montre aussi votre note moyenne et le pourcentage d'avis positifs.
+### 1️⃣4️⃣ **Social & Avis Clients** `/dashboard/[id]/social`
+
+**À quoi ça sert?** Voyez tous les avis reçus, répondez publiquement aux clients, suivez votre note moyenne et % d'avis positifs.
+
 - **URL**: `https://ro2ya.tn/dashboard/123/social`
 - **Acteurs**: Propriétaire de la boutique
 - **Composants Principaux**:
-  - Section "Avis clients" (toutes les reviews)
+  - Section "Avis clients"
   - Filtres: Note (⭐⭐⭐⭐⭐), Récent, Plus utile
   - Chaque avis: Auteur, Note, Texte, Bouton "Répondre"
   - Section "Réponses" (avis auxquels on a répondu)
-  - Statistiques: Note moyenne, % positifs
+  - Stats: Note moyenne, % positifs
+
 - **Fonctionnalités**:
-  - Voir tous les avis reçus
+  - Voir tous les avis
   - Filtrer par note/date
-  - Répondre à un avis
-  - Voir statistiques globales
-  - Éditer sa réponse
+  - Répondre publiquement
+  - Voir statistiques
+  - Éditer réponses
 
 ---
 
-### 1️⃣6️⃣ **Paramètres Vendeur** `/dashboard/[id]/settings`
-**À quoi ça sert?** C'est ici que vous gérez tous vos paramétrages: votre profil personnel, les infos de votre boutique (nom, logo, localisation), comment vous voulez ître notifié (email, SMS, etc.), et où vous veulent recevoir l'argent que vous gagnez.
+### 1️⃣5️⃣ **Paramètres Boutique** `/dashboard/[id]/settings`
+
+**À quoi ça sert?** Gestion complète des paramétrages: profil, infos boutique, notifications, paiement, intégrations.
+
 - **URL**: `https://ro2ya.tn/dashboard/123/settings`
 - **Acteurs**: Propriétaire de la boutique
-- **Composants Principaux**:
-  - Onglets: Profil, Boutique, Notifications, Paiement, Intégrations
-  - Profil: Avatar, Bio, Téléphone, Email
-  - Boutique: Nom, Description, Logo, Bannière, Localisation
-  - Notifications: Email alerts, SMS, Push
-  - Paiement: Compte bancaire, RIB, Devises
+- **Onglets**:
+  - **Profil** - Avatar, Bio, Téléphone, Email
+  - **Boutique** - Nom, Description, Logo, Bannière, Localisation
+  - **Notifications** - Email, SMS, Push preferences
+  - **Paiement** - Compte bancaire, RIB, Devises
+  - **Intégrations** - Social media, APIs
+
 - **Fonctionnalités**:
-  - Modifier infos profil
-  - Modifier infos boutique
+  - Modifier toutes infos
   - Gérer notifications
   - Paramétrer paiement
-  - Connecter intégrations (Social media, etc.)
+  - Connecter intégrations
   - Voir facturation
 
 > **📱 Version Mobile (App Ro2ya)**  
-> L'écran de réglages rassemble toutes les préférences (sécurité, langue, profil boutique) de manière intuitive. Un espace structuré regroupe l'ensemble des notifications pour faciliter la gestion du compte.
+> Réglages en onglets scrollables. Chaque section avec préférences claires.
 
 ---
 
