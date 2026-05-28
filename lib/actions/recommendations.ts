@@ -55,6 +55,7 @@ export async function getPersonalizedReels(): Promise<DiscoverFeedItem[]> {
             category,
             item_id,
             created_at,
+            thumbnail_url,
             stores (
                 id,
                 name,
@@ -140,6 +141,7 @@ export async function getPersonalizedReels(): Promise<DiscoverFeedItem[]> {
             image: parseFirstMediaPath(reel.media_path),
             allMedia: parseMediaUrls(reel.media_path),
             mediaType: reel.media_type,
+            thumbnailUrl: reel.thumbnail_url || '',
             likes: reelLikesCount,
             comments: reelCommentsCount,
             saves: stats.saves_count || 0,

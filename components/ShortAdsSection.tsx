@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Zap, Tag, Star, Clock, TrendingUp, Flame, Clapperboard } from 'lucide-react';
 import {
@@ -17,12 +18,15 @@ import {
   StoryViews,
   StoryCard,
   Story,
+  StoryVideo,
 } from '@/components/ui/stories-carousel';
+import { getPersonalizedReels } from '@/lib/actions/recommendations';
+import { DiscoverFeedItem } from '@/components/discover/feed-algorithm';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type ShortAd = {
-  id: number;
+  id: string;
   brand: string;
   tagline: string;
   discount: string;
@@ -32,156 +36,79 @@ type ShortAd = {
   views: string;
   duration: string;
   isNew?: boolean;
+  thumbnailUrl?: string;
+  mediaType?: 'image' | 'video';
 };
 
-// ─── Data ─────────────────────────────────────────────────────────────────────
+// ─── Helper Functions ─────────────────────────────────────────────────────────
 
-const shortAds: ShortAd[] = [
-  {
-    id: 1,
-    brand: 'Nike',
-    tagline: 'Run the future. New Air Max drop.',
-    discount: '40% OFF',
-    image: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=400&h=700&fit=crop',
-    avatar: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=40&h=40&fit=crop&crop=center',
-    textColor: 'text-orange-900',
-    views: '2.4M views',
-    duration: '0:58',
-    isNew: false,
-  },
-  {
-    id: 2,
-    brand: 'Apple',
-    tagline: 'iPhone 16 Pro — cinematic mode.',
-    discount: 'Up to $200 OFF',
-    image: 'https://images.unsplash.com/photo-1491553895911-0055eca6402d?w=400&h=700&fit=crop',
-    avatar: 'https://images.unsplash.com/photo-1491553895911-0055eca6402d?w=40&h=40&fit=crop',
-    textColor: 'text-blue-900',
-    views: '5.1M views',
-    duration: '0:45',
-    isNew: false,
-  },
-  {
-    id: 3,
-    brand: 'Zara',
-    tagline: 'New season arrivals just landed.',
-    discount: '30% OFF',
-    image: 'https://images.unsplash.com/photo-1490481651871-ab68de25d43d?w=400&h=700&fit=crop',
-    avatar: 'https://images.unsplash.com/photo-1490481651871-ab68de25d43d?w=40&h=40&fit=crop',
-    textColor: 'text-rose-900',
-    views: '890K views',
-    duration: '0:32',
-  },
-  {
-    id: 4,
-    brand: 'Sony',
-    tagline: 'WH-1000XM5. Sound. Elevated.',
-    discount: '25% OFF',
-    image: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=400&h=700&fit=crop',
-    avatar: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=40&h=40&fit=crop',
-    textColor: 'text-violet-900',
-    views: '1.2M views',
-    duration: '0:52',
-  },
-  {
-    id: 5,
-    brand: 'IKEA',
-    tagline: 'Transform your home for less.',
-    discount: '15% OFF',  
-    image: 'https://images.unsplash.com/photo-1555041469-a586c61ea9bc?w=400&h=700&fit=crop',
-    avatar: 'https://images.unsplash.com/photo-1555041469-a586c61ea9bc?w=40&h=40&fit=crop',
-    textColor: 'text-yellow-900',
-    views: '430K views',
-    duration: '0:41',
-  },
-  {
-    id: 6,
-    brand: 'Adidas',
-    tagline: 'Ultraboost 24 — impossible is nothing.',
-    discount: '35% OFF',   
-    image: 'https://images.unsplash.com/photo-1539185441755-769473a23570?w=400&h=700&fit=crop',
-    avatar: 'https://images.unsplash.com/photo-1539185441755-769473a23570?w=40&h=40&fit=crop',
-    textColor: 'text-green-900',
-    views: '3.7M views',
-    duration: '0:29',
-    isNew: false,
-  },
-  {
-    id: 7,
-    brand: 'Dyson',
-    tagline: 'Airwrap. Engineering redefined.',
-    discount: '$50 OFF', 
-    image: 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=400&h=700&fit=crop',
-    avatar: 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=40&h=40&fit=crop',
-    textColor: 'text-cyan-900',
-    views: '670K views',
-    duration: '0:37',
-  },
-  {
-    id: 8,
-    brand: 'Samsung',
-    tagline: 'Galaxy S24 Ultra — epic zoom.',
-    discount: '20% OFF',
-    image: 'https://images.unsplash.com/photo-1610945415295-d9bbf067e59c?w=400&h=700&fit=crop',
-    avatar: 'https://images.unsplash.com/photo-1610945415295-d9bbf067e59c?w=40&h=40&fit=crop',
-    textColor: 'text-blue-900',
-    views: '2.1M views',
-    duration: '0:44',
-  },
-  {
-    id: 9,
-    brand: 'Apple',
-    tagline: 'iPhone 16 Pro — cinematic mode.',
-    discount: 'Up to $200 OFF',
-    image: 'https://images.unsplash.com/photo-1491553895911-0055eca6402d?w=400&h=700&fit=crop',
-    avatar: 'https://images.unsplash.com/photo-1491553895911-0055eca6402d?w=40&h=40&fit=crop',
-    textColor: 'text-blue-900',
-    views: '5.1M views',
-    duration: '0:45',
-    isNew: false,
-  },
-  {
-    id: 10,
-    brand: 'Zara',
-    tagline: 'New season arrivals just landed.',
-    discount: '30% OFF',
-    image: 'https://images.unsplash.com/photo-1490481651871-ab68de25d43d?w=400&h=700&fit=crop',
-    avatar: 'https://images.unsplash.com/photo-1490481651871-ab68de25d43d?w=40&h=40&fit=crop',
-    textColor: 'text-rose-900',
-    views: '890K views',
-    duration: '0:32',
-  },
-  {
-    id: 11,
-    brand: 'Sony',
-    tagline: 'WH-1000XM5. Sound. Elevated.',
-    discount: '25% OFF',
-    image: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=400&h=700&fit=crop',
-    avatar: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=40&h=40&fit=crop',
-    textColor: 'text-violet-900',
-    views: '1.2M views',
-    duration: '0:52',
-  },
-  {
-    id: 12,
-    brand: 'IKEA',
-    tagline: 'Transform your home for less.',
-    discount: '15% OFF',  
-    image: 'https://images.unsplash.com/photo-1555041469-a586c61ea9bc?w=400&h=700&fit=crop',
-    avatar: 'https://images.unsplash.com/photo-1555041469-a586c61ea9bc?w=40&h=40&fit=crop',
-    textColor: 'text-yellow-900',
-    views: '430K views',
-    duration: '0:41',
-  },
-];
+const colorMap: Record<string, string> = {
+  food: 'text-orange-900',
+  fashion: 'text-blue-900',
+  tech: 'text-green-900',
+  beauty: 'text-rose-900',
+  home: 'text-violet-900',
+  lifestyle: 'text-cyan-900',
+};
+
+const formatViewCount = (count: number): string => {
+  if (count >= 1_000_000) return `${(count / 1_000_000).toFixed(1)}M views`;
+  if (count >= 1_000) return `${(count / 1_000).toFixed(0)}K views`;
+  return `${count} views`;
+};
+
+const formatDuration = (ms?: number): string => {
+  if (!ms) return '0:30';
+  const seconds = Math.floor(ms / 1000) % 60;
+  const minutes = Math.floor(ms / (1000 * 60));
+  return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+};
+
+const mapReelToShortAd = (reel: DiscoverFeedItem): ShortAd => ({
+  id: reel.id,
+  brand: reel.merchantName,
+  tagline: reel.product,
+  discount: reel.price,
+  image: reel.image,
+  avatar: reel.image,
+  textColor: colorMap[reel.category] || 'text-slate-900',
+  views: formatViewCount(reel.likes || 0),
+  duration: '0:30',
+  isNew: false,
+  thumbnailUrl: reel.thumbnailUrl,
+  mediaType: reel.mediaType,
+});
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function ShortAdsSection() {
   const router = useRouter();
+  const [shortAds, setShortAds] = useState<ShortAd[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleAdClick = () => {
-    router.push('/discover');
+  useEffect(() => {
+    const fetchReels = async () => {
+      try {
+        setIsLoading(true);
+        const reels = await getPersonalizedReels();
+        const mappedAds = reels.slice(0, 12).map(mapReelToShortAd);
+        setShortAds(mappedAds);
+        setError(null);
+      } catch (err) {
+        console.error('Failed to fetch reels:', err);
+        setError('Failed to load reels');
+        setShortAds([]);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchReels();
+  }, []);
+
+  const handleAdClick = (adId: string) => {
+    router.push(`/discover?reelId=${adId}`);
   };
 
   return (
@@ -206,12 +133,39 @@ export default function ShortAdsSection() {
       <div className="px-0.5">
         <Stories>
           <StoriesContent className="-ml-3">
-            {shortAds.map((ad) => (
+            {isLoading ? (
+              // Loading skeleton
+              Array.from({ length: 6 }).map((_, i) => (
+                <Story key={`skeleton-${i}`} className="basis-[150px]">
+                  <div className="w-full">
+                    <div className="w-full rounded-xl bg-slate-700 animate-pulse" style={{ aspectRatio: '9/16' }} />
+                    <div className="mt-2 space-y-2">
+                      <div className="w-8 h-8 rounded-full bg-slate-700 animate-pulse" />
+                      <div className="h-2 bg-slate-700 rounded animate-pulse" />
+                    </div>
+                  </div>
+                </Story>
+              ))
+            ) : error || shortAds.length === 0 ? (
+              <Story className="basis-[150px]">
+                <div className="text-xs text-slate-500 text-center">
+                  {error || 'No reels available'}
+                </div>
+              </Story>
+            ) : (
+              shortAds.map((ad) => (
               <Story key={ad.id} isNew={ad.isNew} className="basis-[150px]">
-                <div onClick={handleAdClick} className="w-full">
+                <div onClick={() => handleAdClick(ad.id)} className="w-full">
                   {/* ── Thumbnail ── */}
                   <StoryThumbnail>
-                    <StoryImage alt={`${ad.brand} short ad`} src={ad.image} />
+                    {ad.mediaType === 'video' ? (
+                      <StoryVideo 
+                        src={ad.image} 
+                        poster={ad.thumbnailUrl || undefined}
+                      />
+                    ) : (
+                      <StoryImage alt={`${ad.brand} short ad`} src={ad.thumbnailUrl || ad.image} />
+                    )}
                     <StoryOverlay side="top" className="h-14 from-black/60" />
                     <StoryOverlay side="bottom" className="h-20 from-black/70" />
                     <span className="absolute bottom-2 left-2 z-20 inline-block px-1.5 py-0.5 rounded-md text-[10px] font-black bg-[#22C55E] text-[#0A0A0A] shadow-md">
@@ -237,10 +191,11 @@ export default function ShortAdsSection() {
                   </StoryInfo>
                 </div>
               </Story>
-            ))}
+              ))
+            )}
 
             {/* ── "See all" ghost card at the end ── */}
-            <Story className="basis-[150px]">
+            {!isLoading && <Story className="basis-[150px]">
               <button
                 onClick={() => router.push('/discover')}
                 className="w-full rounded-xl border border-dashed border-[#2A2A2A] bg-[#1A1A1A] flex flex-col items-center justify-center gap-2 text-[#A1A1AA] hover:text-[#FFFFFF] hover:bg-[#222222] transition-colors hover:scale-105 active:scale-95"
@@ -249,7 +204,7 @@ export default function ShortAdsSection() {
                 <span className="text-2xl">→</span>
                 <span className="text-[11px] font-semibold text-center leading-tight px-2">See all shorts</span>
               </button>
-            </Story>
+            </Story>}
           </StoriesContent>
         </Stories>
       </div>

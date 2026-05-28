@@ -16,6 +16,7 @@ export interface ReelInput {
     ctaValue?: string
     category?: string
     itemId?: number
+    thumbnailUrl?: string
     metadata?: any
 }
 
@@ -218,6 +219,7 @@ export async function publishReel(input: ReelInput) {
             cta_value: input.ctaValue || null,
             category: input.category || null,
             item_id: input.itemId || null,
+            thumbnail_url: input.thumbnailUrl || null,
             status: 'active',
             embedding: embeddingVector ? `[${embeddingVector.join(',')}]` : null
         })

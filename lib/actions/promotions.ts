@@ -37,6 +37,8 @@ export async function createPromotion(storeId: number, promo: {
     valid_until: string
     apply_to_all: boolean
     item_ids?: number[]
+    originale_price?: number
+    new_price?: number
 }) {
     const supabase = createClient()
 
@@ -52,6 +54,8 @@ export async function createPromotion(storeId: number, promo: {
             valid_from: promo.valid_from,
             valid_until: promo.valid_until,
             apply_to_all: promo.apply_to_all,
+            originale_price: promo.originale_price,
+            new_price: promo.new_price,
             active: true
         })
         .select()
@@ -93,6 +97,8 @@ export async function updatePromotion(promoId: number, storeId: number, updates:
     valid_until?: string
     apply_to_all?: boolean
     item_ids?: number[]
+    originale_price?: number
+    new_price?: number
 }) {
     const supabase = createClient()
 
@@ -106,7 +112,9 @@ export async function updatePromotion(promoId: number, storeId: number, updates:
             discount_text: updates.discount_text,
             valid_from: updates.valid_from,
             valid_until: updates.valid_until,
-            apply_to_all: updates.apply_to_all
+            apply_to_all: updates.apply_to_all,
+            originale_price: updates.originale_price,
+            new_price: updates.new_price
         })
         .eq('id', promoId)
 
@@ -172,4 +180,38 @@ export async function togglePromotion(promoId: number, storeId: number, active: 
     revalidatePath(`/dashboard/${storeId}/promotions`)
     revalidatePath(`/business/${storeId}`)
     return { success: true }
+}
+
+/**
+ * Fetches all active promotions from all stores across the platform
+ * (for homepage or global display)
+ */
+export async function getAllActivePromotions(limit: number = 10) {
+    const supabase = createClient()
+    const now = new Date().toISOString()
+    
+    const { data, error } = await (supabase as any)
+        .from('promotions')
+        .select(`
+            *,
+            stores (
+                id,
+                name,
+                logo_url,
+                status
+            )
+        `)
+        .eq('active', true)
+        .lte('valid_from', now)
+        .gte('valid_until', now)
+        .eq('stores.status', 'PUBLISHED')
+        .order('created_at', { ascending: false })
+        .limit(limit)
+
+    if (error) {
+        console.error('Error fetching active promotions:', error)
+        return []
+    }
+
+    return data || []
 }

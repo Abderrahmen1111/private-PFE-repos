@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { Play, TrendingUp, Sparkles, ChevronRight, Loader2 } from 'lucide-react';
+import { Play, TrendingUp, Sparkles, ChevronRight, Loader2, MoreVertical, Flag, UserX, Share2, Copy } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { getDiscoverStories } from '@/lib/actions/stories';
 import { getLatestStores } from '@/lib/actions/business';
@@ -25,6 +25,8 @@ export default function SnapchatReels() {
   const router = useRouter();
   const [stories, setStories] = useState<SnapchatStory[]>([]);
   const [loading, setLoading] = useState(true);
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
   const { trackClick } = useTracking();
   
   useEffect(() => {
@@ -99,6 +101,54 @@ export default function SnapchatReels() {
     
     initReels();
   }, []);
+
+  // ✅ ADDED: Close menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setOpenMenuId(null);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // ✅ ADDED: Action handlers for menu items
+  const handleReport = (story: SnapchatStory) => {
+    console.log('Signaler:', story.id);
+    alert(`Merci ! Le contenu de ${story.store_name} a été signalé.`);
+    setOpenMenuId(null);
+  };
+
+  const handleBlock = (story: SnapchatStory) => {
+    console.log('Bloquer:', story.id);
+    alert(`Vous avez bloqué ${story.store_name}. Vous ne verrez plus leur contenu.`);
+    setOpenMenuId(null);
+  };
+
+  const handleShareProfile = (story: SnapchatStory) => {
+    console.log('Partager le profil:', story.id);
+    if (navigator.share) {
+      navigator.share({
+        title: story.store_name,
+        text: `Découvrez ${story.store_name}`,
+        url: `/merchants/business/${story.store_id}`
+      }).catch(() => {
+        // Fallback if native share fails
+        alert('Profil prêt à être partagé !');
+      });
+    } else {
+      alert(`Partagez ce profil : ${window.location.origin}/merchants/business/${story.store_id}`);
+    }
+    setOpenMenuId(null);
+  };
+
+  const handleCopyLink = (story: SnapchatStory) => {
+    const link = `${window.location.origin}/merchants/business/${story.store_id}`;
+    navigator.clipboard.writeText(link);
+    alert('Lien copié dans le presse-papiers !');
+    setOpenMenuId(null);
+  };
 
   const handleStoreClick = (story: SnapchatStory, position: number) => {
     // Track the click with position in the list
@@ -231,6 +281,66 @@ export default function SnapchatReels() {
                           <span className="relative text-white text-[11px] font-black uppercase tracking-widest truncate max-w-[100px]">
                              {story.store_name}
                           </span>
+                       </div>
+
+                       {/* ✅ ADDED: Three-dot menu button */}
+                       <div ref={menuRef} className="relative z-40">
+                         <button
+                           onClick={(e) => {
+                             e.stopPropagation();
+                             setOpenMenuId(openMenuId === story.id ? null : story.id);
+                           }}
+                           className="p-2.5 rounded-full bg-red-500 hover:bg-red-600 backdrop-blur-2xl border border-red-400 shadow-lg transition-all duration-300"
+                           title="Plus d'options"
+                         >
+                           <MoreVertical className="w-6 h-6 text-white font-bold" />
+                         </button>
+
+                         {/* ✅ ADDED: Dropdown menu */}
+                         {openMenuId === story.id && (
+                           <div className="absolute right-0 top-full mt-2 w-48 bg-black/95 backdrop-blur-xl border border-white/20 rounded-xl shadow-2xl z-50 overflow-hidden">
+                             <button
+                               onClick={(e) => {
+                                 e.stopPropagation();
+                                 handleReport(story);
+                               }}
+                               className="w-full px-4 py-3 text-left text-sm text-white hover:bg-red-500/20 transition-colors flex items-center gap-3 border-b border-white/10"
+                             >
+                               <Flag className="w-4 h-4 text-red-400" />
+                               <span>Signaler</span>
+                             </button>
+                             <button
+                               onClick={(e) => {
+                                 e.stopPropagation();
+                                 handleBlock(story);
+                               }}
+                               className="w-full px-4 py-3 text-left text-sm text-white hover:bg-red-500/20 transition-colors flex items-center gap-3 border-b border-white/10"
+                             >
+                               <UserX className="w-4 h-4 text-red-400" />
+                               <span>Bloquer</span>
+                             </button>
+                             <button
+                               onClick={(e) => {
+                                 e.stopPropagation();
+                                 handleShareProfile(story);
+                               }}
+                               className="w-full px-4 py-3 text-left text-sm text-white hover:bg-blue-500/20 transition-colors flex items-center gap-3 border-b border-white/10"
+                             >
+                               <Share2 className="w-4 h-4 text-blue-400" />
+                               <span>Partager le profil</span>
+                             </button>
+                             <button
+                               onClick={(e) => {
+                                 e.stopPropagation();
+                                 handleCopyLink(story);
+                               }}
+                               className="w-full px-4 py-3 text-left text-sm text-white hover:bg-green-500/20 transition-colors flex items-center gap-3"
+                             >
+                               <Copy className="w-4 h-4 text-green-400" />
+                               <span>Copier le lien</span>
+                             </button>
+                           </div>
+                         )}
                        </div>
                     </div>
 

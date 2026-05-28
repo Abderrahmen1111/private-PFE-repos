@@ -13,6 +13,7 @@ import { ProductCard } from '@/components/ProductCard';
 import { ServiceCard } from '@/components/ServiceCard';
 import { Business } from '@/types/business';
 import { useTracking } from '@/hooks/useTracking'; // ✅ ADDED
+import SearchFilters, { type CategoryType } from '@/components/search/SearchFilters';
 
 // Calcul de la distance via la formule Haversine (en km)
 function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number) {
@@ -40,6 +41,34 @@ function SearchPageContent() {
   const [isLoading, setIsLoading] = useState(true);
   const [compared, setCompared] = useState<number[]>([]);
   const businessRefs = useRef<Map<string, HTMLDivElement>>(new Map());
+  
+  // ✅ ADDED: Filter state
+  const [filters, setFilters] = useState<any>({
+    priceRange: [0, 10000],
+    condition: [],
+    deliveryAvailable: false,
+    rating: 0,
+    trending: false,
+    recentlyAdded: false,
+    sponsored: false,
+    distance: null,
+    openNow: false,
+    verified: false,
+    priceLevel: [],
+    fastResponse: false,
+    availability: '',
+    location: '',
+    verifiedProviders: false,
+    experience: [],
+    onHomeOrShop: [],
+    emergencyService: false,
+    nearby: false,
+    trending_reels: false,
+    new: false,
+    following: false,
+    offers: false,
+    videoDuration: [],
+  });
   
   // ✅ ADDED: Initialize tracking
   const { trackSearch, trackClick, trackNoResults, trackRefine, trackFilter, trackSort } = useTracking();
@@ -219,6 +248,122 @@ function SearchPageContent() {
   const toggleCompare = (id: number) =>
     setCompared((prev: number[]) => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id].slice(-3));
 
+  // ✅ ADDED: Apply filters to products (Items category)
+  const applyProductFilters = (items: SearchResultItem[]) => {
+    return items.filter((item) => {
+      // Price range filter
+      const price = item.price ?? 0;
+      if (price < filters.priceRange[0] || price > filters.priceRange[1]) return false;
+
+      // Condition filter (New/Used)
+      if (filters.condition.length > 0) {
+        const hasCondition = filters.condition.some((cond: string) =>
+          item.description?.toLowerCase().includes(cond) || item.name?.toLowerCase().includes(cond)
+        );
+        if (!hasCondition) return false;
+      }
+
+      // Location filter (for delivery available)
+      if (filters.deliveryAvailable && !item.is_nearby) return false;
+
+      // Rating filter
+      if (filters.rating > 0 && (item.rating_average ?? 0) < filters.rating) return false;
+
+      // Trending filter
+      if (filters.trending && !item.description?.toLowerCase().includes('trending')) return false;
+
+      // Recently Added filter
+      if (filters.recentlyAdded) {
+        const createdDate = new Date(item.created_at || 0);
+        const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+        if (createdDate < sevenDaysAgo) return false;
+      }
+
+      // Sponsored filter
+      if (filters.sponsored && !item.description?.toLowerCase().includes('sponsored')) return false;
+
+      return true;
+    });
+  };
+
+  // ✅ ADDED: Apply filters to businesses
+  const applyBusinessFilters = (items: Business[]) => {
+    return items.filter((item) => {
+      // Rating filter
+      if (filters.rating > 0 && (item.rating_average ?? 0) < filters.rating) return false;
+
+      // Delivery available filter
+      if (filters.deliveryAvailable && !item.is_nearby) return false;
+
+      // Verified businesses filter
+      if (filters.verified && !item.verified) return false;
+
+      // Open now filter (would need actual business hours data)
+      // if (filters.openNow && !item.isOpen) return false;
+
+      // Distance filter (based on nearness)
+      if (filters.distance !== null && item.is_nearby && filters.distance < 5) return false;
+
+      // Price level filter (would need price level metadata)
+      if (filters.priceLevel.length > 0) {
+        // Check if business matches any selected price level
+        const matchesPriceLevel = filters.priceLevel.some((level: string) =>
+          item.description?.toLowerCase().includes(level)
+        );
+        if (!matchesPriceLevel) return false;
+      }
+
+      // Fast response filter (based on business metadata)
+      if (filters.fastResponse && !item.description?.toLowerCase().includes('rapide')) return false;
+
+      return true;
+    });
+  };
+
+  // ✅ ADDED: Apply filters to services
+  const applyServiceFilters = (items: SearchResultItem[]) => {
+    return items.filter((item) => {
+      // Price range filter
+      const price = item.price ?? 0;
+      if (price < filters.priceRange[0] || price > filters.priceRange[1]) return false;
+
+      // Availability filter
+      if (filters.availability && !item.description?.toLowerCase().includes(filters.availability.toLowerCase())) {
+        return false;
+      }
+
+      // Location filter (At Home/In Shop)
+      if (filters.onHomeOrShop.length > 0) {
+        const hasLocation = filters.onHomeOrShop.some((loc: string) => {
+          if (loc === 'home') return item.description?.toLowerCase().includes('domicile');
+          if (loc === 'shop') return item.description?.toLowerCase().includes('boutique');
+          if (loc === 'both') return true;
+          return false;
+        });
+        if (!hasLocation) return false;
+      }
+
+      // Rating filter
+      if (filters.rating > 0 && (item.rating_average ?? 0) < filters.rating) return false;
+
+      // Verified providers filter
+      if (filters.verifiedProviders && !item.description?.toLowerCase().includes('vérifi')) return false;
+
+      // Experience filter (1-3 years, 3-5 years, 5+ years)
+      if (filters.experience.length > 0) {
+        const hasExperience = filters.experience.some((exp: string) =>
+          item.description?.toLowerCase().includes(exp) || item.name?.toLowerCase().includes(exp)
+        );
+        if (!hasExperience) return false;
+      }
+
+      // Emergency service filter
+      if (filters.emergencyService && !item.description?.toLowerCase().includes('urgence')) return false;
+
+      return true;
+    });
+  };
+
   // ✅ ADDED: Placeholder for future filter implementation
   const handleFilter = (filterType: string, value: any) => {
     trackFilter('search', filterType, value);
@@ -232,12 +377,16 @@ function SearchPageContent() {
   };
 
   // Séparation Exact vs Nearby
-  const exactServices = services.filter((s: any) => !s.is_nearby);
-  const nearbyServices = services.filter((s: any) => s.is_nearby);
-  const exactBusinesses = businesses.filter((b: any) => !b.is_nearby);
-  const nearbyBusinesses = businesses.filter((b: any) => b.is_nearby);
-  const exactProducts = products.filter((p: any) => !p.is_nearby);
-  const nearbyProducts = products.filter((p: any) => p.is_nearby);
+  const filteredServices = applyServiceFilters(services);
+  const filteredBusinesses = applyBusinessFilters(businesses);
+  const filteredProducts = applyProductFilters(products);
+
+  const exactServices = filteredServices.filter((s: any) => !s.is_nearby);
+  const nearbyServices = filteredServices.filter((s: any) => s.is_nearby);
+  const exactBusinesses = filteredBusinesses.filter((b: any) => !b.is_nearby);
+  const nearbyBusinesses = filteredBusinesses.filter((b: any) => b.is_nearby);
+  const exactProducts = filteredProducts.filter((p: any) => !p.is_nearby);
+  const nearbyProducts = filteredProducts.filter((p: any) => p.is_nearby);
 
   const hasExact = exactServices.length > 0 || exactBusinesses.length > 0 || exactProducts.length > 0;
   const hasNearby = nearbyServices.length > 0 || nearbyBusinesses.length > 0 || nearbyProducts.length > 0;
@@ -282,6 +431,32 @@ function SearchPageContent() {
                   >
                     <Package className="w-4 h-4" /> Items <span className="ml-1 bg-white/20 px-1.5 rounded-md">{products.length}</span>
                   </button>
+                )}
+
+                {/* ✅ ADDED: Spacer to push filter to the right */}
+                <div className="flex-1 min-w-0" />
+
+                {/* ✅ ADDED: Filter component based on active section */}
+                {activeSection === 'products' && (
+                  <SearchFilters
+                    category="items"
+                    activeFilters={filters}
+                    onFilterChange={(newFilters) => setFilters((prev: any) => ({ ...prev, ...newFilters }))}
+                  />
+                )}
+                {activeSection === 'businesses' && (
+                  <SearchFilters
+                    category="businesses"
+                    activeFilters={filters}
+                    onFilterChange={(newFilters) => setFilters((prev: any) => ({ ...prev, ...newFilters }))}
+                  />
+                )}
+                {activeSection === 'services' && (
+                  <SearchFilters
+                    category="services"
+                    activeFilters={filters}
+                    onFilterChange={(newFilters) => setFilters((prev: any) => ({ ...prev, ...newFilters }))}
+                  />
                 )}
             </div>
         </div>

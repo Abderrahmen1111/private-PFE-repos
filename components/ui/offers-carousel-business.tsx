@@ -61,12 +61,12 @@ const ItemCard = ({ item }: { item: CarouselItem }) => (
         </div>
         <p className="mt-1 text-sm text-[#A1A1AA]">{item.subtitle}</p>
         <div className="mt-3 flex items-end gap-2">
-          <p className="text-lg font-bold text-[#FFFFFF]">₹{item.price.toLocaleString('en-IN')}</p>
+          <p className="text-lg font-bold text-[#FFFFFF]">{item.price.toLocaleString('fr-TN')} DT</p>
           {item.originalPrice && (
-            <p className="text-sm text-[#71717A] line-through">
-              ₹{item.originalPrice.toLocaleString('en-IN')}
-            </p>
-          )}
+  <p className="text-sm text-[#71717A] line-through">
+    {item.originalPrice.toLocaleString('fr-TN')} DT
+  </p>
+)}
         </div>
         <p className="text-xs text-[#71717A]">/ night</p>
       </div>

@@ -7,6 +7,7 @@ import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import { searchServicesDirectory } from '@/lib/actions/search';
 import { ServiceCard } from '@/components/ServiceCard';
+import SearchFilters from '@/components/search/SearchFilters';
 
 // ── Category chips ────────────────────────────────────────────────────────────
 const SERVICE_CATEGORIES = [
@@ -40,11 +41,19 @@ function ServiceSearchContent() {
   const [isLoading,      setIsLoading]      = useState(true);
   const [activeCategory, setActiveCategory] = useState('all');
   const [sortBy,         setSortBy]         = useState('pertinence');
-  const [showFilters,    setShowFilters]    = useState(false);
-  const [priceMin,       setPriceMin]       = useState('');
-  const [priceMax,       setPriceMax]       = useState('');
-  const [minRating,      setMinRating]      = useState(0);
   const [showSortMenu,   setShowSortMenu]   = useState(false);
+  
+  // ✅ UPDATED: Use new filter structure
+  const [filters, setFilters] = useState<any>({
+    priceRange: [0, 10000],
+    availability: '',
+    location: '',
+    rating: 0,
+    verifiedProviders: false,
+    experience: [],
+    onHomeOrShop: [],
+    emergencyService: false,
+  });
 
   // ── Fetch from service_directory ───────────────────────────────────────────
   useEffect(() => {
@@ -68,10 +77,45 @@ function ServiceSearchContent() {
       const matchCat    = activeCategory === 'all' || 
                           (s.name?.toLowerCase() || '').includes(activeCategory) || 
                           (s.description?.toLowerCase() || '').includes(activeCategory);
-      const matchMin    = !priceMin  || (s.price ?? 0) >= Number(priceMin);
-      const matchMax    = !priceMax  || (s.price ?? 0) <= Number(priceMax);
-      const matchRating = !minRating || (s.rating_average ?? 0) >= minRating;
-      return matchCat && matchMin && matchMax && matchRating;
+      
+      // Price range filter
+      const price = s.price ?? 0;
+      if (price < filters.priceRange[0] || price > filters.priceRange[1]) return false;
+
+      // Availability filter
+      if (filters.availability && !s.description?.toLowerCase().includes(filters.availability.toLowerCase())) {
+        return false;
+      }
+
+      // Location filter (At Home/In Shop)
+      if (filters.onHomeOrShop.length > 0) {
+        const hasLocation = filters.onHomeOrShop.some((loc: string) => {
+          if (loc === 'home') return s.description?.toLowerCase().includes('domicile');
+          if (loc === 'shop') return s.description?.toLowerCase().includes('boutique');
+          if (loc === 'both') return true;
+          return false;
+        });
+        if (!hasLocation) return false;
+      }
+
+      // Rating filter
+      if (filters.rating > 0 && (s.rating_average ?? 0) < filters.rating) return false;
+
+      // Verified providers filter
+      if (filters.verifiedProviders && !s.description?.toLowerCase().includes('vérifi')) return false;
+
+      // Experience filter
+      if (filters.experience.length > 0) {
+        const hasExperience = filters.experience.some((exp: string) =>
+          s.description?.toLowerCase().includes(exp) || s.name?.toLowerCase().includes(exp)
+        );
+        if (!hasExperience) return false;
+      }
+
+      // Emergency service filter
+      if (filters.emergencyService && !s.description?.toLowerCase().includes('urgence')) return false;
+
+      return matchCat;
     })
     .sort((a, b) => {
       if (sortBy === 'price_asc')  return (a.price ?? 0) - (b.price ?? 0);
@@ -82,11 +126,26 @@ function ServiceSearchContent() {
     });
 
   const activeFilterCount = [
-    priceMin, priceMax, minRating > 0 ? minRating : '', activeCategory !== 'all' ? activeCategory : ''
-  ].filter(Boolean).length;
+    filters.priceRange[0] > 0 || filters.priceRange[1] < 10000 ? 1 : 0,
+    filters.availability ? 1 : 0,
+    filters.experience.length,
+    filters.onHomeOrShop.length,
+    filters.rating > 0 ? 1 : 0,
+    filters.verifiedProviders ? 1 : 0,
+    filters.emergencyService ? 1 : 0,
+  ].reduce((a, b) => a + b, 0);
 
   const clearFilters = () => {
-    setPriceMin(''); setPriceMax(''); setMinRating(0); setActiveCategory('all');
+    setFilters({
+      priceRange: [0, 10000],
+      availability: '',
+      location: '',
+      rating: 0,
+      verifiedProviders: false,
+      experience: [],
+      onHomeOrShop: [],
+      emergencyService: false,
+    });
   };
 
   const currentSortLabel = SORT_OPTIONS.find(o => o.id === sortBy)?.label ?? 'Pertinence';
@@ -135,22 +194,12 @@ function ServiceSearchContent() {
 
         {/* ── Toolbar: filters + sort ──────────────────────────────────────── */}
         <div className="flex items-center justify-between mb-5 gap-3">
-          <button
-            onClick={() => setShowFilters(p => !p)}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold border transition-all relative ${
-              showFilters || activeFilterCount > 0
-                ? 'bg-stone-900 text-white border-stone-900'
-                : 'bg-white text-stone-700 border-stone-200 hover:border-stone-400'
-            }`}
-          >
-            <SlidersHorizontal className="w-4 h-4" />
-            Filtres
-            {activeFilterCount > 0 && (
-              <span className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center">
-                {activeFilterCount}
-              </span>
-            )}
-          </button>
+          {/* ✅ UPDATED: Use new SearchFilters component */}
+          <SearchFilters
+            category="services"
+            activeFilters={filters}
+            onFilterChange={(newFilters) => setFilters((prev: any) => ({ ...prev, ...newFilters }))}
+          />
 
           {/* Sort dropdown */}
           <div className="relative">
@@ -180,73 +229,6 @@ function ServiceSearchContent() {
             )}
           </div>
         </div>
-
-        {/* ── Filter panel ─────────────────────────────────────────────────── */}
-        {showFilters && (
-          <div className="bg-stone-50 border border-stone-200 rounded-2xl p-5 mb-6">
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
-
-              {/* Price range */}
-              <div>
-                <label className="text-xs font-bold text-stone-500 uppercase tracking-wider block mb-2">
-                  Prix (TND)
-                </label>
-                <div className="flex gap-2 items-center">
-                  <input
-                    type="number"
-                    placeholder="Min"
-                    value={priceMin}
-                    onChange={e => setPriceMin(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl border border-stone-200 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-stone-900/10"
-                  />
-                  <span className="text-stone-400 text-xs">—</span>
-                  <input
-                    type="number"
-                    placeholder="Max"
-                    value={priceMax}
-                    onChange={e => setPriceMax(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl border border-stone-200 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-stone-900/10"
-                  />
-                </div>
-              </div>
-
-              {/* Min rating */}
-              <div>
-                <label className="text-xs font-bold text-stone-500 uppercase tracking-wider block mb-2">
-                  Note minimale
-                </label>
-                <div className="flex gap-1">
-                  {[1, 2, 3, 4, 5].map(star => (
-                    <button
-                      key={star}
-                      onClick={() => setMinRating(minRating === star ? 0 : star)}
-                      className={`p-1.5 rounded-lg transition-colors ${
-                        star <= minRating ? 'text-amber-400' : 'text-stone-300 hover:text-amber-300'
-                      }`}
-                    >
-                      <Star className="w-5 h-5 fill-current" />
-                    </button>
-                  ))}
-                  {minRating > 0 && (
-                    <span className="ml-1 text-xs text-stone-500 self-center">{minRating}+ étoiles</span>
-                  )}
-                </div>
-              </div>
-
-              {/* Clear */}
-              <div className="flex items-end">
-                {activeFilterCount > 0 && (
-                  <button
-                    onClick={clearFilters}
-                    className="flex items-center gap-1.5 text-sm text-stone-500 hover:text-stone-900 transition-colors"
-                  >
-                    <X className="w-4 h-4" /> Effacer les filtres
-                  </button>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
 
         {/* ── Results ──────────────────────────────────────────────────────── */}
         {isLoading ? (
