@@ -78,30 +78,41 @@ function ServiceSearchContent() {
                           (s.name?.toLowerCase() || '').includes(activeCategory) || 
                           (s.description?.toLowerCase() || '').includes(activeCategory);
       
-      // Price range
+      // Price range filter
       const price = s.price ?? 0;
       if (price < filters.priceRange[0] || price > filters.priceRange[1]) return false;
 
-      // Location filter
+      // Availability filter
+      if (filters.availability && !s.description?.toLowerCase().includes(filters.availability.toLowerCase())) {
+        return false;
+      }
+
+      // Location filter (At Home/In Shop)
       if (filters.onHomeOrShop.length > 0) {
-        const hasLocation = filters.onHomeOrShop.some((loc: string) =>
-          s.description?.toLowerCase().includes(loc) || s.name?.toLowerCase().includes(loc)
-        );
+        const hasLocation = filters.onHomeOrShop.some((loc: string) => {
+          if (loc === 'home') return s.description?.toLowerCase().includes('domicile');
+          if (loc === 'shop') return s.description?.toLowerCase().includes('boutique');
+          if (loc === 'both') return true;
+          return false;
+        });
         if (!hasLocation) return false;
       }
 
-      // Rating
+      // Rating filter
       if (filters.rating > 0 && (s.rating_average ?? 0) < filters.rating) return false;
+
+      // Verified providers filter
+      if (filters.verifiedProviders && !s.description?.toLowerCase().includes('vérifi')) return false;
 
       // Experience filter
       if (filters.experience.length > 0) {
         const hasExperience = filters.experience.some((exp: string) =>
-          s.description?.toLowerCase().includes(exp)
+          s.description?.toLowerCase().includes(exp) || s.name?.toLowerCase().includes(exp)
         );
         if (!hasExperience) return false;
       }
 
-      // Emergency service
+      // Emergency service filter
       if (filters.emergencyService && !s.description?.toLowerCase().includes('urgence')) return false;
 
       return matchCat;
@@ -116,9 +127,11 @@ function ServiceSearchContent() {
 
   const activeFilterCount = [
     filters.priceRange[0] > 0 || filters.priceRange[1] < 10000 ? 1 : 0,
+    filters.availability ? 1 : 0,
     filters.experience.length,
     filters.onHomeOrShop.length,
     filters.rating > 0 ? 1 : 0,
+    filters.verifiedProviders ? 1 : 0,
     filters.emergencyService ? 1 : 0,
   ].reduce((a, b) => a + b, 0);
 

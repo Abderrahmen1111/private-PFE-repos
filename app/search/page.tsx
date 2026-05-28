@@ -248,14 +248,14 @@ function SearchPageContent() {
   const toggleCompare = (id: number) =>
     setCompared((prev: number[]) => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id].slice(-3));
 
-  // ✅ ADDED: Apply filters to products
+  // ✅ ADDED: Apply filters to products (Items category)
   const applyProductFilters = (items: SearchResultItem[]) => {
     return items.filter((item) => {
-      // Price range
+      // Price range filter
       const price = item.price ?? 0;
       if (price < filters.priceRange[0] || price > filters.priceRange[1]) return false;
 
-      // Condition
+      // Condition filter (New/Used)
       if (filters.condition.length > 0) {
         const hasCondition = filters.condition.some((cond: string) =>
           item.description?.toLowerCase().includes(cond) || item.name?.toLowerCase().includes(cond)
@@ -263,11 +263,24 @@ function SearchPageContent() {
         if (!hasCondition) return false;
       }
 
-      // Delivery available
+      // Location filter (for delivery available)
       if (filters.deliveryAvailable && !item.is_nearby) return false;
 
-      // Rating
+      // Rating filter
       if (filters.rating > 0 && (item.rating_average ?? 0) < filters.rating) return false;
+
+      // Trending filter
+      if (filters.trending && !item.description?.toLowerCase().includes('trending')) return false;
+
+      // Recently Added filter
+      if (filters.recentlyAdded) {
+        const createdDate = new Date(item.created_at || 0);
+        const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+        if (createdDate < sevenDaysAgo) return false;
+      }
+
+      // Sponsored filter
+      if (filters.sponsored && !item.description?.toLowerCase().includes('sponsored')) return false;
 
       return true;
     });
@@ -276,23 +289,32 @@ function SearchPageContent() {
   // ✅ ADDED: Apply filters to businesses
   const applyBusinessFilters = (items: Business[]) => {
     return items.filter((item) => {
-      // Rating
+      // Rating filter
       if (filters.rating > 0 && (item.rating_average ?? 0) < filters.rating) return false;
 
-      // Delivery available
+      // Delivery available filter
       if (filters.deliveryAvailable && !item.is_nearby) return false;
 
-      // Verified
+      // Verified businesses filter
       if (filters.verified && !item.verified) return false;
 
-      // Open now (placeholder - would need actual data)
+      // Open now filter (would need actual business hours data)
       // if (filters.openNow && !item.isOpen) return false;
 
-      // Price level
+      // Distance filter (based on nearness)
+      if (filters.distance !== null && item.is_nearby && filters.distance < 5) return false;
+
+      // Price level filter (would need price level metadata)
       if (filters.priceLevel.length > 0) {
-        // This would need price level data from business
-        // For now, just pass
+        // Check if business matches any selected price level
+        const matchesPriceLevel = filters.priceLevel.some((level: string) =>
+          item.description?.toLowerCase().includes(level)
+        );
+        if (!matchesPriceLevel) return false;
       }
+
+      // Fast response filter (based on business metadata)
+      if (filters.fastResponse && !item.description?.toLowerCase().includes('rapide')) return false;
 
       return true;
     });
@@ -301,30 +323,41 @@ function SearchPageContent() {
   // ✅ ADDED: Apply filters to services
   const applyServiceFilters = (items: SearchResultItem[]) => {
     return items.filter((item) => {
-      // Price range
+      // Price range filter
       const price = item.price ?? 0;
       if (price < filters.priceRange[0] || price > filters.priceRange[1]) return false;
 
-      // Location filter
+      // Availability filter
+      if (filters.availability && !item.description?.toLowerCase().includes(filters.availability.toLowerCase())) {
+        return false;
+      }
+
+      // Location filter (At Home/In Shop)
       if (filters.onHomeOrShop.length > 0) {
-        const hasLocation = filters.onHomeOrShop.some((loc: string) =>
-          item.description?.toLowerCase().includes(loc) || item.name?.toLowerCase().includes(loc)
-        );
+        const hasLocation = filters.onHomeOrShop.some((loc: string) => {
+          if (loc === 'home') return item.description?.toLowerCase().includes('domicile');
+          if (loc === 'shop') return item.description?.toLowerCase().includes('boutique');
+          if (loc === 'both') return true;
+          return false;
+        });
         if (!hasLocation) return false;
       }
 
-      // Rating
+      // Rating filter
       if (filters.rating > 0 && (item.rating_average ?? 0) < filters.rating) return false;
 
-      // Experience filter
+      // Verified providers filter
+      if (filters.verifiedProviders && !item.description?.toLowerCase().includes('vérifi')) return false;
+
+      // Experience filter (1-3 years, 3-5 years, 5+ years)
       if (filters.experience.length > 0) {
         const hasExperience = filters.experience.some((exp: string) =>
-          item.description?.toLowerCase().includes(exp)
+          item.description?.toLowerCase().includes(exp) || item.name?.toLowerCase().includes(exp)
         );
         if (!hasExperience) return false;
       }
 
-      // Emergency service
+      // Emergency service filter
       if (filters.emergencyService && !item.description?.toLowerCase().includes('urgence')) return false;
 
       return true;

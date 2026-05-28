@@ -41,6 +41,8 @@ type Promo = {
   active: boolean;
   apply_to_all: boolean;
   item_ids: number[];
+  originale_price?: number;
+  new_price?: number;
 };
 
 type PromoDraft = {
@@ -53,6 +55,8 @@ type PromoDraft = {
   valid_until: string;
   apply_to_all: boolean;
   item_ids: number[];
+  originale_price: string;
+  new_price: string;
 };
 
 const emptyDraft = (): PromoDraft => ({
@@ -64,6 +68,8 @@ const emptyDraft = (): PromoDraft => ({
   valid_until: '',
   apply_to_all: false,
   item_ids: [],
+  originale_price: '',
+  new_price: '',
 });
 
 interface PromotionsSectionProps {
@@ -142,8 +148,76 @@ export default function PromotionsSection({ storeId, items, initialPromotions, o
       valid_until: promo.valid_until?.slice(0, 10) || '',
       apply_to_all: promo.apply_to_all,
       item_ids: promo.item_ids || [],
+      originale_price: promo.originale_price?.toString() || '',
+      new_price: promo.new_price?.toString() || '',
     });
     setIsOpen(true);
+  };
+
+  const handleOriginalPriceChange = (val: string) => {
+    setDraft(prev => {
+      const nextDraft = { ...prev, originale_price: val };
+      const orig = parseFloat(val);
+      
+      if (!isNaN(orig) && orig > 0) {
+        if (nextDraft.new_price && !isNaN(parseFloat(nextDraft.new_price))) {
+          const np = parseFloat(nextDraft.new_price);
+          const disc = Math.round(((orig - np) / orig) * 100);
+          nextDraft.discount_percent = disc >= 0 ? disc.toString() : '';
+        } else if (nextDraft.discount_percent && !isNaN(parseFloat(nextDraft.discount_percent))) {
+          const dp = parseFloat(nextDraft.discount_percent);
+          const np = Math.round(orig * (1 - dp / 100) * 100) / 100;
+          nextDraft.new_price = np >= 0 ? np.toString() : '';
+        }
+      }
+      return nextDraft;
+    });
+  };
+
+  const handleNewPriceChange = (val: string) => {
+    setDraft(prev => {
+      const nextDraft = { ...prev, new_price: val };
+      const np = parseFloat(val);
+      
+      if (!isNaN(np) && np >= 0) {
+        if (nextDraft.originale_price && !isNaN(parseFloat(nextDraft.originale_price))) {
+          const orig = parseFloat(nextDraft.originale_price);
+          if (orig > 0) {
+            const disc = Math.round(((orig - np) / orig) * 100);
+            nextDraft.discount_percent = disc >= 0 ? disc.toString() : '';
+          }
+        } else if (nextDraft.discount_percent && !isNaN(parseFloat(nextDraft.discount_percent))) {
+          const dp = parseFloat(nextDraft.discount_percent);
+          if (dp < 100) {
+            const orig = Math.round((np / (1 - dp / 100)) * 100) / 100;
+            nextDraft.originale_price = orig >= 0 ? orig.toString() : '';
+          }
+        }
+      }
+      return nextDraft;
+    });
+  };
+
+  const handleDiscountPercentChange = (val: string) => {
+    setDraft(prev => {
+      const nextDraft = { ...prev, discount_percent: val };
+      const dp = parseFloat(val);
+      
+      if (!isNaN(dp) && dp >= 0 && dp <= 100) {
+        if (nextDraft.originale_price && !isNaN(parseFloat(nextDraft.originale_price))) {
+          const orig = parseFloat(nextDraft.originale_price);
+          const np = Math.round(orig * (1 - dp / 100) * 100) / 100;
+          nextDraft.new_price = np >= 0 ? np.toString() : '';
+        } else if (nextDraft.new_price && !isNaN(parseFloat(nextDraft.new_price))) {
+          const np = parseFloat(nextDraft.new_price);
+          if (dp < 100) {
+            const orig = Math.round((np / (1 - dp / 100)) * 100) / 100;
+            nextDraft.originale_price = orig >= 0 ? orig.toString() : '';
+          }
+        }
+      }
+      return nextDraft;
+    });
   };
 
   const handleSave = async () => {
@@ -162,6 +236,8 @@ export default function PromotionsSection({ storeId, items, initialPromotions, o
       valid_until: draft.valid_until,
       apply_to_all: draft.apply_to_all,
       item_ids: draft.item_ids,
+      originale_price: draft.originale_price ? Number(draft.originale_price) : undefined,
+      new_price: draft.new_price ? Number(draft.new_price) : undefined,
     };
 
     if (draft.id) {
@@ -292,6 +368,12 @@ export default function PromotionsSection({ storeId, items, initialPromotions, o
                             <p className="text-xs text-slate-400 font-medium italic line-clamp-1 opacity-80">
                               {draft.description || 'Une description qui donne envie...'}
                             </p>
+                            {draft.originale_price && draft.new_price && (
+                              <div className="mt-2 flex items-center gap-2 relative z-10">
+                                <span className="text-xs line-through text-slate-500 font-bold">{draft.originale_price} DT</span>
+                                <span className="text-sm text-emerald-400 font-black">{draft.new_price} DT</span>
+                              </div>
+                            )}
                           </div>
                           <div className="relative group">
                             <div className="absolute -inset-2 bg-red-500/20 rounded-2xl blur opacity-0 group-hover:opacity-100 transition duration-300" />
@@ -313,7 +395,7 @@ export default function PromotionsSection({ storeId, items, initialPromotions, o
                       </div>
                     </div>
                   </div>
-
+ 
                   <div className="space-y-2">
                     <Label htmlFor="description" className="text-sm font-semibold">Description</Label>
                     <Textarea
@@ -326,20 +408,49 @@ export default function PromotionsSection({ storeId, items, initialPromotions, o
 
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
+                      <Label htmlFor="originale_price" className="text-xs font-semibold uppercase tracking-wider text-slate-400">Prix d'origine (DT)</Label>
+                      <Input
+                        id="originale_price"
+                        type="number"
+                        step="any"
+                        placeholder="ex: 120"
+                        className="bg-slate-950/50 border-slate-800 focus:border-red-500/50"
+                        value={draft.originale_price}
+                        onChange={e => handleOriginalPriceChange(e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="new_price" className="text-xs font-semibold uppercase tracking-wider text-slate-400">Prix de promotion (DT)</Label>
+                      <Input
+                        id="new_price"
+                        type="number"
+                        step="any"
+                        placeholder="ex: 90"
+                        className="bg-slate-950/50 border-slate-800 focus:border-red-500/50"
+                        value={draft.new_price}
+                        onChange={e => handleNewPriceChange(e.target.value)}
+                      />
+                    </div>
+                  </div>
+ 
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
                       <Label htmlFor="pct" className="text-xs font-semibold uppercase tracking-wider text-slate-400">Réduction (%)</Label>
                       <Input
                         id="pct"
                         type="number"
-                        className="bg-slate-950/50 border-slate-800"
+                        placeholder="ex: 25"
+                        className="bg-slate-950/50 border-slate-800 focus:border-red-500/50"
                         value={draft.discount_percent}
-                        onChange={e => setDraft(d => ({ ...d, discount_percent: e.target.value }))}
+                        onChange={e => handleDiscountPercentChange(e.target.value)}
                       />
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="txt" className="text-xs font-semibold uppercase tracking-wider text-slate-400">Texte (ex: 1+1)</Label>
                       <Input
                         id="txt"
-                        className="bg-slate-950/50 border-slate-800"
+                        placeholder="ex: Offre limitée"
+                        className="bg-slate-950/50 border-slate-800 focus:border-red-500/50"
                         value={draft.discount_text}
                         onChange={e => setDraft(d => ({ ...d, discount_text: e.target.value }))}
                       />
@@ -486,6 +597,13 @@ export default function PromotionsSection({ storeId, items, initialPromotions, o
                             </div>
                           </div>
 
+                          {promo.originale_price && promo.new_price && (
+                            <div className="flex items-center gap-2 mb-4 px-1">
+                              <span className="text-sm line-through text-slate-500 font-bold">{promo.originale_price} DT</span>
+                              <span className="text-base text-emerald-400 font-black">{promo.new_price} DT</span>
+                            </div>
+                          )}
+
                           <div className="grid grid-cols-2 gap-4 mb-8">
                             <div className="p-3 rounded-2xl bg-white/5 border border-white/5 flex items-center gap-3">
                               <div className="p-2 rounded-xl bg-red-500/10">
@@ -568,6 +686,8 @@ export default function PromotionsSection({ storeId, items, initialPromotions, o
               valid_until: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
               apply_to_all: true,
               item_ids: [],
+              originale_price: '',
+              new_price: '',
             });
             setIsOpen(true);
           }}

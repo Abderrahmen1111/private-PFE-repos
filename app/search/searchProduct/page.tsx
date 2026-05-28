@@ -72,7 +72,7 @@ function ProductSearchContent() {
       const price = p.price ?? 0;
       if (price < filters.priceRange[0] || price > filters.priceRange[1]) return false;
 
-      // Condition
+      // Condition filter (New/Used)
       if (filters.condition.length > 0) {
         const hasCondition = filters.condition.some((cond: string) =>
           p.description?.toLowerCase().includes(cond) || p.name?.toLowerCase().includes(cond)
@@ -80,11 +80,24 @@ function ProductSearchContent() {
         if (!hasCondition) return false;
       }
 
-      // Delivery available
-      if (filters.deliveryAvailable) return false; // Simplified - would need actual data
+      // Delivery available filter
+      if (filters.deliveryAvailable && !p.is_nearby) return false;
 
-      // Rating
+      // Rating filter
       if (filters.rating > 0 && (p.rating_average ?? 0) < filters.rating) return false;
+
+      // Trending filter
+      if (filters.trending && !p.description?.toLowerCase().includes('trending')) return false;
+
+      // Recently Added filter
+      if (filters.recentlyAdded) {
+        const createdDate = new Date(p.created_at || 0);
+        const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+        if (createdDate < sevenDaysAgo) return false;
+      }
+
+      // Sponsored filter
+      if (filters.sponsored && !p.description?.toLowerCase().includes('sponsored')) return false;
 
       return true;
     })

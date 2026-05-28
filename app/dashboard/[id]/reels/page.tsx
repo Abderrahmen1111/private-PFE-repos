@@ -83,6 +83,7 @@ export default function MediaManagementPage() {
   const [price, setPrice] = useState('');
   const [category, setCategory] = useState('');
   const [selectedFilter, setSelectedFilter] = useState('none');
+  const [thumbnailUrl, setThumbnailUrl] = useState('');
   
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -129,6 +130,7 @@ export default function MediaManagementPage() {
     setPrice('');
     setCategory('');
     setSelectedFilter('none');
+    setThumbnailUrl('');
     setRecordingTime(0);
     if (recordingTimerRef.current) clearInterval(recordingTimerRef.current);
   };
@@ -155,6 +157,7 @@ export default function MediaManagementPage() {
             title,
             price: Number(price) || 0,
             category,
+            thumbnailUrl: thumbnailUrl || undefined,
             metadata: { filter: selectedFilter }
           });
         } else {
@@ -506,27 +509,38 @@ export default function MediaManagementPage() {
                   </div>
 
                   {activeTab === 'reels' && (
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label className="text-[10px] font-black uppercase tracking-widest text-white/40">Prix (DT)</Label>
+                    <>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label className="text-[10px] font-black uppercase tracking-widest text-white/40">Prix (DT)</Label>
+                          <Input 
+                            type="number" 
+                            placeholder="0.00" 
+                            value={price} 
+                            onChange={e => setPrice(e.target.value)} 
+                            className="bg-white/5 border-white/10 rounded-xl h-12"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label className="text-[10px] font-black uppercase tracking-widest text-white/40">Catégorie</Label>
+                          <Input 
+                            placeholder="Ex: Mode" 
+                            value={category} 
+                            onChange={e => setCategory(e.target.value)} 
+                            className="bg-white/5 border-white/10 rounded-xl h-12"
+                          />
+                        </div>
+                      </div>
+                      <div className="space-y-2 mt-2">
+                        <Label className="text-[10px] font-black uppercase tracking-widest text-white/40">URL de la Miniature (Optionnelle)</Label>
                         <Input 
-                          type="number" 
-                          placeholder="0.00" 
-                          value={price} 
-                          onChange={e => setPrice(e.target.value)} 
+                          placeholder="https://example.com/thumbnail.jpg" 
+                          value={thumbnailUrl} 
+                          onChange={e => setThumbnailUrl(e.target.value)} 
                           className="bg-white/5 border-white/10 rounded-xl h-12"
                         />
                       </div>
-                      <div className="space-y-2">
-                        <Label className="text-[10px] font-black uppercase tracking-widest text-white/40">Catégorie</Label>
-                        <Input 
-                          placeholder="Ex: Mode" 
-                          value={category} 
-                          onChange={e => setCategory(e.target.value)} 
-                          className="bg-white/5 border-white/10 rounded-xl h-12"
-                        />
-                      </div>
-                    </div>
+                    </>
                   )}
                 </div>
               </div>

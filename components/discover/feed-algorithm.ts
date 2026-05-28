@@ -155,6 +155,8 @@ export type DiscoverFeedItem = {
 
   mediaType?: 'image' | 'video'
   allMedia?: string[]
+  /** L2 – Low-resolution poster shown immediately while the full media loads (<50 KB). */
+  thumbnailUrl?: string
 
   likes: number
   comments: number

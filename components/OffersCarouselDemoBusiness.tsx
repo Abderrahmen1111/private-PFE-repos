@@ -1,75 +1,81 @@
+'use client';
+
 import * as React from "react";
+import { useEffect, useState } from "react";
 import { Gift } from "lucide-react";
 import { OffersCarousel, type CarouselItem } from "@/components/ui/offers-carousel-business";
-
-// Mock data for the hotel carousel items
-const mockHotels: CarouselItem[] = [
-  {
-    id: 1,
-    imageUrl: "https://images.unsplash.com/photo-1566073771259-6a8506099945?w=500&q=80",
-    title: "Ramada by Wyndham",
-    subtitle: "5 star hotel in Katibagiya",
-    rating: 4.7,
-    price: 3671,
-    originalPrice: 5500,
-    discountPercentage: 33,
-  },
-  {
-    id: 2,
-    imageUrl: "https://images.unsplash.com/photo-1582719508461-905c673771fd?w=500&q=80",
-    title: "Hotel Clarks Avadh",
-    subtitle: "5 star hotel in Qaisar Bagh",
-    rating: 4.3,
-    price: 4114,
-    originalPrice: 8249,
-    discountPercentage: 50,
-  },
-  {
-    id: 3,
-    imageUrl: "https://images.unsplash.com/photo-1571003123894-1f0594d2b5d9?w=500&q=80",
-    title: "The Oberoi Resort",
-    subtitle: "Luxury resort with private pool",
-    rating: 4.9,
-    price: 6750,
-    originalPrice: 9000,
-    discountPercentage: 25,
-  },
-  {
-    id: 4,
-    imageUrl: "https://images.unsplash.com/photo-1549294413-26f195200c16?w=500&q=80",
-    title: "Hyatt Regency",
-    subtitle: "Business hotel near airport",
-    rating: 4.6,
-    price: 5200,
-    originalPrice: 6500,
-    discountPercentage: 20,
-  },
-  {
-    id: 5,
-    imageUrl: "https://images.unsplash.com/photo-1611892440504-42a792e24d32?w=500&q=80",
-    title: "Radisson Blu",
-    subtitle: "Modern hotel in city center",
-    rating: 4.5,
-    price: 4800,
-    originalPrice: 7000,
-    discountPercentage: 31,
-  },
-];
-
-
+import { getAllActivePromotions } from "@/lib/actions/promotions";
 
 const OffersCarouselDemo = () => {
+  const [items, setItems] = useState<CarouselItem[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    async function fetchPromotions() {
+      try {
+        setIsLoading(true);
+        const promotions = await getAllActivePromotions(5);
+
+        // Map promotions to CarouselItem format
+        const mappedItems: CarouselItem[] = promotions.map((promo: any, index) => {
+          const originalPrice = promo.originale_price || 100;
+          const discountedPrice = promo.new_price || (originalPrice * (1 - (promo.discount_percent || 10) / 100));
+          const discountPercent = promo.discount_percent || Math.round(((originalPrice - discountedPrice) / originalPrice) * 100);
+
+          return {
+            id: promo.id,
+            imageUrl: promo.stores?.logo_url || "https://images.unsplash.com/photo-1566073771259-6a8506099945?w=500&q=80",
+            title: promo.title,
+            subtitle: promo.stores?.name || "Store",
+            rating: 4.5,
+            price: discountedPrice,
+            originalPrice: originalPrice,
+            discountPercentage: discountPercent,
+          };
+        });
+
+        setItems(mappedItems);
+        setError(null);
+      } catch (err) {
+        console.error('Failed to fetch promotions:', err);
+        setError('Failed to load promotions');
+        setItems([]);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+
+    fetchPromotions();
+  }, []);
+
   return (
     <div className="w-full min-h-[500px] bg-[#F9F8F6] flex flex-col items-center justify-center p-4 md:p-10">
       <div className="w-full max-w-6xl">
         <h2 className="text-3xl font-bold mb-6 text-[#111111]">Seulement pour aujourd'hui 🔥🎁</h2>
-        <OffersCarousel
-        offerTitle="Today Only 🔥🎁"
-        offerSubtitle="CTBEST - Code pre-applied for you!"
-        ctaText="View all offers"
-        onCtaClick={() => alert("Redirecting to all offers...")}
-        items={mockHotels}
-      />
+        {isLoading ? (
+          <div className="flex items-center justify-center h-64">
+            <p className="text-gray-500">Chargement des offres...</p>
+          </div>
+        ) : error ? (
+          <div className="flex items-center justify-center h-64">
+            <p className="text-red-500">{error}</p>
+          </div>
+        ) : items.length === 0 ? (
+          <div className="flex items-center justify-center h-64">
+            <p className="text-gray-500">Aucune offre active pour le moment</p>
+          </div>
+        ) : (
+          <OffersCarousel
+            offerTitle="Today Only 🔥🎁"
+            offerSubtitle="Special offers from top stores!"
+            ctaText="View all offers"
+            onCtaClick={() => {
+              console.log("Redirecting to all offers...");
+            }}
+            items={items}
+          />
+        )}
       </div>
     </div>
   );

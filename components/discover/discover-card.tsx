@@ -11,16 +11,25 @@ import { useSavesStore } from '@/lib/store/use-saves-store'
 import { trackReelInteraction } from '@/lib/actions/reels'
 import { CommentDrawer } from '@/components/discover/comment-drawer'
 import { useRouter } from 'next/navigation'
-import { Loader2, AlertCircle, UserPlus, UserCheck } from 'lucide-react'
+import { Loader2, AlertCircle, UserPlus, UserCheck, MoreVertical, Flag, UserX, Share2, Copy } from 'lucide-react'
 import { useTracking } from '@/hooks/useTracking'
 import { toggleFollowStore } from '@/lib/actions/store-follows'
 
 type DiscoverCardProps = {
   item: DiscoverFeedItem & { merchantScore?: number }
   priority?: boolean
+  /** Position of this card in the feed — used by the L1 prefetcher. */
+  cardIndex?: number
+  /** Callback that exposes the article DOM element to the parent feed for IntersectionObserver tracking. */
+  onCardRef?: (el: HTMLElement | null) => void
 }
 
-function DiscoverCardComponent({ item, priority = false }: DiscoverCardProps) {
+function DiscoverCardComponent({
+  item,
+  priority = false,
+  cardIndex,
+  onCardRef,
+}: DiscoverCardProps) {
   const [entered, setEntered] = useState(false)
   const [liked, setLiked] = useState<boolean>(item.hasLiked || false)
   const [saved, setSaved] = useState<boolean>(item.hasSaved || false)
@@ -32,9 +41,27 @@ function DiscoverCardComponent({ item, priority = false }: DiscoverCardProps) {
   const [mediaError, setMediaError] = useState(false)
   const [currentMediaIndex, setCurrentMediaIndex] = useState(0)
   const [isFollowingLoading, setIsFollowingLoading] = useState(false)
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null)
   const lastTapTsRef = useRef<number>(0)
   const videoRef = useRef<HTMLVideoElement>(null)
+  const menuRef = useRef<HTMLDivElement>(null)
+  /** Reference to the root <article> — registered with the parent feed for scroll tracking. */
+  const articleRef = useRef<HTMLElement>(null)
   const router = useRouter()
+
+  /**
+   * L2 – Thumbnail placeholder state.
+   * `thumbnailReady` flips to true once the real media has loaded enough to
+   * display (canplay / onLoad). Until then we show a blurred low-res poster.
+   */
+  const [thumbnailReady, setThumbnailReady] = useState(false)
+
+  /**
+   * L3 – Deferred metadata flag.
+   * Set to true inside `onPlaying` / `onLoad` via requestIdleCallback so that
+   * comment data is only pre-warmed *after* the video frame is on screen.
+   */
+  const [mediaPlaying, setMediaPlaying] = useState(false)
 
   const handleToggleFollow = useCallback(async (e: React.MouseEvent) => {
     e.stopPropagation()
@@ -56,7 +83,6 @@ function DiscoverCardComponent({ item, priority = false }: DiscoverCardProps) {
 
   const { trackLike, trackUnlike, trackSave, trackUnsave, trackClick, trackImpression } = useTracking()
 
-  const saveCount = useSavesStore((state) => state.saveCount)
   const incrementSave = useSavesStore((state) => state.incrementSave)
 
   // Extract numeric ID for database calls (handles 'reel-123' or 'story-123' or 'p0-item...')
@@ -67,6 +93,12 @@ function DiscoverCardComponent({ item, priority = false }: DiscoverCardProps) {
     const match = item.id.match(/(\d+)$/);
     return match ? parseInt(match[1]) : null;
   }, [item.id]);
+
+  // Register this article element with the parent feed so it can be observed.
+  useEffect(() => {
+    onCardRef?.(articleRef.current)
+    return () => onCardRef?.(null)
+  }, [onCardRef])
 
   useEffect(() => {
     const id = window.setTimeout(() => setEntered(true), 50)
@@ -159,9 +191,11 @@ function DiscoverCardComponent({ item, priority = false }: DiscoverCardProps) {
     return () => clearInterval(timer)
   }, [item.mediaType, item.allMedia])
 
-  // Reset index when item changes
+  // Reset index and thumbnail state when item changes
   useEffect(() => {
     setCurrentMediaIndex(0)
+    setThumbnailReady(false)
+    setMediaPlaying(false)
   }, [item.id])
 
   const isTopSeller = (item.merchantScore ?? 0) >= 80
@@ -275,9 +309,76 @@ function DiscoverCardComponent({ item, priority = false }: DiscoverCardProps) {
     }
   }, [item.product, item.id, numericId])
 
+  // Menu handlers
+  const handleMenuReport = () => {
+    alert('Reel signalé avec succès')
+    setOpenMenuId(null)
+  }
+
+  const handleMenuBlock = () => {
+    alert('Utilisateur bloqué')
+    setOpenMenuId(null)
+  }
+
+  const handleMenuShareProfile = async () => {
+    try {
+      if (navigator.share) {
+        await navigator.share({
+          title: item.merchantName,
+          text: `Découvrez ${item.merchantName} sur Ro2ya`,
+          url: window.location.href
+        })
+      } else {
+        await navigator.clipboard.writeText(window.location.href)
+        alert('Profil copié dans le presse-papier')
+      }
+    } catch (err) {
+      console.error('Error sharing:', err)
+    }
+    setOpenMenuId(null)
+  }
+
+  const handleMenuCopyLink = async () => {
+    try {
+      const pathId = numericId != null ? String(numericId) : String(item.id)
+      const shareUrl = `${window.location.origin}/reels/${encodeURIComponent(pathId)}`
+      await navigator.clipboard.writeText(shareUrl)
+      alert('Lien copié dans le presse-papier')
+    } catch (err) {
+      console.error('Error copying:', err)
+    }
+    setOpenMenuId(null)
+  }
+
+  // Close menu on click outside
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setOpenMenuId(null)
+      }
+    }
+    if (openMenuId) {
+      document.addEventListener('mousedown', handleClickOutside)
+      return () => document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [openMenuId])
+
+  /**
+   * L2 – The URL we show immediately as a blurred low-res placeholder.
+   * For videos  → use thumbnailUrl (poster frame) if available.
+   * For images  → use thumbnailUrl first, fall back to the full image
+   *               (browser already has it if L1 prefetch fired).
+   * data: URIs (SVG mock placeholders) are already tiny — use directly.
+   */
+  const blurSrc =
+    item.thumbnailUrl ||
+    (item.mediaType !== 'video' ? item.image : undefined)
+
   return (
     <>
       <article
+        ref={articleRef}
+        data-card-index={cardIndex}
         className="relative h-screen w-full snap-start snap-always overflow-hidden bg-black"
         onDoubleClick={triggerLike}
         onTouchEnd={onMediaTouchEnd}
@@ -291,7 +392,31 @@ function DiscoverCardComponent({ item, priority = false }: DiscoverCardProps) {
 
       {item.mediaType === 'video' ? (
         <div className="relative h-full w-full bg-black">
-          {isMediaLoading && (
+          {/* ── L2 – Instant blur thumbnail shown while video buffers ─────────
+               Fades out once the video has enough data to play (thumbnailReady). */}
+          {blurSrc && (
+            <div
+              className={cn(
+                'absolute inset-0 z-20 transition-opacity duration-500 pointer-events-none',
+                thumbnailReady ? 'opacity-0' : 'opacity-100',
+              )}
+            >
+              <img
+                src={blurSrc}
+                alt=""
+                aria-hidden="true"
+                className="absolute inset-0 h-full w-full object-cover scale-110 blur-xl brightness-50"
+              />
+              {/* Centered loading indicator on top of the blur thumbnail */}
+              {isMediaLoading && (
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <Loader2 className="h-10 w-10 animate-spin text-white/30" />
+                </div>
+              )}
+            </div>
+          )}
+          {/* Fallback spinner when no thumbnail is available */}
+          {!blurSrc && isMediaLoading && (
             <div className="absolute inset-0 z-20 flex items-center justify-center">
               <Loader2 className="h-10 w-10 animate-spin text-white/20" />
             </div>
@@ -303,59 +428,97 @@ function DiscoverCardComponent({ item, priority = false }: DiscoverCardProps) {
               <p className="mt-1 text-xs text-white/50">{item.image.split('/').pop()}</p>
             </div>
           )}
-          {/* Blurred background layer */}
+          {/* Blurred ambient background layer */}
           <video
             src={item.image}
             className="absolute inset-0 h-full w-full object-cover blur-2xl opacity-60 scale-110"
             autoPlay={false}
-
             loop
-            
             playsInline
+            aria-hidden="true"
           />
           <video
             ref={videoRef}
             src={item.image}
+            // L2 – Show poster frame immediately (browser renders this before any decode)
+            poster={item.thumbnailUrl}
             className={cn(
               'relative z-10 h-full w-full object-contain transition-all duration-700',
               entered && !isMediaLoading ? 'scale-100 opacity-100' : 'scale-[1.03] opacity-0',
             )}
             autoPlay={false}
-
             loop
-            
             playsInline
             preload="auto"
             crossOrigin="anonymous"
             onLoadStart={() => setIsMediaLoading(true)}
-            onCanPlay={() => setIsMediaLoading(false)}
+            onCanPlay={() => {
+              setIsMediaLoading(false)
+              setThumbnailReady(true)
+            }}
             onWaiting={() => setIsMediaLoading(true)}
             onPlaying={() => {
-              setIsMediaLoading(false);
-              // Trigger view count once per mount
+              setIsMediaLoading(false)
+              setThumbnailReady(true)
+              // L3 – Trigger view tracking and set mediaPlaying=true so that
+              // downstream metadata (comment pre-warm etc.) can fire via
+              // requestIdleCallback without racing the video decode.
+              setMediaPlaying(true)
               if (numericId && !(window as any)[`viewed_${item.id}`]) {
-                trackReelInteraction(numericId, 'view');
-                (window as any)[`viewed_${item.id}`] = true;
+                // Use requestIdleCallback so view tracking never blocks the first frame.
+                const cb = () => {
+                  trackReelInteraction(numericId!, 'view')
+                  ;(window as any)[`viewed_${item.id}`] = true
+                }
+                if (typeof requestIdleCallback !== 'undefined') {
+                  requestIdleCallback(cb, { timeout: 2000 })
+                } else {
+                  setTimeout(cb, 300)
+                }
               }
             }}
             onError={(e) => {
-              console.error("Video Load Error:", item.image, e);
-              setIsMediaLoading(false);
-              setMediaError(true);
+              console.error('Video Load Error:', item.image, e)
+              setIsMediaLoading(false)
+              setMediaError(true)
             }}
           />
         </div>
       ) : (
         <div className="relative h-full w-full bg-black">
-          {isMediaLoading && (
+          {/* ── L2 – Instant blur thumbnail for images ───────────────────────
+               A tiny blurred copy of the image (or thumbnail) is shown while
+               the full-resolution version decodes. Fades out on load. */}
+          {blurSrc && (
+            <div
+              className={cn(
+                'absolute inset-0 z-20 transition-opacity duration-500 pointer-events-none',
+                thumbnailReady ? 'opacity-0' : 'opacity-100',
+              )}
+            >
+              <img
+                src={blurSrc}
+                alt=""
+                aria-hidden="true"
+                className="absolute inset-0 h-full w-full object-cover scale-110 blur-xl brightness-50"
+              />
+              {isMediaLoading && (
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <Loader2 className="h-10 w-10 animate-spin text-white/30" />
+                </div>
+              )}
+            </div>
+          )}
+          {!blurSrc && isMediaLoading && (
             <div className="absolute inset-0 z-20 flex items-center justify-center">
               <Loader2 className="h-10 w-10 animate-spin text-white/20" />
             </div>
           )}
-          {/* Blurred background layer */}
+          {/* Ambient blurred background */}
           <img
             src={item.allMedia?.[currentMediaIndex] || item.image}
             alt=""
+            aria-hidden="true"
             className="absolute inset-0 h-full w-full object-cover blur-3xl opacity-30 scale-125 brightness-[0.25]"
           />
           <img
@@ -368,15 +531,25 @@ function DiscoverCardComponent({ item, priority = false }: DiscoverCardProps) {
               entered && !isMediaLoading ? 'scale-100 opacity-100' : 'scale-[1.03] opacity-0',
             )}
             onLoad={() => {
-              setIsMediaLoading(false);
-              if (numericId && !(window as any)[`viewed_${item.id}`]) {
-                trackReelInteraction(numericId, 'view');
-                (window as any)[`viewed_${item.id}`] = true;
+              setIsMediaLoading(false)
+              setThumbnailReady(true)
+              // L3 – defer tracking to idle time so it doesn't compete with paint
+              const cb = () => {
+                if (numericId && !(window as any)[`viewed_${item.id}`]) {
+                  trackReelInteraction(numericId!, 'view')
+                  ;(window as any)[`viewed_${item.id}`] = true
+                }
+                setMediaPlaying(true)
+              }
+              if (typeof requestIdleCallback !== 'undefined') {
+                requestIdleCallback(cb, { timeout: 2000 })
+              } else {
+                setTimeout(cb, 300)
               }
             }}
             onError={() => {
-              setIsMediaLoading(false);
-              setMediaError(true);
+              setIsMediaLoading(false)
+              setMediaError(true)
             }}
           />
         </div>
@@ -492,8 +665,8 @@ function DiscoverCardComponent({ item, priority = false }: DiscoverCardProps) {
             </div>
           </div>
         </div>
+      
       </div>
-
       <div
         aria-hidden="true"
         className={cn(
@@ -517,6 +690,10 @@ function DiscoverCardComponent({ item, priority = false }: DiscoverCardProps) {
         onToggleSave={handleToggleSave}
         onOpenComments={() => setCommentsOpen(true)}
         onShare={handleShare}
+        onReport={handleMenuReport}
+        onBlock={handleMenuBlock}
+        onShareProfile={handleMenuShareProfile}
+        onCopyLink={handleMenuCopyLink}
       />
     </article>
 

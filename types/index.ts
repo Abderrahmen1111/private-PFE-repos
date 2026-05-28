@@ -76,6 +76,8 @@ export interface Promotion {
   validFrom: Date;
   validUntil: Date;
   active: boolean;
+  originale_price?: number;
+  new_price?: number;
 }
 
 export interface AnalyticsSnapshot {
