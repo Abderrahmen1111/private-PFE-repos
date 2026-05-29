@@ -523,14 +523,14 @@ export default function DarijaAIPanel({
                     <>
                       <Field icon={<Package className="w-4 h-4 text-violet-400" />} label="Nom" value={(result as ParsedProduct).name} />
                       {(result as ParsedProduct).price && <Field icon={<Tag className="w-4 h-4 text-emerald-400" />} label="Prix" value={`${(result as ParsedProduct).price} DT`} />}
-                      {(result as ParsedProduct).category && <Field icon={<Zap className="w-4 h-4 text-yellow-400" />} label="Catégorie" value={(result as ParsedProduct).category} />}
+                      {(result as ParsedProduct).category && <Field icon={<Zap className="w-4 h-4 text-yellow-400" />} label="Catégorie" value={(result as ParsedProduct).category!} />}
                       {(result as ParsedProduct).description && <Field icon={<ChevronRight className="w-4 h-4 text-slate-400" />} label="Description" value={(result as ParsedProduct).description} />}
                     </>
                   ) : (
                     <>
                       <Field icon={<Zap className="w-4 h-4 text-pink-400" />} label="Titre" value={(result as ParsedPromotion).title} />
                       {(result as ParsedPromotion).discount_percent && <Field icon={<Tag className="w-4 h-4 text-emerald-400" />} label="Réduction" value={`${(result as ParsedPromotion).discount_percent}%`} />}
-                      {(result as ParsedPromotion).discount_text && <Field icon={<Tag className="w-4 h-4 text-orange-400" />} label="Offre" value={(result as ParsedPromotion).discount_text} />}
+                      {(result as ParsedPromotion).discount_text && <Field icon={<Tag className="w-4 h-4 text-orange-400" />} label="Offre" value={(result as ParsedPromotion).discount_text!} />}
                       {(result as ParsedPromotion).description && <Field icon={<ChevronRight className="w-4 h-4 text-slate-400" />} label="Description" value={(result as ParsedPromotion).description} />}
                     </>
                   )}
