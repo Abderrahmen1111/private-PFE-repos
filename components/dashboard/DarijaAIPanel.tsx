@@ -74,7 +74,12 @@ interface ParsedPromotion {
   image_prompt: string
 }
 
-type ParsedResult = ParsedProduct | ParsedPromotion | null
+interface ParsedChat {
+  intent: 'chat'
+  message: string
+}
+
+type ParsedResult = ParsedProduct | ParsedPromotion | ParsedChat | null
 type ActiveTab = 'text' | 'voice'
 type VoiceState = 'idle' | 'recording' | 'processing'
 
@@ -504,7 +509,7 @@ export default function DarijaAIPanel({
           )}
 
           {/* ── Shared: Result Card ── */}
-          {result && !isProcessing && (
+          {result && !isProcessing && result.intent !== 'chat' && (
             <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 overflow-hidden">
               <div className="flex items-center gap-2 px-4 py-3 border-b border-emerald-500/10 bg-emerald-500/10">
                 <CheckCircle2 className="w-4 h-4 text-emerald-400" />
@@ -516,17 +521,17 @@ export default function DarijaAIPanel({
                 <div className="space-y-3">
                   {result.intent === 'create_product' ? (
                     <>
-                      <Field icon={<Package className="w-4 h-4 text-violet-400" />} label="Nom" value={result.name} />
-                      {result.price && <Field icon={<Tag className="w-4 h-4 text-emerald-400" />} label="Prix" value={`${result.price} DT`} />}
-                      {result.category && <Field icon={<Zap className="w-4 h-4 text-yellow-400" />} label="Catégorie" value={result.category} />}
-                      {result.description && <Field icon={<ChevronRight className="w-4 h-4 text-slate-400" />} label="Description" value={result.description} />}
+                      <Field icon={<Package className="w-4 h-4 text-violet-400" />} label="Nom" value={(result as ParsedProduct).name} />
+                      {(result as ParsedProduct).price && <Field icon={<Tag className="w-4 h-4 text-emerald-400" />} label="Prix" value={`${(result as ParsedProduct).price} DT`} />}
+                      {(result as ParsedProduct).category && <Field icon={<Zap className="w-4 h-4 text-yellow-400" />} label="Catégorie" value={(result as ParsedProduct).category} />}
+                      {(result as ParsedProduct).description && <Field icon={<ChevronRight className="w-4 h-4 text-slate-400" />} label="Description" value={(result as ParsedProduct).description} />}
                     </>
                   ) : (
                     <>
-                      <Field icon={<Zap className="w-4 h-4 text-pink-400" />} label="Titre" value={result.title} />
-                      {result.discount_percent && <Field icon={<Tag className="w-4 h-4 text-emerald-400" />} label="Réduction" value={`${result.discount_percent}%`} />}
-                      {result.discount_text && <Field icon={<Tag className="w-4 h-4 text-orange-400" />} label="Offre" value={result.discount_text} />}
-                      {result.description && <Field icon={<ChevronRight className="w-4 h-4 text-slate-400" />} label="Description" value={result.description} />}
+                      <Field icon={<Zap className="w-4 h-4 text-pink-400" />} label="Titre" value={(result as ParsedPromotion).title} />
+                      {(result as ParsedPromotion).discount_percent && <Field icon={<Tag className="w-4 h-4 text-emerald-400" />} label="Réduction" value={`${(result as ParsedPromotion).discount_percent}%`} />}
+                      {(result as ParsedPromotion).discount_text && <Field icon={<Tag className="w-4 h-4 text-orange-400" />} label="Offre" value={(result as ParsedPromotion).discount_text} />}
+                      {(result as ParsedPromotion).description && <Field icon={<ChevronRight className="w-4 h-4 text-slate-400" />} label="Description" value={(result as ParsedPromotion).description} />}
                     </>
                   )}
                 </div>
@@ -534,14 +539,38 @@ export default function DarijaAIPanel({
                   <span className="text-xs font-semibold uppercase tracking-wider text-slate-500 flex items-center gap-1">
                     <ImageIcon className="w-3 h-3" /> Image générée
                   </span>
-                  {result.image_url ? (
-                    <img src={result.image_url} alt="AI Generated" className="w-full aspect-square object-cover rounded-lg border border-white/10" />
+                  {(result as any).image_url ? (
+                    <img src={(result as any).image_url} alt="AI Generated" className="w-full aspect-square object-cover rounded-lg border border-white/10" />
                   ) : (
                     <div className="aspect-square rounded-lg border border-dashed border-slate-700 bg-slate-900/50 flex flex-col items-center justify-center text-slate-600 text-xs text-center p-4 gap-2">
                       <ImageIcon className="w-8 h-8 opacity-30" />
                       <span>Image non disponible<br />(quota ou délai technique)</span>
                     </div>
                   )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ── Shared: Chat Bubble Card ── */}
+          {result && !isProcessing && result.intent === 'chat' && (
+            <div className="relative rounded-xl border border-violet-500/25 bg-gradient-to-br from-violet-950/20 via-indigo-950/20 to-slate-900/60 p-5 overflow-hidden shadow-lg shadow-violet-950/10 animate-fade-in">
+              <div className="absolute inset-0 bg-[radial-gradient(circle_at_bottom_right,rgba(139,92,246,0.08),transparent_60%)]" />
+              <div className="relative flex gap-4">
+                {/* Glowing Avatar */}
+                <div className="relative shrink-0 w-12 h-12 rounded-2xl bg-gradient-to-tr from-violet-600 to-indigo-600 flex items-center justify-center border border-violet-400/20 shadow-md shadow-violet-500/10">
+                  <div className="absolute inset-0 w-full h-full rounded-2xl bg-violet-400/10 animate-pulse" />
+                  <Sparkles className="w-6 h-6 text-white" />
+                </div>
+                {/* Chat Bubble */}
+                <div className="space-y-2 flex-1">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold uppercase tracking-wider text-violet-300">Ro2ya Assistant IA</span>
+                    <span className="text-[10px] text-slate-500">Darija Tunisienne 🇹🇳</span>
+                  </div>
+                  <p className="text-sm text-slate-200 leading-relaxed bg-white/5 border border-white/5 rounded-2xl rounded-tl-none p-3.5 shadow-inner">
+                    {result.message}
+                  </p>
                 </div>
               </div>
             </div>
@@ -557,7 +586,7 @@ export default function DarijaAIPanel({
           >
             <X className="w-4 h-4 mr-1.5" /> Fermer
           </Button>
-          {result && (
+          {result && result.intent !== 'chat' && (
             <Button
               className="flex-1 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white font-bold shadow-lg shadow-emerald-900/30"
               onClick={handleApply}

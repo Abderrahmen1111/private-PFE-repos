@@ -138,10 +138,6 @@ const nextConfig = {
     ignoreBuildErrors: true,
   },
   productionBrowserSourceMaps: false,
-  experimental: {
-    webpackBuildWorker: true,
-    cpus: 2,
-  },
   webpack: (config, { dev, isServer }) => {
     if (!dev) {
       config.devtool = false;

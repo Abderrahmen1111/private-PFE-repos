@@ -65,24 +65,57 @@ function cosineSimilarity(a: number[], b: number[]): number {
 
 // ─── Keyword fallback (instantaneous, no API call) ───────────────────────────
 
-const PRODUCT_KW = ['produit', 'jdid', 'zid', '3mel', 'dir', 'article', 'item', 'bijou', 'kasket', 'sabat', 'tilfon', 'telephone', 'هاتف', 'منتج', 'جديد']
-const PROMO_KW   = ['promo', 'promotion', 'solde', 'takhfidh', 'remise', 'offre', 'réduction', 'reduction', 'discount', '%', 'تخفيض', 'عرض']
+const PRODUCT_KW = [
+  'produit', 'jdid', 'zid', '3mel', 'dir', 'article', 'item', 'bijou', 'kasket', 'sabat', 'tilfon', 'telephone', 'هاتف', 'منتج', 'جديد',
+  'iphone', 'samsung', 'xiaomi', 'redmi', 'oppo', 'huawei', 'nokia', 'pc', 'ordinateur', 'laptop', 'macbook', 'asus', 'dell', 'hp', 'lenovo', 'acer',
+  't-shirt', 'chemise', 'pantalon', 'serwel', 'serouel', 'robe', 'veste', 'manteau', 'kasket', 'casquette', 'chaussure', 'sabat', 'nike', 'adidas',
+  'sac', 'lunette', 'montre', 'casque', 'clavier', 'souris', 'ecran', 'tv', 'téléphone', 'portable', 'camera', 'appareil', 'table', 'chaise',
+  'bague', 'collier', 'parfum', 'maquillage', 'creme', 'shampoing', 'savon', 'saboun', 'zit', 'khobz', '9ahwa', 'atay'
+]
+const PROMO_KW   = [
+  'promo', 'promotion', 'solde', 'takhfidh', 'remise', 'offre', 'réduction', 'reduction', 'discount', '%', 'تخفيض', 'عرض', 'cadeau', 'kado', 'kdo'
+]
+const CHAT_KW    = [
+  'salem', 'salam', 'slm', 'bonjour', 'hello', 'hi', 'slt', 'kifech', 'chkoun', 'aide', 'help', 'ro2ya', 'chbik', 'labas', 'cv', 'cava', 'merci', 'chokran', 'y3tik', 'platform'
+]
 
-function keywordIntent(text: string): DarijaIntent | null {
+function keywordIntent(text: string, price?: number, discount?: number): DarijaIntent | null {
+  if (discount !== undefined) return 'create_promotion'
+  if (price !== undefined) return 'create_product'
+
   const lower = text.toLowerCase()
+  
+  // Calculate specific scores
   const pScore = PROMO_KW.filter(k => lower.includes(k)).length
   const prodScore = PRODUCT_KW.filter(k => lower.includes(k)).length
-  if (pScore > prodScore) return 'create_promotion'
-  if (prodScore > pScore) return 'create_product'
-  if (lower.includes('%')) return 'create_promotion'
+
+  if (pScore > 0 || prodScore > 0) {
+    if (pScore > prodScore) return 'create_promotion'
+    return 'create_product'
+  }
+
+  // Check for chat keywords
+  const chatScore = CHAT_KW.filter(k => lower.includes(k)).length
+  if (chatScore > 0) return 'chat'
+
   return null
 }
 
 // ─── Intent classification via baai/bge-m3 ───────────────────────────────────
 
-async function classifyIntentWithEmbeddings(translatedPrompt: string): Promise<DarijaIntent> {
+async function classifyIntentWithEmbeddings(
+  translatedPrompt: string,
+  price?: number,
+  discount?: number
+): Promise<DarijaIntent> {
   // Fast keyword pass first
-  const kw = keywordIntent(translatedPrompt)
+  const kw = keywordIntent(translatedPrompt, price, discount)
+
+  // If a keyword/rule-based intent is found that is a product or promotion, trust it immediately!
+  if (kw && kw !== 'chat') {
+    console.log(`[Darija Parser] Rule-based intent detected: ${kw}`)
+    return kw
+  }
 
   try {
     const [promptVec, productVec, promoVec, chatVec] = await Promise.all([
@@ -111,8 +144,9 @@ async function classifyIntentWithEmbeddings(translatedPrompt: string): Promise<D
       bestIntent = 'create_promotion'
     }
 
-    // Require a minimum confidence gap otherwise trust keywords
-    if (Math.abs(simProduct - simPromo) < 0.02 && kw) return kw
+    // Trust the keyword override if one exists
+    if (kw) return kw
+
     return bestIntent
 
   } catch (err) {
@@ -298,7 +332,7 @@ export async function parseDarijaPrompt(prompt: string): Promise<ParsedDarijaRes
   const discount       = extractDiscount(prompt)
 
   // 2. Intent classification: baai/bge-m3 embeddings + keyword fallback
-  const intent = await classifyIntentWithEmbeddings(translatedText)
+  const intent = await classifyIntentWithEmbeddings(translatedText, price, discount)
   console.log(`[Darija Parser] Intent → ${intent}`)
 
   // 3. Structured extraction OR Chat response

@@ -1149,28 +1149,160 @@ Ces pages sont accessibles uniquement par les vendeurs connectés qui ont créé
 
 ---
 
-### 1️⃣1️⃣ **Dashboard Intelligence & Analytics** `/dashboard/[id]/intelligence`
+### 1️⃣1️⃣ **Social Intelligence & Reviews** `/dashboard/[id]/intelligence`
 
-**À quoi ça sert?** Vos données analytics avec sentiment analysis Darija, recommandations IA, et insights clients.
+**À quoi ça sert?** Votre intelligence sociale complète: gérez vos avis clients, analyser les commentaires sur vos reels, et recevez des recommandations IA personnalisées. Interface centralisée pour votre réputation et vos interactions.
 
 - **URL**: `https://ro2ya.tn/dashboard/123/intelligence`
 - **Acteurs**: Propriétaire de la boutique
-- **Sections**:
-  - 📊 **Sales Analytics** - Tendances revenue
-  - 👥 **Customer Insights** - Top customers, CLV
-  - 📈 **Product Performance** - Best sellers
-  - 💬 **Sentiment Analysis** (Darija) - Comments analysis
-  - 🤖 **AI Recommendations** - Pricing, best times to post
+- **Composants Principaux**:
 
-- **Fonctionnalités**:
-  - Voir stats by period (Today/Week/Month)
-  - Analyser sentiments Darija
-  - Voir recommendations IA
+  **Header Global**:
+  - Breadcrumb: "Intelligence"
+  - Business Selector: "Restaurant El Bacha" (dropdown)
+  - Barre de recherche: "Rechercher réservations, avis, clients..."
+  - Support | Notifications | Messages | Avatar
 
-> **📱 Version Mobile (App Ro2ya)**  
-> Dashboard optimisé avec charts responsifs, analytics Darija intégrée.
+  **Section Header du Contenu**:
+  - Titre: "Social & Reviews ✨"
+  - Sous-titre: "Gérez votre réputation et vos interactions clients."
+  - Bouton "Actualiser" (refresh icon, coin haut-droit)
+
+  **Tabs de Navigation** (4 onglets):
+  - 🧠 **Analyses IA** (déprecié ou fusionné)
+  - 👥 **Avis Clients (2)** (avec badge numéro d'avis)
+  - 💬 **Comments Reels (0)** (avec badge numéro commentaires)
+  - 🤖 **Conseiller IA**
 
 ---
+
+#### **📊 ONGLET 1: Avis Clients (2)**
+
+**À quoi ça sert?** Liste complète de tous les avis reçus. Voir les notes, commentaires, et répondre publiquement pour améliorer votre réputation.
+
+**Composants**:
+
+  **Layout: 2 Colonnes**:
+  
+  **Colonne Gauche (70%): Liste des Avis**
+    - Chaque avis card:
+      - Avatar circulaire avec initiale (couleur par utilisateur)
+      - Nom client (ex: "Khairdin Dab")
+      - 5 ⭐ (note)
+      - Date (ex: "14 MAI 2026")
+      - Texte avis (ex: "*test comment*")
+      - Section "VOTRE RÉPONSE" (si répondu):
+        - Badge blanc "VOTRE RÉPONSE"
+        - Date de réponse (ex: "19 mai 2026")
+        - Texte réponse du vendeur (ex: "kassah sahbi khayri")
+    - Scroll vertical si plusieurs avis
+  
+  **Colonne Droite (30%): RÉSUMÉ DES AVIS**
+    - Titre: "RÉSUMÉ DES AVIS"
+    - Note moyenne: "4.5" (très grand texte)
+    - Badge ⭐⭐⭐⭐⭐ (5 étoiles)
+    - Sous-titre: "MOYENNE SUR 2 AVIS"
+    - Distribution par note (barres horizontales):
+      - 5* : [████████████] 1
+      - 4* : [████████████] 1
+      - 3* : [           ] 0
+      - 2* : [           ] 0
+      - 1* : [           ] 0
+
+- **Fonctionnalités**:
+  - Voir tous les avis avec notes ⭐
+  - Voir commentaires clients en détail
+  - Répondre publiquement aux avis
+  - Voir résumé statistique (note moyenne, distribution)
+  - Calculé automatiquement sur le nombre d'avis
+
+---
+
+#### **💬 ONGLET 2: Comments Reels (0)**
+
+**À quoi ça sert?** Voir et gérer les commentaires sur vos vidéos Discover/Reels. Répondre directement pour engager l'audience.
+
+**Composants**:
+
+  **Empty State** (si 0 commentaires):
+    - Icon: Video camera (grisé)
+    - Titre: "Aucun commentaire Reel"
+    - Sous-titre: "Les interactions sur vos vidéos Discover apparaîtront ici."
+    - Message: Invitant à créer du contenu
+
+  **Si données présentes**:
+    - Liste commentaires par reel
+    - Sentiment analysis (positif/neutre/négatif)
+    - Bouton "Répondre" par commentaire
+    - Historique interactions
+
+- **Fonctionnalités**:
+  - Voir tous les commentaires sur reels
+  - Filtrer par sentiment (positif/neutre/négatif)
+  - Répondre aux commentaires
+  - Marquer commentaire comme signalé si problème
+  - Voir nombre total interactions par video
+
+---
+
+#### **🤖 ONGLET 3: Conseiller IA**
+
+**À quoi ça sert?** Recommandations IA intelligentes basées sur vos données de vente, vues, et interactions. L'IA génère des suggestions pour améliorer votre réputation et stratégie.
+
+**Composants**:
+
+  **Empty State** (si données insuffisantes):
+    - Icon: Sparkles/Magic wand (grisé)
+    - Titre: "PAS ENCORE DE CONSEILS"
+    - Message: "L'IA a besoin de plus de données de vente ou de vues pour générer des recommandations stratégiques précises."
+    - Bouton "Actualiser" (avec refresh icon)
+    - Note: Apparaît jusqu'à avoir assez d'historique
+
+  **Si données suffisantes (Contenu IA)**:
+    - Titre: "RECOMMANDATIONS STRATÉGIQUES"
+    - Liste de recommandations (cartes):
+      1. Sujet/Catégorie de la recommandation
+      2. Description détaillée (ex: "Ajouter des photos de produit XXX")
+      3. Impact estimé (ex: "+15% chance de vente")
+      4. Bouton "Appliquer" ou "En savoir plus"
+    - Sections:
+      - **📈 Pricing Optimization**: Suggérer prix optimal
+      - **🎯 Best Times to Post**: Moments meilleurs pour publier
+      - **💬 Response Suggestions**: Réponses suggérées aux avis
+      - **🏆 Competitive Analysis**: Comparaison avec concurrents
+      - **🔥 Trending Topics**: Sujets chauds à exploiter
+
+- **Fonctionnalités**:
+  - Voir recommandations personnalisées en temps réel
+  - Filtrer recommandations par catégorie
+  - Appliquer recommandations IA en 1 clic
+  - Voir impact estimé de chaque suggestion
+  - Rafraîchir pour obtenir nouvelles suggestions
+  - Chat avec l'IA pour explications supplémentaires
+
+---
+
+### 📱 **Comportements & Interactions Globales** (Tous les Onglets)
+
+- **Recherche & Filtres** (si applicable):
+  - Recherche par nom client
+  - Filtrer par note (1-5 ⭐)
+  - Filtrer par date
+  - Filtrer par sentiment
+
+- **Actions Rapides**:
+  - Répondre à avis/commentaire
+  - Marquer comme utile (👍)
+  - Signaler comme spam si nécessaire
+  - Partager avis positif
+
+- **Notifications**:
+  - Nouvel avis reçu
+  - Commentaire sur reel
+  - Recommandation IA importante
+
+> **📱 Version Mobile (App Ro2ya)**  
+> Onglets swipables horizontalement. Colonne droite (résumé) passe en haut en mobile. Liste avis utilise card design optimisé. Buttons d'action sont larges et tactiles. Hauteur des éléments augmentée pour doigts. Empty states avec icons grands et lisibles.
 
 ---
 
@@ -1196,23 +1328,137 @@ Ces pages sont accessibles uniquement par les vendeurs connectés qui ont créé
 
 ---
 
-### 1️⃣3️⃣ **Support Vendeur** `/dashboard/[id]/support`
+### 1️⃣3️⃣ **Support & Messages** `/dashboard/[id]/support`
 
-**À quoi ça sert?** Problème technique avec votre boutique ou compte? Créez un ticket ici. L'admin Ro2ya vous aide en direct avec chat temps réel.
+**À quoi ça sert?** Votre centre complet et unifié de support et messagerie. Une seule page pour: créer/gérer tickets support, communiquer avec l'équipe Ro2ya, et répondre aux messages des clients. Interface accessible via breadcrumb "Tickets" au top et contenant 2 vues principales togglables.
 
 - **URL**: `https://ro2ya.tn/dashboard/123/support`
 - **Acteurs**: Propriétaire de la boutique
 - **Composants Principaux**:
-  - Bouton "❓ Contacter Support"
-  - Tableau des tickets ouverts
-  - Colonnes: Titre, Catégorie, Statut, Date
-  - Actions: "Voir", "Ajouter Commentaire", "Marquer Résolu"
 
-- **Fonctionnalités**:
-  - Créer ticket support
-  - Voir tickets ouverts
-  - Chat temps réel avec admin
-  - Suivre progression
+  **Header Global**:
+  - Breadcrumb: "Tickets" (title)
+  - Business Selector: "Restaurant El Bacha" (dropdown)
+  - Barre de recherche globale: "Rechercher réservations, avis, clients..."
+  - Support | Notifications | Messages | Avatar
+
+  **Navigation Principal** (Tabs/Buttons):
+  Deux vues accessibles depuis la même page:
+  
+  1️⃣ **"Support Tickets"** (Première Tab) → Gestion des tickets support
+  2️⃣ **"Centre de Messagerie"** (Deuxième Tab, visible via bouton) → Chat & Conversations
+
+---
+
+#### **VUE 1: Support Tickets** (Vue Par Défaut)
+
+**Composants**:
+
+  **Section Header**:
+  - Titre: "Support Tickets"
+  - Sous-titre: "Historique et gestion des requêtes"
+  - Bouton "+ Nouveau Ticket" (blanc, coin haut-droit)
+  - Bouton "Aller au Centre de Messagerie" (outline, alternative nav)
+
+  **4 Stats Cards** (grille 4 colonnes):
+  - 🔴 **Tickets Ouverts**: 0 (EN ATTENTE D'ACTION)
+  - 🟡 **En Cours**: 0 (ÉQUIPE ACTIVE)
+  - 🟢 **Résolus**: 0 (PROBLÈMES RÉGLÉS)
+  - 📊 **Efficacité**: 98% (SATISFACTION CLIENT)
+
+  **Barre de Recherche + Filtres** (row):
+  - Search: "Rechercher par ID, sujet, client ou téléphone..."
+  - Dropdown: "Tous les statuts"
+  - Dropdown: "Toutes les priorités"
+
+  **Table de Tickets**:
+  - Colonnes: TICKET ID | CUSTOMER CONTACT | SUBJECT | PRIORITY | STATUS | LAST UPDATE | ACTION
+  - Rows: Vides ou avec données (scrollable)
+  - Empty State: "Aucun ticket trouvé."
+  - Pagination: Affichage X-Y sur Z
+
+  **Design**:
+  - Dark theme (navy background)
+  - Cards colorées avec icons distinctifs
+  - Tableau avec séparation claire des lignes
+
+- **Fonctionnalités (Vue Support Tickets)**:
+  - Créer nouveau ticket
+  - Rechercher par ID, sujet, client, téléphone
+  - Filtrer par statut et priorité
+  - Voir détails ticket complets
+  - Mettre à jour status ticket
+  - Ajouter commentaires/notes
+  - Marquer comme résolu
+
+---
+
+#### **VUE 2: Centre de Messagerie** (Tab Alternative)
+
+**Composants**:
+
+  **Section Header**:
+  - Titre: "Centre de Messagerie"
+  - Bouton "Support ROZYA" (blanc/outline, tab)
+  - Bouton "Conversations Clients" (rouge/actif, tab)
+
+  **Layout Split View** (Sidebar + Main):
+  
+  **Sidebar Gauche**:
+    - Barre de recherche: "Chercher une discussion..."
+    - Liste conversations:
+      - Chaque item:
+        - Avatar (icon coloré ou lettre initiale)
+        - Titre: "Ticket Support" ou "Discussion Client"
+        - Status: "STATUS: ..." (ex: "DIRECT CONVERSATION")
+        - Timestamp dernier message
+        - Indicateur non-lu si besoin
+    - Empty State (si vide): 
+      - Icon envelope
+      - "AUCUN TICKET SUPPORT"
+
+  **Contenu Principal (Droite)**:
+    - Zone messages: Historique conversation scrollable
+    - Empty State (aucune sélection): 
+      - Icon chat bubbles
+      - "OUVRIR UNE DISCUSSION"
+    - Zone input (bottom):
+      - Textarea pour répondre
+      - Boutons: Envoyer | Attacher fichier
+      - Caractères restants (si limite)
+
+  **Onglet "Support ROZYA"** (Blanc/Outline):
+    - Icon: Question mark bleu
+    - Liste: Tous tickets support ouverts
+    - Messages: Entre vendeur et Ro2ya Support Team
+    - Status: En cours, Résolu, etc.
+
+  **Onglet "Conversations Clients"** (Rouge/Actif par défaut):
+    - Icon: Question mark rouge
+    - Liste: Messages directs des clients
+    - Type: "DIRECT CONVERSATION"
+    - Messages: Entre vendeur et clients
+    - Indicateur: Côté client
+
+- **Fonctionnalités (Vue Centre de Messagerie)**:
+  - Basculer entre Support ROZYA et Conversations Clients
+  - Chercher conversation par keyword
+  - Ouvrir/sélectionner conversation
+  - Lire historique complet
+  - Répondre instantanément
+  - Attacher fichiers
+  - Archiver conversation
+  - Bloquer client si nécessaire (Conversations Clients)
+  - Voir timestamps et status
+  - Notification messages non-lus
+
+- **Navigation Inter-Vues**:
+  - Bouton "Support Tickets" dans Centre de Messagerie → Retour à Vue 1
+  - Bouton "Centre de Messagerie" dans Support Tickets → Passage à Vue 2
+  - Aussi accessible via sidebar menu principal
+
+> **📱 Version Mobile (App Ro2ya)**  
+> Page unique avec 2 tabs horizontaux swipables. Vue Support Tickets: Stats empilées verticalement, table simplifiée avec swipe pour actions. Vue Centre de Messagerie: Sidebar conversations peut swiper en overlay/drawer. Split view devient empilé (conversation list en haut, chat en bas). Input optimisé pour tactile.
 
 ---
 
