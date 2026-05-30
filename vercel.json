@@ -1,10 +1,14 @@
 {
   "buildCommand": "cross-env NODE_OPTIONS='--max-old-space-size=6144' next build",
   "framework": "nextjs",
-  "installCommand": "pnpm install",
+  "installCommand": "pnpm install --prod",
   "build": {
     "env": {
       "NODE_OPTIONS": "--max-old-space-size=6144"
     }
-  }
+  },
+  "cacheDirectories": [
+    ".next/cache",
+    "node_modules/.pnpm"
+  ]
 }
