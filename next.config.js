@@ -113,7 +113,8 @@ const nextConfig = {
   poweredByHeader: false,   // Supprime "X-Powered-By: Next.js"
   compress: true,
   reactStrictMode: true,
-
+  swcMinify: true, // Use SWC for lighter, faster minification
+  
   images: {
     remotePatterns: [
       { protocol: 'https', hostname: '*.supabase.co' },
@@ -137,11 +138,12 @@ const nextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
-  experimental: {
-    workerThreads: false,
-    cpus: 1
-  },
   productionBrowserSourceMaps: false,
+  experimental: {
+    webpackBuildWorker: true,
+    cpus: 2,
+    optimizePackageImports: ['@supabase/supabase-js'],
+  },
   webpack: (config, { dev, isServer }) => {
     if (!dev) {
       config.devtool = false;
@@ -151,11 +153,41 @@ const nextConfig = {
         config.optimization.minimizer.forEach((plugin) => {
           if (plugin.constructor && plugin.constructor.name === 'TerserPlugin') {
             if (plugin.options) {
-              plugin.options.parallel = false;
+              plugin.options.parallel = 1;
+              plugin.options.terserOptions = {
+                compress: {
+                  drop_console: true,
+                  drop_debugger: true,
+                  passes: 1,
+                },
+              };
             }
           }
         });
       }
+      
+      // Split chunks to reduce memory pressure
+      config.optimization.splitChunks = {
+        chunks: 'all',
+        cacheGroups: {
+          default: false,
+          vendors: false,
+          vendor: {
+            filename: 'vendor.js',
+            chunks: 'all',
+            test: /node_modules/,
+            name: 'vendor',
+            enforce: true,
+            reuseExistingChunk: true,
+          },
+          common: {
+            minChunks: 2,
+            priority: 10,
+            reuseExistingChunk: true,
+            name: 'common',
+          },
+        },
+      };
     }
     return config;
   },
