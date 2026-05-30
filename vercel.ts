@@ -70,6 +70,27 @@ export const config = {
   },
 
   // ─────────────────────────────────────────────────────────────────────────────
+  // FLUID COMPUTE
+  // Enable auto-scaling for functions based on load
+  // ─────────────────────────────────────────────────────────────────────────────
+  fluid: true,
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // SCHEDULED CRONS
+  // Run functions at specific times (e.g., nightly cleanup, data sync)
+  // ─────────────────────────────────────────────────────────────────────────────
+  crons: [
+    {
+      path: '/api/cron/cleanup',
+      schedule: '0 2 * * *',  // Daily at 2 AM UTC
+    },
+    {
+      path: '/api/cron/sync-data',
+      schedule: '0 */6 * * *', // Every 6 hours
+    },
+  ],
+
+  // ─────────────────────────────────────────────────────────────────────────────
   // HEADERS
   // Cache static assets aggressively
   // ─────────────────────────────────────────────────────────────────────────────
@@ -116,9 +137,15 @@ export const config = {
 
   // ─────────────────────────────────────────────────────────────────────────────
   // IGNORE BUILD COMMAND
-  // Skip builds for non-critical changes (e.g., README updates)
+  // Skip builds for non-critical changes (e.g., README updates, docs)
   // ─────────────────────────────────────────────────────────────────────────────
-  ignoreCommand: 'bash -c \'[ -z "$VERCEL_ENV_GIT_COMMIT_MESSAGE" ] || echo "$VERCEL_ENV_GIT_COMMIT_MESSAGE" | grep -qiE "^(docs|chore|style|test)" && exit 0 || exit 1\'',
+  ignoreCommand: `bash -c 'if [ -z "$VERCEL_ENV_GIT_COMMIT_MESSAGE" ]; then exit 0; fi; echo "$VERCEL_ENV_GIT_COMMIT_MESSAGE" | grep -qiE "^(docs|chore|style|test|readme|ci|workflows)" && exit 1 || exit 0'`,
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // PUBLIC LOGS
+  // Make deployment logs publicly accessible for sharing/debugging
+  // ─────────────────────────────────────────────────────────────────────────────
+  public: true,
 
   // ─────────────────────────────────────────────────────────────────────────────
   // CLEAN URLS
