@@ -8,7 +8,8 @@
 // ─────────────────────────────────────────────
 
 import { NextRequest, NextResponse } from "next/server";
-import { analyzeBatch, ValidationError, OpenRouterError, ParseError } from "@/lib/actions/analyzer-service";
+import { analyzeBatch, ValidationError, ParseError } from "@/lib/actions/analyzer-service";
+import { OpenRouterError } from "@/lib/actions/openrouter-service";
 import type { BatchAnalyzeRequest, BatchAnalysisResult, ApiResponse } from "@/types/comment.types";
 
 export const runtime = "nodejs";

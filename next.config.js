@@ -113,8 +113,7 @@ const nextConfig = {
   poweredByHeader: false,   // Supprime "X-Powered-By: Next.js"
   compress: true,
   reactStrictMode: true,
-  swcMinify: true, // Use SWC for lighter, faster minification
-  
+
   images: {
     remotePatterns: [
       { protocol: 'https', hostname: '*.supabase.co' },
@@ -142,10 +141,6 @@ const nextConfig = {
   experimental: {
     webpackBuildWorker: true,
     cpus: 2,
-    optimizePackageImports: ['@supabase/supabase-js', 'zustand', 'framer-motion', 'three'],
-    // Dynamic imports for Three.js to reduce initial bundle
-    esmExternals: true,
-    isrMemoryCacheSize: 50 * 1024 * 1024, // 50MB ISR cache
   },
   webpack: (config, { dev, isServer }) => {
     if (!dev) {
@@ -156,105 +151,12 @@ const nextConfig = {
         config.optimization.minimizer.forEach((plugin) => {
           if (plugin.constructor && plugin.constructor.name === 'TerserPlugin') {
             if (plugin.options) {
-              plugin.options.parallel = 1;
-              plugin.options.terserOptions = {
-                compress: {
-                  drop_console: true,
-                  drop_debugger: true,
-                  passes: 1,
-                  pure_funcs: ['console.log', 'console.info'],
-                },
-                mangle: {
-                  safari10: true,
-                },
-              };
+              plugin.options.parallel = false;
             }
           }
         });
       }
-      
-      // Advanced chunk splitting strategy for memory efficiency
-      config.optimization.splitChunks = {
-        chunks: 'all',
-        minSize: 20000,
-        maxAsyncRequests: 30,
-        maxInitialRequests: 30,
-        minChunks: 1,
-        cacheGroups: {
-          // React & core deps
-          react: {
-            test: /[\\/]node_modules[\\/](react|react-dom|react-hook-form)[\\/]/,
-            name: 'chunk-react',
-            priority: 50,
-            reuseExistingChunk: true,
-            enforce: true,
-          },
-          // UI libraries (Radix, Lucide, Sonner)
-          ui: {
-            test: /[\\/]node_modules[\\/](@radix-ui|lucide-react|sonner|embla-carousel)[\\/]/,
-            name: 'chunk-ui',
-            priority: 40,
-            reuseExistingChunk: true,
-            enforce: true,
-          },
-          // 3D libraries (Three.js, Drei, Fiber)
-          three: {
-            test: /[\\/]node_modules[\\/](three|@react-three)[\\/]/,
-            name: 'chunk-three',
-            priority: 35,
-            reuseExistingChunk: true,
-            enforce: true,
-          },
-          // Mapping & geolocation
-          maps: {
-            test: /[\\/]node_modules[\\/](mapbox-gl|leaflet)[\\/]/,
-            name: 'chunk-maps',
-            priority: 30,
-            reuseExistingChunk: true,
-            enforce: true,
-          },
-          // Backend & API
-          supabase: {
-            test: /[\\/]node_modules[\\/](@supabase|@upstash)[\\/]/,
-            name: 'chunk-api',
-            priority: 25,
-            reuseExistingChunk: true,
-            enforce: true,
-          },
-          // Analytics & AI
-          external: {
-            test: /[\\/]node_modules[\\/](openai|@google\/generative-ai|recharts)[\\/]/,
-            name: 'chunk-external',
-            priority: 20,
-            reuseExistingChunk: true,
-            enforce: true,
-          },
-          // Everything else in node_modules
-          vendor: {
-            test: /[\\/]node_modules[\\/]/,
-            name: 'chunk-vendors',
-            priority: 10,
-            reuseExistingChunk: true,
-            enforce: true,
-          },
-          // Common code between chunks
-          common: {
-            minChunks: 2,
-            priority: 5,
-            reuseExistingChunk: true,
-            name: 'chunk-common',
-          },
-        },
-      };
     }
-    
-    // Reduce stats output to save memory during build
-    config.stats = {
-      preset: 'minimal',
-      modules: false,
-      colors: true,
-    };
-    
     return config;
   },
 }

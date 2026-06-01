@@ -46,7 +46,7 @@ async function fetchRawStoreData(storeId: number) {
         'name, category, status, city, rating_average, sentiment_positive_percent, view_count, total_orders'
       )
       .eq('id', storeId)
-      .single(),
+      .single() as any,
 
     supabase
       .from('items')

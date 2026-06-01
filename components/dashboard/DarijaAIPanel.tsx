@@ -41,7 +41,7 @@ declare global {
 }
 // ──────────────────────────────────────────────────────────────────────────────
 
-import React, { useState, useCallback, useRef } from 'react'
+import React, { useState, useCallback, useRef, useEffect } from 'react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
@@ -50,7 +50,6 @@ import {
   Sparkles, Loader2, Zap, Tag, Image as ImageIcon,
   CheckCircle2, AlertCircle, Package, ChevronRight, X, Mic, MicOff, Square
 } from 'lucide-react'
-import { translateDarijaForSearch, extractDarijaWords } from '@/lib/darija-dictionary'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -200,16 +199,45 @@ export default function DarijaAIPanel({
     recognitionRef.current?.stop()
     setVoiceState('idle')
   }, [])
+  // ── Fetch Darija words and phrases dynamically from API ────────────────
+  useEffect(() => {
+    if (!transcript.trim()) {
+      setEnrichedTranscript('')
+      setDarijaMatches([])
+      return
+    }
 
-  // ── Enrich transcript with Darija dictionary ────────────────────────────
+    const timer = setTimeout(async () => {
+      try {
+        const res = await fetch('/api/darija-lookup', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text: transcript }),
+        })
+        if (res.ok) {
+          const data = await res.json()
+          const matches = (data.words || []).map((w: any) => ({
+            original: w.darija,
+            french: w.french,
+            category: w.category,
+          }))
+          setDarijaMatches(matches)
 
-  const enrichTranscript = useCallback((raw: string) => {
-    const translated = translateDarijaForSearch(raw)
-    const matches = extractDarijaWords(raw)
-    setEnrichedTranscript(translated)
-    setDarijaMatches(matches)
-    return translated
-  }, [])
+          // Generate an approximate translation locally from the matched words
+          let enriched = transcript
+          matches.forEach((m: any) => {
+            const regex = new RegExp(`\\b${m.original}\\b`, 'gi')
+            enriched = enriched.replace(regex, m.french)
+          })
+          setEnrichedTranscript(enriched)
+        }
+      } catch (err) {
+        console.error('Error fetching darija lookup:', err)
+      }
+    }, 500)
+
+    return () => clearTimeout(timer)
+  }, [transcript])
 
   // ── Send to AI API ──────────────────────────────────────────────────────
 
@@ -255,11 +283,8 @@ export default function DarijaAIPanel({
       toast.error('Enregistre un message vocal d\'abord !')
       return
     }
-    const enriched = enrichTranscript(transcript)
-    // Send the enriched (Darija→French) version to the AI
-    handleGenerate(enriched)
+    handleGenerate(enrichedTranscript || transcript)
   }
-
   const handleApply = () => {
     if (!result) return
     if (result.intent === 'create_product' && onApplyProduct) {

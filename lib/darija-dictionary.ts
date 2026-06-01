@@ -1,12 +1,16 @@
 /**
  * Dictionnaire Darija Tunisien Complet
  * Inclut: Arabe, Phonétique (français/chiffres), Variations régionales
+ * 
+ * NOTE: Pas d'import fs/path ici (client-side)
+ * Chargement côté serveur via lib/server/darija-loader.ts
  */
 
-import corpusPart1 from './darija-corpus-1.json';
-import corpusPart2 from './darija-corpus-2.json';
-import corpusPart3 from './darija-corpus-3.json';
-import corpusPart4 from './darija-corpus-4.json';
+// Stub export — À charger dynamiquement côté serveur
+const corpusPart1 = {}
+const corpusPart2 = {}
+const corpusPart3 = {}
+const corpusPart4 = {}
 
 export const DARIJA_TUNISIAN_DICTIONARY: Record<string, { french: string; category: string }> = {
   ...corpusPart1,

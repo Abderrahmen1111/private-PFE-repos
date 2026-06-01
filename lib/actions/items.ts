@@ -71,10 +71,16 @@ export async function upsertItem(item: Partial<Item> & { store_id: number }) {
         console.error('Failed to generate embedding for item:', e);
     }
 
+    // Normalize stock: services must have null stock_quantity (check_stock_by_type constraint)
+    const normalizedItem = {
+        ...item,
+        stock_quantity: item.item_type === 'SERVICE' ? null : item.stock_quantity,
+    };
+
     const { data, error } = await supabase
         .from('items')
         .upsert({
-            ...item,
+            ...normalizedItem,
             embedding,
             updated_at: new Date().toISOString()
         } as any)

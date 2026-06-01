@@ -10,7 +10,8 @@
 // ─────────────────────────────────────────────
 
 import { NextRequest, NextResponse } from "next/server";
-import { analyzeComment, ValidationError, OpenRouterError, ParseError } from "@/lib/actions/analyzer-service";
+import { analyzeComment, ValidationError, ParseError } from "@/lib/actions/analyzer-service";
+import { OpenRouterError } from "@/lib/actions/openrouter-service";
 import type { AnalyzeCommentRequest, ApiResponse, CommentAnalysisResult } from "@/types/comment.types";
 
 export const runtime = "nodejs"; // Needed for crypto.randomUUID

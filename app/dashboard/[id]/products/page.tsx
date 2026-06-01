@@ -163,7 +163,7 @@ export default function ProductsPage() {
       item_type: productData.itemType,
       category: productData.category,
       status: productData.available ? 'AVAILABLE' : 'UNAVAILABLE',
-      stock_quantity: productData.itemType === 'SERVICE' ? 0 : (productData.stock || 0),
+      stock_quantity: productData.itemType === 'SERVICE' ? null : (productData.stock || 0),
       main_image: imageUrl,
       image_2: existingGallery[0] || null,
       image_3: existingGallery[1] || null,
